@@ -5,6 +5,11 @@ Spaces als NIP-29-Gruppen, Seiten als Markdown-Events, Versionshistorie als
 signierte, hash-verkettete Revisionen — jede Änderung kryptografisch an einen
 npub gebunden.
 
+> **Prototyp — noch nicht produktiv einsetzen.** Der Space wird derzeit nur
+> über die Kommandozeile (`nak`) angelegt, die App selbst kann keine Gruppe
+> erzeugen. Alles läuft lokal ohne TLS, und das Event-Format kann sich noch
+> ändern. Gründe im Einzelnen: [NOSTR.md](NOSTR.md#stand-jetzt-prototyp-nicht-produktiv-einsetzen).
+
 **Status: Phase 0 bis 5 stehen.** Anmelden mit NIP-07, Space mit Mitgliedern
 und Seitenbaum, Seiten anlegen und bearbeiten, 3-Wege-Merge bei gleichzeitigem
 Speichern, Versionshistorie mit Diff, Zeilenherkunft und Wiederherstellen —

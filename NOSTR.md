@@ -10,7 +10,11 @@ Legende: ✅ umgesetzt · ⚠️ umgesetzt, aber mit Einschränkung oder Eigenba
 
 * * *
 
-## Stand jetzt: die Gruppe entsteht ausserhalb der App
+## Stand jetzt: Prototyp, nicht produktiv einsetzen
+
+> **Der Space wird derzeit ausschliesslich mit der Kommandozeile `nak` erzeugt
+> — die App selbst kann keine Gruppe anlegen. Solange das so ist, gehört hier
+> nichts hinein, dessen Verlust weh tut.**
 
 Wichtig für jede/n, der das hier zum ersten Mal liest — **so soll es nicht
 bleiben**:
@@ -38,6 +42,18 @@ das war eine Attrappe, in der nichts geprüft wurde, und ist bewusst rausgefloge
 Metadaten in der App ändern (`9002`), Beitritt anfragen (`9021`) für Relays
 ohne Auto-Join, und ein Relay unter eigener Domain mit TLS. Alles im Backlog,
 siehe [docs/10](docs/10-roadmap.md).
+
+### Warum „noch nicht produktiv"
+
+| Grund | Bedeutung im Alltag |
+|---|---|
+| Space nur per `nak` erzeugbar | Wer keinen Terminalzugang hat, kann keinen Space anlegen. Es gibt keinen Weg über die Oberfläche |
+| Nur lokal, kein TLS | Ein Browser lässt `ws://` von einer HTTPS-Seite nicht zu — ausserhalb von `localhost` läuft es so gar nicht |
+| Wegwerf-Schlüssel im Seed | `scripts/.dev-keys` sind Testschlüssel, keine Identitäten |
+| Eigener Kind `1818` | Das Datenmodell ist nicht in Stein gemeisselt. Ändert sich ein Tag, müssten vorhandene Events migriert werden — dafür gibt es bisher kein Werkzeug |
+| Kein E2EE | Der Relay-Betreiber liest alles im Klartext. Bewusste Entscheidung, aber sie muss zum Inhalt passen |
+| Löschen ist relativ | `9005` wirkt auf diesem Relay; Kopien anderswo bleiben |
+| Kein Backup-Ablauf | Ein Event-Export ist möglich und verifizierbar, aber nicht eingerichtet |
 
 * * *
 

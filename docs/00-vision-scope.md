@@ -18,6 +18,14 @@ Server-Account: Identität = npub, Speicher = Nostr-Relay, Rechte = NIP-29-Grupp
 | 6 | Gemeinsames Arbeiten | Optimistisches Speichern + 3-Wege-Merge, später CRDT → [05](05-versioning-history.md) |
 | 7 | Umschaltbar zwischen Hell und Dunkel | Token-basiertes Theming, Umschalter in der Topbar → [12](12-theming.md) |
 
+## Reifegrad
+
+**Prototyp.** Der Space wird bisher ausschliesslich mit `nak` von der
+Kommandozeile angelegt; in der App gibt es dafür keinen Weg. Zusammen mit
+fehlendem TLS, Wegwerf-Schlüsseln im Seed und einem Event-Format, das sich noch
+ändern kann, heisst das: nichts hineinschreiben, dessen Verlust weh tut.
+Vollständige Begründung in [NOSTR.md](../NOSTR.md).
+
 ## Zielbild Phase 1 (MVP)
 
 Zwei Personen mit Alby im Browser öffnen dieselbe URL, sehen denselben Space,
