@@ -29,7 +29,7 @@ export function EditorView() {
         relayUrl={group.relayUrl}
         groupId={group.id}
         page={page}
-        existingSlugs={space.pages.map((entry) => entry.slug)}
+        pages={space.pages}
         onSaved={(saved) => navigate(`${base}/${saved}`)}
         onCancel={() => navigate(`${base}/${page.slug}`)}
       />

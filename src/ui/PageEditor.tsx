@@ -14,7 +14,8 @@ type Props = {
   page?: Page
   /** Elternseite für eine neue Unterseite */
   defaultParentSlug?: string | null
-  existingSlugs: string[]
+  /** vorhandene Seiten des Spaces, für Slug-Kollisionen */
+  pages: Page[]
   onSaved: (slug: string) => void
   onCancel: () => void
 }
@@ -24,7 +25,7 @@ export function PageEditor({
   groupId,
   page,
   defaultParentSlug = null,
-  existingSlugs,
+  pages,
   onSaved,
   onCancel,
 }: Props) {
@@ -55,7 +56,8 @@ export function PageEditor({
   }
 
   const slug = page?.slug ?? normalizeSlug(title)
-  const collision = !page && slug.length > 0 && existingSlugs.includes(slug)
+  const existing = page ?? (slug.length > 0 ? pages.find((entry) => entry.slug === slug) : undefined)
+  const collision = !page && existing !== undefined
 
   const save = async () => {
     setError(null)
@@ -74,11 +76,16 @@ export function PageEditor({
         groupId,
         slug,
         title: title.trim(),
-        parentSlug: parentSlug.trim() || null,
+        // Bei einer Slug-Kollision die Elternseite der vorhandenen Seite
+        // behalten, statt sie stillschweigend auf die oberste Ebene zu heben.
+        parentSlug: parentSlug.trim() || existing?.parentSlug || null,
         summary: summary.trim() || null,
         content,
-        // Neue Seite: keine Vorgänger. Bearbeiten: der aktuelle Kopf der Kette.
-        parentRevs: page ? [page.head.id] : [],
+        // Neue Seite: keine Vorgänger. Bearbeiten oder gleicher Slug wie eine
+        // vorhandene Seite: an deren Kettenkopf anhängen. Ohne das entstünde
+        // eine zweite Wurzel — die App zeigte die Seite dann zu Recht als
+        // verzweigt an, obwohl niemand parallel gearbeitet hat.
+        parentRevs: existing ? [existing.head.id] : [],
       })
       if (result.ok) {
         onSaved(slug)
@@ -118,8 +125,8 @@ export function PageEditor({
         </p>
         {collision ? (
           <p className="text-xs text-warning">
-            Eine Seite mit diesem Slug existiert schon. Speichern erzeugt eine weitere Revision
-            dieser Seite, keine zweite Seite.
+            „{existing?.title}" hat schon diesen Slug. Speichern hängt eine weitere Revision an
+            diese Seite an, statt eine zweite Seite anzulegen.
           </p>
         ) : null}
       </div>

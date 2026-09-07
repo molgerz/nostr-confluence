@@ -17,7 +17,7 @@ export function NewPageView() {
         relayUrl={group.relayUrl}
         groupId={group.id}
         defaultParentSlug={params.get('parent')}
-        existingSlugs={space.pages.map((entry) => entry.slug)}
+        pages={space.pages}
         onSaved={(slug) => navigate(`${base}/${slug}`)}
         onCancel={() => navigate(base)}
       />

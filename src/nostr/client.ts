@@ -19,6 +19,11 @@ export type RelaySnapshot = {
   attempts: number
   auth: AuthState
   authMessage?: string
+  /**
+   * Zählt erfolgreiche Verbindungsaufbauten. Abos sterben mit ihrer
+   * Verbindung — wer welche hält, muss sie beim Hochzählen neu aufsetzen.
+   */
+  epoch: number
 }
 
 export type PublishResult = { ok: true; message: string } | { ok: false; reason: string }
@@ -87,7 +92,7 @@ class NostrClient {
   getSnapshot(url: string): RelaySnapshot {
     let snapshot = this.snapshots.get(url)
     if (!snapshot) {
-      snapshot = { url, connection: 'connecting', attempts: 0, auth: 'none' }
+      snapshot = { url, connection: 'connecting', attempts: 0, auth: 'none', epoch: 0 }
       this.snapshots.set(url, snapshot)
     }
     return snapshot
@@ -120,8 +125,17 @@ class NostrClient {
     try {
       const relay = await this.pool.ensureRelay(url, { connectionTimeout: 5000 })
       if (!this.wanted.has(url)) return
-      this.patch(url, { connection: 'online', attempts: 0 })
+      this.patch(url, {
+        connection: 'online',
+        attempts: 0,
+        epoch: this.getSnapshot(url).epoch + 1,
+      })
+      // Der Pool setzt selbst ein onclose, um die tote Verbindung aus seiner
+      // Registry zu werfen. Nicht überschreiben, sondern anhängen — sonst
+      // liefert ensureRelay beim nächsten Versuch dasselbe tote Objekt zurück.
+      const poolOnClose = relay.onclose
       relay.onclose = () => {
+        poolOnClose?.()
         if (this.reopening.delete(url)) return
         this.patch(url, { connection: 'offline', auth: 'none', authMessage: undefined })
         this.scheduleRetry(url)

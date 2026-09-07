@@ -45,7 +45,9 @@ class SpaceStore {
   private metadataEvent: Event | null = null
   private stop: (() => void)[] = []
   private generation = -1
+  private epoch = -1
   private eoseSeen = 0
+  private groupEventAt = new Map<number, number>()
 
   constructor(
     private relayUrl: string,
@@ -70,14 +72,26 @@ class SpaceStore {
     return this.snapshot
   }
 
-  /** Nach einem Signer-Wechsel sind die Abos tot — neu aufbauen. */
-  checkGeneration(): void {
-    if (this.listeners.size > 0 && this.generation !== client.getGeneration()) this.start()
+  /**
+   * Abos sterben mit ihrer Verbindung und mit jedem Signer-Wechsel (AUTH gilt
+   * pro Verbindung). Beides hier erkennen und neu aufsetzen — sonst zeigt die
+   * App nach einem Relay-Neustart stillschweigend veraltete Daten.
+   */
+  checkConnection(): void {
+    if (this.listeners.size === 0) return
+    const epoch = client.getSnapshot(this.relayUrl).epoch
+    if (this.generation !== client.getGeneration() || this.epoch !== epoch) this.start()
   }
 
   private start(): void {
     this.close()
+    // Ohne Gruppen-ID gibt es nichts zu abonnieren (z. B. auf /login).
+    if (this.groupId.length === 0) {
+      if (this.snapshot.loading) this.emit({ loading: false })
+      return
+    }
     this.generation = client.getGeneration()
+    this.epoch = client.getSnapshot(this.relayUrl).epoch
     this.eoseSeen = 0
     if (!this.snapshot.loading) this.emit({ loading: true })
 
@@ -113,10 +127,23 @@ class SpaceStore {
       this.metadataEvent = event
       this.emit({ metadata: parseGroupMetadata(event, this.groupId) })
     } else if (event.kind === KINDS.GROUP_ADMINS) {
+      if (this.isOutdated(event)) return
       this.emit({ admins: parseAdmins(event) })
     } else if (event.kind === KINDS.GROUP_MEMBERS) {
+      if (this.isOutdated(event)) return
       this.emit({ members: parseMembers(event) })
     }
+  }
+
+  /**
+   * Relays liefern nicht zwingend in zeitlicher Reihenfolge. Ohne diese
+   * Prüfung könnte eine ältere Mitgliederliste eine neuere überschreiben.
+   */
+  private isOutdated(event: Event): boolean {
+    const seen = this.groupEventAt.get(event.kind)
+    if (seen !== undefined && seen > event.created_at) return true
+    this.groupEventAt.set(event.kind, event.created_at)
+    return false
   }
 
   private applyRevision(event: Event): void {
@@ -153,8 +180,8 @@ export function useSpace(relayUrl: string, groupId: string): SpaceSnapshot {
   const subscribe = useCallback((listener: () => void) => store.subscribe(listener), [store])
   const getSnapshot = useCallback(() => store.getSnapshot(), [store])
   const snapshot = useSyncExternalStore(subscribe, getSnapshot)
-  // Nach Login/Logout müssen die Abos neu aufgebaut werden, weil AUTH pro
-  // Verbindung gilt.
-  useEffect(() => client.subscribeState(() => store.checkGeneration()), [store])
+  // Nach Login/Logout und nach jedem Reconnect müssen die Abos neu aufgebaut
+  // werden.
+  useEffect(() => client.subscribeState(() => store.checkConnection()), [store])
   return snapshot
 }

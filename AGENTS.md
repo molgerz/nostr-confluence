@@ -95,6 +95,24 @@ Zwei inhaltliche Folgen daraus:
   `mute: no one was listening for this` ab, wenn niemand abonniert hat. Das ist
   kein Rechteproblem.
 
+## Fallen in der Nostr-Schicht
+
+- **`relay.onclose` nicht überschreiben.** `SimplePool.ensureRelay` hängt dort
+  selbst einen Handler ein, der die tote Verbindung aus der Registry wirft. Wer
+  ihn ersetzt, bekommt beim nächsten `ensureRelay` dasselbe tote Objekt zurück.
+  Anhängen statt ersetzen.
+- **Abos sterben mit ihrer Verbindung.** Nach einem Reconnect oder einem
+  Signer-Wechsel (AUTH gilt pro Verbindung) müssen alle Subscriptions neu
+  aufgesetzt werden. Der Client zählt dafür pro Relay eine `epoch` hoch.
+- **`pool.get` kennt keinen `onauth`-Haken.** Auf einem Relay mit erzwungenem
+  NIP-42 liefert es stillschweigend leere Ergebnisse. Lesen über
+  `subscribeEose` mit `onauth`.
+- **`subscribeEose` schliesst bei EOSE.** Für den Rückweg eines ephemeren
+  Events ist das zu früh — dort `pool.subscribe` verwenden.
+- **`useSyncExternalStore` braucht eine memoisierte `subscribe`-Funktion.** Eine
+  neue Funktionsidentität pro Render abonniert neu; startet der Store dabei
+  etwas, dreht sich die Schleife endlos.
+
 ## Konventionen
 
 - Doku, Kommentare und Commit-Nachrichten auf Deutsch.
