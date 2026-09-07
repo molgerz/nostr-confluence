@@ -1,112 +1,108 @@
-# 06 — UI & Informationsarchitektur
+# 06 — UI & information architecture
 
-## Layout (Confluence-Vorbild)
+## Layout (modelled on Confluence)
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│ Logo  Spaces ▾  Suche…              [+ Erstellen]  Theme  Avatar│  Topbar 48px
+│ Logo   Search…                    [+ Create]   Theme   Account   │  top bar 48px
 ├──────────────┬────────────────────────────────────┬───────────────┤
-│ Space-Kopf   │ Breadcrumb: Handbuch / Onboarding  │ Auf dieser    │
-│ Engineering  │                                    │ Seite         │
-│ öffentlich   │ # Onboarding                       │  · Ziel       │
-│              │                                    │  · Zugänge    │
-│ Übersicht    │ Zuletzt geändert von carol · 11:40 │  · Kontakt    │
-│ Alle Seiten  │ [Bearbeiten][Historie][Teilen]     │               │
-│ Mitglieder   │                                    │               │
-│              │ Markdown-Inhalt …                  │               │
-│ ▾ Handbuch   │                                    │               │
+│ Space header │ Breadcrumb: Handbook / Onboarding  │ On this page  │
+│ Engineering  │                                    │               │
+│ public       │ # Onboarding                       │  · Goal       │
+│              │                                    │  · Access     │
+│ Overview     │ last edited by carol · 11:40       │  · Contact    │
+│ Search       │ [Edit][History][Line origin]       │               │
+│              │                                    │               │
+│ ▾ Handbook   │ Markdown content …                 │               │
 │   · Onboard. │                                    │               │
 │   · Tooling  │                                    │               │
-│ ▸ Prozesse   │                                    │               │
+│ ▸ Processes  │                                    │               │
 │              │                                    │               │
-│ + Seite      │                                    │               │
+│ + New page   │                                    │               │
 └──────────────┴────────────────────────────────────┴───────────────┘
-   240px                 flexibel, max 820px            220px
+   224px                 flexible, max 5xl              176px
 ```
 
-## Linke Leiste — Anforderung 2 im Detail
+## The left bar — requirement 2 in detail
 
-Vier Zonen, von oben:
+Four zones, top to bottom:
 
-1. **Space-Kopf** — Name und Bild aus `39000`, Badge `öffentlich`/`privat`,
-   Space-Wechsler. Bei Nicht-Mitgliedschaft: Button "Beitreten".
-2. **Fixe Einträge** — umgesetzt sind *Übersicht* und *Suche*. Die
-   Mitgliederliste und die Moderation liegen auf der Übersichtsseite statt in
-   der Leiste. **Offen:** eigene Einträge für "Alle Seiten", "Zuletzt geändert"
-   und "Space-Einstellungen".
-3. **Seitenbaum** — aufklappbar, aus `page-parent` projiziert
-   ([02](02-data-model-events.md)). Aktive Seite hervorgehoben, Elternpfad
-   automatisch geöffnet. Ungespeicherte Entwürfe erscheinen kursiv mit Punkt.
-4. **Fußzeile** — "+ Seite erstellen", Relay-Statusanzeige (verbunden /
-   AUTH nötig / offline) — wichtig, weil ohne Relay nichts publizierbar ist.
+1. **Space header** — name and picture from `39000`, a `public`/`private`
+   badge. **Open:** a space switcher and a "join" button for non-members.
+2. **Fixed entries** — *Overview* and *Search* are implemented. The member list
+   and moderation live on the overview page rather than in the bar.
+   **Open:** dedicated entries for "all pages", "recently changed" and "space
+   settings".
+3. **Page tree** — projected from `page-parent`
+   ([02](02-data-model-events.md)). The active page is highlighted; forked pages
+   are marked with a dot.
+4. **Footer** — "+ new page" and the relay status (connected / AUTH / offline) —
+   important, because nothing can be published without a relay.
 
-Verhalten: einklappbar auf 40px, Zustand in `localStorage`. Unter 768px
-Breite verschwindet die Leiste ganz und wird über ein Menü in der Topbar als
-Overlay eingeblendet; nach einem Sprung schliesst sie sich wieder.
+Behaviour: collapsible to 40px, state kept in `localStorage`. Below 768px width
+the bar disappears entirely and is shown as an overlay via a menu in the top
+bar; after navigating it closes again.
 
-Die rechte Leiste ("Auf dieser Seite") entsteht aus den Überschriften des
-angezeigten Markdown-Textes und erscheint ab 1280px Breite, sobald es
-mindestens zwei Überschriften gibt. Überschriften in Codeblöcken zählen nicht
-mit — ein `# Kommentar` in einem Shell-Beispiel ist keine Überschrift.
+The right-hand bar ("on this page") is derived from the headings of the
+displayed Markdown and appears from 1280px width once there are at least two
+headings. Headings inside code blocks do not count — a `# comment` in a shell
+example is not a heading.
 
-## Topbar
+## Top bar
 
-Logo, Space-Wechsler, Suche, "+ Erstellen", **Theme-Umschalter
-(System/Hell/Dunkel, [12](12-theming.md))**, Avatar mit npub-Menü
-(Profil, Relay-Verbindung, Abmelden).
+Logo, search, "+ create", the **theme switch (system/light/dark,
+[12](12-theming.md))** and the account chip with display name, npub and sign-out.
 
-## Seiten-Zustände
+## Page states
 
-| Zustand | Anzeige |
+| State | What is shown |
 |---|---|
-| Lesen | Markdown gerendert, TOC rechts, Byline, Aktionsleiste |
-| Bearbeiten | Split (Markdown links, Vorschau rechts), Speichern/Abbrechen, Feld "Was hast du geändert?" → `summary` |
-| Konflikt | Banner "Diese Seite wurde von <npub> geändert" + Merge-Dialog |
-| Nicht eingeloggt | Aktionen deaktiviert, Hinweis "Mit Nostr anmelden zum Bearbeiten" |
-| Kein Mitglied | Button "Beitreten und bearbeiten" (löst `9021` aus) |
-| Publish fehlgeschlagen | Fehlermeldung im Editor mit dem **wörtlichen Relay-Grund**, eingeordnet nach Ursache (AUTH nötig, Rechte, sonstiges). Der Text bleibt im Editor stehen, es geht nichts verloren |
+| Reading | Rendered Markdown, table of contents on the right, byline, action bar |
+| Editing | Editor with a preview toggle, save/cancel, a "what did you change?" field → `summary` |
+| Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
+| Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works |
+| Publish failed | Error message in the editor with the **literal relay reason**, classified by cause (AUTH needed, permissions, other). The text stays in the editor, nothing is lost |
 
-Der letzte Zustand ist Pflicht, nicht Kür: bei einem verteilten Speicher darf
-"gespeichert" nie behauptet werden, bevor das Relay `OK true` geschickt hat.
+The last state is mandatory, not a nicety: with distributed storage, "saved"
+must never be claimed before the relay has sent `OK true`.
 
-**Anders gelöst als geplant:** Statt eines gelben Streifens "nur lokal
-gespeichert" bleibt der Editor einfach offen und zeigt den Relay-Grund. Ein
-Entwurf, der nur im Browser liegt, wäre ein zweiter Speicherort mit eigenen
-Fragen (Wo? Wie lange? Was bei Account-Wechsel?) — dafür bräuchte es den noch
-nicht gebauten lokalen Cache.
+**Solved differently than planned:** instead of a yellow "saved locally only"
+strip, the editor simply stays open and shows the relay's reason. A draft that
+lives only in the browser would be a second storage location with its own
+questions (where? for how long? what on account switch?) — that would need the
+local cache that has not been built yet.
 
 ## Editor
 
-- **Umgesetzt**: CodeMirror 6 mit Markdown-Hervorhebung und umschaltbarer
-  Vorschau, Feld für die Änderungsnotiz, automatisch abgeleiteter Slug,
-  Elternseite wählbar. Der Farbmodus wird über ein `Compartment`
-  umkonfiguriert, damit Cursor und Undo-Historie beim Umschalten erhalten
-  bleiben.
-- **Geplant**: Toolbar für Überschriften/Listen/Links/Codeblock, Bild per
-  Drag & Drop (braucht Blossom/NIP-96-Upload).
-- **Später**: WYSIWYG (TipTap), das Markdown erzeugt. Bewusst nicht zuerst, weil
-  WYSIWYG plus Merge-Konflikte gleichzeitig zu viel Risiko ist.
+- **Implemented**: CodeMirror 6 with Markdown highlighting and a preview
+  toggle, a field for the change note, an automatically derived slug and a
+  selectable parent page. The colour mode is swapped through a `Compartment` so
+  that cursor and undo history survive the switch.
+- **Planned**: a toolbar for headings/lists/links/code blocks. Images can
+  already be attached via button or drag & drop (Blossom).
+- **Later**: WYSIWYG (TipTap) producing Markdown. Deliberately not first,
+  because WYSIWYG plus merge conflicts at the same time is too much risk.
 
-## Identitätsdarstellung
+## How identity is displayed
 
-Überall, wo eine Person auftaucht: Avatar + Anzeigename + gekürzter npub
-(`npub1qz…7k4f`, monospace, Klick kopiert vollständig). Anzeigenamen sind
-frei wählbar und nicht eindeutig — der npub ist die Identität, und das UI
-zeigt das konsequent, statt es zu verstecken.
+Everywhere a person appears: avatar + display name + shortened npub
+(`npub1qz…7k4f`, monospace). Display names are freely chosen and not unique —
+the npub is the identity, and the UI shows that consistently instead of hiding
+it.
 
 ## Routing
 
 ```
-/                          Space-Auswahl
-/login                     NIP-07-Anmeldung
-/s/:group                  Space-Übersicht (Metadaten, Mitglieder, Seitenliste)
-/s/:group/new              Seite anlegen  (?parent=<slug> für eine Unterseite)
-/s/:group/search           Suche          (?q=…)
-/s/:group/:slug            Seite lesen
-/s/:group/:slug/edit       Bearbeiten     (?merge=1 zum Zusammenführen)
-/s/:group/:slug/history    Historie mit Vergleich
-/s/:group/:slug/blame      Zeilenherkunft
+/                          space selection
+/login                     NIP-07 sign-in
+/s/:group                  space overview (metadata, members, page list)
+/s/:group/new              create a page  (?parent=<slug> for a subpage)
+/s/:group/search           search         (?q=…)
+/s/:group/:slug            read a page
+/s/:group/:slug/edit       edit           (?merge=1 to merge versions)
+/s/:group/:slug/history    history with comparison
+/s/:group/:slug/blame      line origin
 ```
 
-`groupId` inklusive Relay-Host (URL-kodiert), damit ein Link vollständig ist:
-`/s/relay.example.com'engineering/onboarding`.
+`:group` includes the relay host (URL-encoded) so that a link is
+self-contained: `/s/relay.example.com'engineering/onboarding`.

@@ -1,22 +1,22 @@
-# Konzept — Übersicht
+# Design docs — overview
 
-Reihenfolge zum Lesen:
+Suggested reading order:
 
-| # | Dokument | Inhalt |
+| # | Document | Contents |
 |---|---|---|
-| 00 | [Vision & Scope](00-vision-scope.md) | Was gebaut wird, was ausdrücklich nicht |
-| 01 | [Architektur](01-architecture.md) | Schichten, Datenfluss, Verantwortlichkeiten |
-| 02 | [Datenmodell & Events](02-data-model-events.md) | Kinds, Tags, Adressierung, Seitenbaum |
-| 03 | [Login: NIP-07 & NIP-42](03-auth-nip07-nip42.md) | Anmeldung, Relay-AUTH, Session |
-| 04 | [Rechte: NIP-29](04-permissions-nip29.md) | Gruppen, Mitglieder, Moderation |
-| 05 | [Versionierung](05-versioning-history.md) | Revisionskette, Diff, Blame, Merge |
-| 06 | [UI & Informationsarchitektur](06-ui-information-architecture.md) | Layout, Sidebar, Editor |
-| 07 | [Tech-Stack](07-tech-stack.md) | Bibliotheken und Begründung |
-| 08 | [Relay-Setup](08-relay-setup.md) | NIP-29-Relay lokal und produktiv |
-| 09 | [Sicherheit & Privacy](09-security-privacy.md) | Angriffsflächen, Grenzen |
-| 10 | [Roadmap](10-roadmap.md) | Phasen mit Abbruchkriterien |
-| 11 | [Offene Fragen](11-open-questions.md) | Entscheidungen, die du treffen musst |
-| 12 | [Theming](12-theming.md) | Hell/Dunkel-Umschaltung, Token-Ebenen |
+| 00 | [Vision & scope](00-vision-scope.md) | What gets built, and what explicitly does not |
+| 01 | [Architecture](01-architecture.md) | Layers, data flow, responsibilities |
+| 02 | [Data model & events](02-data-model-events.md) | Kinds, tags, addressing, page tree |
+| 03 | [Sign-in: NIP-07 & NIP-42](03-auth-nip07-nip42.md) | Login, relay AUTH, session |
+| 04 | [Permissions: NIP-29](04-permissions-nip29.md) | Groups, members, moderation |
+| 05 | [Versioning](05-versioning-history.md) | Revision chain, diff, blame, merge |
+| 06 | [UI & information architecture](06-ui-information-architecture.md) | Layout, sidebar, editor |
+| 07 | [Tech stack](07-tech-stack.md) | Libraries and the reasoning behind them |
+| 08 | [Relay setup](08-relay-setup.md) | NIP-29 relay locally and in production |
+| 09 | [Security & privacy](09-security-privacy.md) | Attack surface, limits |
+| 10 | [Roadmap](10-roadmap.md) | Phases with acceptance criteria |
+| 11 | [Open questions](11-open-questions.md) | Decisions that are yours to make |
+| 12 | [Theming](12-theming.md) | Light/dark switching, token layers |
 
-Konventionen: Entscheidungen sind mit **Entscheidung:** markiert, bewusste
-Nicht-Ziele mit **Nicht-Ziel:**, ungeklärte Punkte mit **Offen:**.
+Conventions: decisions are marked **Decision:**, deliberate exclusions
+**Non-goal:**, and unresolved points **Open:**.

@@ -1,232 +1,231 @@
 # 10 — Roadmap
 
-Jede Phase endet mit einem überprüfbaren Ergebnis. Reihenfolge ist so gewählt,
-dass das Risiko früh sichtbar wird: erst Relay + Rechte, dann Komfort.
+Every phase ends with a verifiable result. The order is chosen so that risk
+surfaces early: relay and permissions first, comfort later.
 
-## Phase 0 — Fundament ✅ (2026-09-07)
-- Vite/React/TS-Projekt, Tailwind, Routing-Skelett
-- **Theme-Tokens und Umschalter System/Hell/Dunkel** ([12](12-theming.md)) —
-  bewusst zuerst, weil Nachrüsten jede Komponente erneut anfasst
-- `nak serve --port 10547` als Entwicklungs-Relay ([08](08-relay-setup.md))
-- `src/nostr/kinds.ts` mit allen Kinds aus [02](02-data-model-events.md)
-- **Fertig, wenn:** die App verbindet sich, Relay-Status wird angezeigt, beide
-  Modi sehen in allen vorhandenen Ansichten korrekt aus
+## Phase 0 — Foundation ✅ (2026-09-07)
+- Vite/React/TS project, Tailwind, routing skeleton
+- **Theme tokens and a system/light/dark switch** ([12](12-theming.md)) —
+  deliberately first, because retrofitting means touching every component again
+- A development relay ([08](08-relay-setup.md))
+- `src/nostr/kinds.ts` with all kinds from [02](02-data-model-events.md)
+- **Done when:** the app connects, the relay status is displayed, and both modes
+  look right in every view that exists
 
-Erledigt und geprüft:
+Completed and verified:
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Vite + React 19 + TS, Routing nach [06](06-ui-information-architecture.md) | `src/routes/router.tsx` |
-| Theme-Tokens hell/dunkel, `@theme inline` | `src/index.css` |
-| Umschalter System/Hell/Dunkel + Persistenz | `src/theme/theme.tsx`, `src/ui/ThemeToggle.tsx` |
-| Kein Aufblitzen beim Laden | Inline-Skript in `index.html` |
-| Alle Kinds und Tags an einer Stelle, Slug-Normalisierung | `src/nostr/kinds.ts` |
-| Gruppen-Adresse `host'id` parsen | `src/nostr/group-address.ts` |
-| Relay-Verbindung + NIP-11 + Backoff | `src/nostr/relay-status.ts` |
-| Confluence-Layout: Topbar, Sidebar, Inhalt, rechte Leiste | `src/ui/layout/` |
-| Aufgaben `relay`, `relay-auth`, `seed`, `dev`, `check` | `justfile` |
+| Vite + React 19 + TS, routing per [06](06-ui-information-architecture.md) | `src/routes/router.tsx` |
+| Light/dark theme tokens, `@theme inline` | `src/index.css` |
+| System/light/dark switch with persistence | `src/theme/theme.tsx`, `src/ui/ThemeToggle.tsx` |
+| No flash on load | Inline script in `index.html` |
+| All kinds and tags in one place, slug normalisation | `src/nostr/kinds.ts` |
+| Parsing the group address `host'id` | `src/nostr/group-address.ts` |
+| Relay connection + NIP-11 + backoff | `src/nostr/relay-status.ts` |
+| Confluence layout: top bar, sidebar, content, right rail | `src/ui/layout/` |
+| Tasks `relay`, `seed`, `dev`, `check` | `justfile` |
 
-Verifiziert im Browser: Umschaltung hell/dunkel in allen Ansichten, Persistenz
-über den Reload (`data-theme` und Toggle-Zustand bleiben), Relay-Status
-"verbunden" mit Namen `nak serve` und Hinweis "NIP-29: nein, Gruppen simuliert",
-sowie der Ausfall-Zustand mit Wiederverbindungszähler nach Stoppen des Relays.
+Verified in the browser: light/dark switching in every view, persistence across
+a reload (`data-theme` and the toggle state survive), the relay status showing
+"connected" with the relay's name, and the offline state with a reconnect
+counter after stopping the relay.
 
-## Phase 1 — Login (Anforderung 1) ✅ (2026-09-07)
-- NIP-07-Erkennung, `getPublicKey`, Profil (`kind 0`), Session
-- NIP-42-AUTH inkl. automatischem Retry bei Reconnect
-- Signer-Interface (für NIP-46 später)
-- **Fertig, wenn:** Login mit Alby funktioniert, Publish nach Reconnect nicht still fehlschlägt
+## Phase 1 — Sign-in (requirement 1) ✅ (2026-09-07)
+- NIP-07 detection, `getPublicKey`, profile (`kind 0`), session
+- NIP-42 AUTH including an automatic retry after reconnect
+- A signer interface (for NIP-46 later)
+- **Done when:** signing in with Alby works and a publish after a reconnect does
+  not fail silently
 
-Erledigt und geprüft:
+Completed and verified:
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Signer-Interface, `window.nostr`-Erkennung mit Polling | `src/nostr/signer.ts` |
-| Relay-Schicht mit NIP-42: Challenge automatisch signieren, Publish-Retry nach `auth-required`, Backoff-Reconnect | `src/nostr/client.ts` |
-| Sitzung, Profil aus Kind 0, Erkennung eines Account-Wechsels vor dem Schreiben | `src/session/session.tsx` |
-| Login-Ansicht mit echten Zuständen, Nutzer-Chip, Schreibprobe | `src/routes/Login.tsx`, `src/ui/UserChip.tsx`, `src/ui/WriteCheck.tsx` |
-| Wegwerf-Signer für automatisierte Tests ohne Extension (nur DEV, nur mit `?devsigner`) | `src/dev/fake-nip07.ts` |
+| Signer interface, `window.nostr` detection with polling | `src/nostr/signer.ts` |
+| Relay layer with NIP-42: sign the challenge automatically, retry publish after `auth-required`, backoff reconnect | `src/nostr/client.ts` |
+| Session, profile from kind 0, detecting an account switch before writing | `src/session/session.tsx` |
+| Sign-in view with real states, account chip, write probe | `src/routes/Login.tsx`, `src/ui/UserChip.tsx`, `src/ui/WriteCheck.tsx` |
+| Throwaway signer for automated tests without an extension (DEV only, only with `?devsigner`) | `src/dev/fake-nip07.ts` |
 
-Bibliotheksentscheidung aus dem Spike: **nostr-tools**, nicht NDK — siehe
+Library decision from the spike: **nostr-tools**, not NDK — see
 [07](07-tech-stack.md).
 
-Gegengeprüft am echten NIP-29-Relay (`groups_relay`, ws://localhost:8080):
-Anmeldung, Sitzung über den Reload, und eine Schreibprobe, die vom Relay mit
-"akzeptiert" bestätigt und über das eigene Abo zurückgeliefert wurde.
+Cross-checked against the real NIP-29 relay (`groups_relay`,
+ws://localhost:8080): signing in, session across a reload, and a write probe
+that the relay confirmed as accepted and delivered back through our own
+subscription.
 
-Drei Funde, die ohne Test nicht aufgefallen wären:
-- `pool.get` nimmt keinen `onauth`-Haken. Auf einem Relay mit erzwungenem
-  NIP-42 liefert es deshalb stillschweigend leere Ergebnisse. Lesen läuft
-  daher über `subscribeEose` mit `onauth`.
-- Ephemere Events brauchen einen Abonnenten, sonst lehnt das Relay sie ab. Die
-  Schreibprobe abonniert deshalb zuerst und wartet auf das eigene Event.
-- `subscribeEose` schliesst das Abo bei EOSE. Für den Rückweg eines ephemeren
-  Events ist das zu früh — dort braucht es `pool.subscribe` und ein manuelles
-  Schliessen.
+Three findings that would not have surfaced without testing:
+- `pool.get` takes no `onauth` hook. On a relay with enforced NIP-42 it
+  therefore returns empty results silently. Reading now goes through
+  `subscribeEose` with `onauth`.
+- Ephemeral events need a subscriber, otherwise the relay rejects them. The
+  write probe therefore subscribes first and waits for its own event.
+- `subscribeEose` closes the subscription on EOSE. That is too early for the
+  echo of an ephemeral event — there `pool.subscribe` plus manual closing is
+  needed.
 
-## Phase 2 — Space & Sidebar (Anforderung 2) ✅ (2026-09-07)
-- Gruppen laden (`39000`–`39002`), Space-Kopf, Mitgliederliste
-- Linke Leiste mit fixen Einträgen
-- Seitenbaum, Routing komplett
-- **Fertig, wenn:** ein per Seed-Skript erzeugter Space vollständig navigierbar ist
+## Phase 2 — Space & sidebar (requirement 2) ✅ (2026-09-07)
+- Load groups (`39000`–`39002`), space header, member list
+- Left bar with fixed entries
+- Page tree, routing complete
+- **Done when:** a space created by the seed script is fully navigable
 
-Umgesetzt in `src/nostr/space-store.ts` (ein Store pro Space, hält die
-Relay-Events und leitet Seiten und Baum ab) und `src/domain/group-state.ts`.
-Die Übersicht zeigt Name, Beschreibung, die Flags aus `39000`, Mitglieder aus
-`39002` und Rollen aus `39001`, dazu ein Badge "du bist Admin/Mitglied".
+Implemented in `src/nostr/space-store.ts` (one store per space, holding the
+relay events and deriving pages and tree) and `src/domain/group-state.ts`. The
+overview shows name, description, the flags from `39000`, members from `39002`
+and roles from `39001`, plus an "you are admin/member" badge.
 
-## Phase 3 — Seiten lesen & anlegen (Anforderung 3) ✅ (2026-09-07)
-- `1818`-Revision publishen (erste Revision = Seite erstellen)
-- Head-Auflösung, Markdown-Rendering mit Sanitizing
-- Seitenbaum aus Revisionen, Slug-Normalisierung
-- Editor mit Vorschau, `summary`-Feld
-- **Fertig, wenn:** zwei Browser-Profile sehen die Seite des jeweils anderen
+## Phase 3 — Reading and creating pages (requirement 3) ✅ (2026-09-07)
+- Publish `1818` revisions (the first revision creates the page)
+- Head resolution, Markdown rendering with sanitising
+- Page tree from revisions, slug normalisation
+- Editor with preview and a `summary` field
+- **Done when:** two browser profiles see each other's pages
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Revisionen aus Events lesen, h-Tag prüfen | `src/domain/revision.ts` |
-| Head-Auflösung über `parent-rev`, Blätter, Seitenbaum | `src/domain/pages.ts` |
-| Revision signieren und publishen (mit `content-hash`) | `src/nostr/publish-page.ts` |
-| Markdown rendern mit `rehype-sanitize` | `src/ui/Markdown.tsx` |
-| Editor für neue und bestehende Seiten | `src/ui/PageEditor.tsx` |
-| Seite, Historie, Übersicht, Sidebar-Baum | `src/routes/`, `src/ui/layout/Sidebar.tsx` |
+| Reading revisions from events, checking the h tag | `src/domain/revision.ts` |
+| Head resolution over `parent-rev`, leaves, page tree | `src/domain/pages.ts` |
+| Signing and publishing a revision (with `content-hash`) | `src/nostr/publish-page.ts` |
+| Rendering Markdown with `rehype-sanitize` | `src/ui/Markdown.tsx` |
+| Editor for new and existing pages | `src/ui/PageEditor.tsx` |
+| Page, history, overview, sidebar tree | `src/routes/`, `src/ui/layout/Sidebar.tsx` |
 
-Gegen das laufende NIP-29-Relay geprüft: Seite "Deployment" als Unterseite von
-"Handbuch" angelegt, danach bearbeitet — die zweite Revision zeigt per
-`parent-rev` auf die erste, die Historie listet beide mit npub und Notiz, und
-der Sidebar-Baum hängt die Seite unter ihre Elternseite.
+Verified against the running NIP-29 relay: created the page "Deployment" as a
+subpage of "Handbook", then edited it — the second revision points at the first
+via `parent-rev`, the history lists both with npub and note, and the sidebar
+tree nests the page under its parent.
 
-**Abweichung inzwischen aufgelöst:** Der Editor war zunächst ein einfaches
-Textfeld; seit Phase 6 ist es CodeMirror 6 mit Markdown-Hervorhebung.
+**Deviation since resolved:** the editor started out as a plain textarea; since
+phase 6 it is CodeMirror 6 with Markdown highlighting.
 
-Die Verzweigungserkennung aus Phase 4 ist als Anzeige schon da: hat eine Seite
-mehr als ein Blatt, zeigen Seite und Sidebar das an. Das Zusammenführen fehlt
-noch.
+Fork detection from phase 4 is already present as a display: if a page has more
+than one leaf, both the page and the sidebar show it. Merging came later.
 
-## Phase 4 — Gemeinsam bearbeiten (Anforderungen 4 & 6) ✅ (2026-09-07)
-- Beitritt: Auto-Join in `open`-Gruppen nutzen, `9021`-Fallback für strengere Relays
-- Optimistische Sperre: Head-Prüfung vor Publish
-- 3-Wege-Merge, Verzweigungs-Banner, Merge-Revision
-- **Fertig, wenn:** gleichzeitiges Bearbeiten keinen Text verliert und der Konflikt sichtbar ist
+## Phase 4 — Editing together (requirements 4 & 6) ✅ (2026-09-07)
+- Joining: use auto-join in `open` groups, `9021` fallback for stricter relays
+- Optimistic lock: check the head before publishing
+- Three-way merge, fork banner, merge revision
+- **Done when:** concurrent editing loses no text and the conflict is visible
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Zeilenweiser 3-Wege-Merge mit Konfliktmarkern | `src/domain/merge.ts` |
-| Jüngster gemeinsamer Vorfahre zweier Revisionen | `findCommonAncestor` in `src/domain/pages.ts` |
-| Optimistische Sperre und Merge im Editor | `src/ui/PageEditor.tsx` |
-| Verzweigte Seite zusammenführen | `src/routes/EditorView.tsx` mit `?merge=1` |
+| Line-based three-way merge with conflict markers | `src/domain/merge.ts` |
+| Most recent common ancestor of two revisions | `findCommonAncestor` in `src/domain/pages.ts` |
+| Optimistic lock and merge in the editor | `src/ui/PageEditor.tsx` |
+| Merging a forked page | `src/routes/EditorView.tsx` with `?merge=1` |
 
-Ablauf beim Speichern: hat sich der Kopf der Kette seit dem Öffnen bewegt,
-wird nicht publiziert, sondern zusammengeführt und der Mensch gefragt.
-Überschneiden sich die Änderungen, stehen Konfliktmarker im Text und Speichern
-bleibt gesperrt, bis sie weg sind. Das Ergebnis einer Zusammenführung ist eine
-Revision mit zwei `parent-rev`-Tags.
+What happens on save: if the head of the chain has moved since the editor was
+opened, nothing is published — the versions are merged and a human is asked. If
+the changes overlap, conflict markers sit in the text and saving stays blocked
+until they are gone. The result of a merge is a revision with two `parent-rev`
+tags.
 
-Am laufenden Relay durchgespielt: zwei konkurrierende Revisionen über `nak`
-erzeugt, in der App zusammengeführt (Merge-Revision `bc523a4b` mit beiden
-Vorgängern), danach mit offenem Editor eine fremde Revision publiziert — beim
-Speichern wurde zusammengeführt statt überschrieben, der Konflikt markiert und
-das Speichern verweigert, bis die Marker entfernt waren.
+Played through against the running relay: two competing revisions created via
+`nak`, merged in the app (merge revision `bc523a4b` with both predecessors),
+then a foreign revision published while the editor was open — on save the app
+merged instead of overwriting, marked the conflict and refused to save until the
+markers were removed.
 
-Zwei Fehler dabei gefunden: Zeilennummern aus Unified-Diff-Hunks sind für reine
-Einfügungen mehrdeutig (ein eingefügter Abschnitt landete eine Zeile zu weit
-hinten) — die Änderungserkennung läuft jetzt über `diffArrays` auf Zeilen-Arrays.
-Und der Merge startete, sobald zwei Blätter geladen waren, während die
-gemeinsame Basis noch unterwegs war; der Editor wartet jetzt auf das
-vollständige Laden.
+Two bugs found in the process: line numbers from unified-diff hunks are
+ambiguous for pure insertions (an inserted section landed one line too far
+down) — change detection now runs over `diffArrays` on line arrays. And the
+merge started as soon as two leaves had loaded while the common base was still
+in flight; the editor now waits for the load to complete.
 
-## Phase 5 — Historie (Anforderung 5) ✅ (2026-09-07)
-- Zeitachse pro Seite mit npub, Zeit, `summary`
-- Diff zwischen beliebigen Revisionen, Blame pro Zeile
-- Wiederherstellen als neue Revision, Signatur-Detailansicht
-- **Fertig, wenn:** jede Version einer Seite einem npub zugeordnet und verifizierbar ist
+## Phase 5 — History (requirement 5) ✅ (2026-09-07)
+- Timeline per page with npub, time and `summary`
+- Diff between arbitrary revisions, blame per line
+- Restore as a new revision, signature detail view
+- **Done when:** every version of a page is attributable to an npub and
+  verifiable
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Zeilen-Diff mit Zeilennummern beider Seiten, Faltung langer Strecken | `src/domain/diff.ts`, `src/ui/DiffView.tsx` |
-| Zeilenherkunft über die Kette | `src/domain/blame.ts`, `src/routes/BlameView.tsx` |
-| Vergleich beliebiger Revisionen, Details, Wiederherstellen | `src/routes/HistoryView.tsx` |
+| Line diff with line numbers for both sides, folding long unchanged runs | `src/domain/diff.ts`, `src/ui/DiffView.tsx` |
+| Line origin across the chain | `src/domain/blame.ts`, `src/routes/BlameView.tsx` |
+| Comparing arbitrary revisions, details, restore | `src/routes/HistoryView.tsx` |
 
-Vergleichen geht zwischen **beliebigen** Revisionen, nicht nur benachbarten —
-möglich, weil jede Revision einen Volltext-Snapshot trägt. Hinzufügen und
-Entfernen sind zusätzlich mit `+` und `−` gekennzeichnet, nicht nur farbig.
+Comparison works between **arbitrary** revisions, not just neighbours —
+possible because every revision carries a full-text snapshot. Additions and
+removals are marked with `+` and `−` as well, not by colour alone.
 
-Wiederherstellen löscht nichts: es entsteht eine neue Revision mit dem alten
-Inhalt, die per `restore-of` auf ihre Vorlage verweist und als Vorgänger den
-aktuellen Kopf hat.
+Restoring deletes nothing: a new revision is created with the old content,
+pointing at its template via `restore-of` and at the current head as its
+predecessor.
 
-Am laufenden Relay durchgespielt; die Kette der Testseite zeigt den ganzen
-Bogen: Wurzel, Verzweigung, Merge-Revision mit zwei Vorgängern, konkurrierende
-Revision, Konfliktauflösung, Wiederherstellung mit `restore-of`.
+Played through against the running relay; the chain of the test page shows the
+whole arc: root, fork, merge revision with two predecessors, competing revision,
+conflict resolution, restore with `restore-of`.
 
-**Bekannte Vereinfachung:** Die Zeilenherkunft folgt dem ersten Vorgänger. Bei
-einer Merge-Revision erscheinen die Zeilen des zweiten Zweiges deshalb als von
-der Zusammenführung eingeführt — dasselbe Verhalten wie `git blame` ohne
-Zusatzoptionen.
+**Known simplification:** line origin follows the first parent. In a merge
+revision the lines of the second branch therefore appear as introduced by the
+merge — the same behaviour as `git blame` without extra options.
 
-## Phase 6 — Ausbau (läuft)
+## Phase 6 — Expansion (in progress)
 
-Erledigt:
+Done:
 
-| Baustein | Ort |
+| Building block | Location |
 |---|---|
-| Volltextsuche über Titel und Inhalt, lokal statt über NIP-50 | `src/domain/search.ts`, `src/routes/SearchView.tsx` |
-| Einklappbare Sidebar, Zustand bleibt erhalten | `src/ui/layout/Sidebar.tsx` |
-| Kommentare mit Threads (Kind 1111) | `src/domain/comment.ts`, `src/ui/Comments.tsx` |
-| Moderation: Mitglieder aufnehmen und entfernen, Events löschen | `src/nostr/moderation.ts`, `src/ui/MemberAdmin.tsx` |
-| Mobiles Layout: Sidebar als Overlay, kompakte Topbar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
-| Inhaltsverzeichnis "Auf dieser Seite" mit Sprungmarken | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
-| Anzeigenamen und Avatare aus Kind 0, gebündelt geladen | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
-| CodeMirror-6-Editor mit Markdown-Hervorhebung | `src/ui/MarkdownEditor.tsx` |
-| Anhänge über Blossom, Upload per Knopf und Drag & Drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
+| Full-text search over titles and content, local instead of NIP-50 | `src/domain/search.ts`, `src/routes/SearchView.tsx` |
+| Collapsible sidebar, state preserved | `src/ui/layout/Sidebar.tsx` |
+| Comments with threads (kind 1111) | `src/domain/comment.ts`, `src/ui/Comments.tsx` |
+| Moderation: add and remove members, delete events | `src/nostr/moderation.ts`, `src/ui/MemberAdmin.tsx` |
+| Mobile layout: sidebar as an overlay, compact top bar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
+| "On this page" table of contents with anchors | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
+| Display names and avatars from kind 0, fetched in batches | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
+| CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
+| Attachments via Blossom, upload by button and drag & drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 
-Offen: `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`), Echtzeit-CRDT
-(gleichzeitiges Tippen), NIP-46-Login, Editor-Toolbar.
+Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT
+(simultaneous typing), NIP-46 sign-in, an editor toolbar.
 
-### Was in den Dokumenten steht, aber noch nicht gebaut ist
+### Described in the docs but not built yet
 
-Stand 2026-09-07, beim Abgleich Doku gegen Code gefunden:
+As of 2026-09-07, found while comparing the docs against the code:
 
-| Lücke | Wo beschrieben |
+| Gap | Where it is described |
 |---|---|
-| IndexedDB-Cache: Sofort-Rendern beim Reload, Offline-Lesen | [01](01-architecture.md), [07](07-tech-stack.md) |
-| End-to-End-Tests (Playwright), inklusive Farbmodus-Regression | [07](07-tech-stack.md), [12](12-theming.md) |
-| `9021`-Beitrittsablauf für Relays ohne Auto-Join | [04](04-permissions-nip29.md) |
-| Eigene Revision selbst löschen (NIP-09 `kind 5`) | [05](05-versioning-history.md) |
-| Ganze Seite ausblenden (Tombstone) | [05](05-versioning-history.md) |
-| `previous`-Timeline-Referenzen schreiben | [02](02-data-model-events.md) |
-| Sidebar-Einträge "Alle Seiten", "Zuletzt geändert", "Space-Einstellungen" | [06](06-ui-information-architecture.md) |
-| Syntax-Highlighting in der *Anzeige* von Codeblöcken | [07](07-tech-stack.md) |
-| Onboarding-Hinweis, dass ein npub ein dauerhaftes Pseudonym ist | [09](09-security-privacy.md) |
-| `30818`-Interop-Spiegel für NIP-54-Clients | [02](02-data-model-events.md) |
+| IndexedDB cache: instant rendering on reload, offline reading | [01](01-architecture.md), [07](07-tech-stack.md) |
+| End-to-end tests (Playwright), including the colour-mode regression | [07](07-tech-stack.md), [12](12-theming.md) |
+| `9021` join flow for relays without auto-join | [04](04-permissions-nip29.md) |
+| Deleting your own revision (NIP-09 `kind 5`) | [05](05-versioning-history.md) |
+| Hiding a whole page (tombstone) | [05](05-versioning-history.md) |
+| Writing `previous` timeline references | [02](02-data-model-events.md) |
+| Sidebar entries "all pages", "recently changed", "space settings" | [06](06-ui-information-architecture.md) |
+| Syntax highlighting when *displaying* code blocks | [07](07-tech-stack.md) |
+| Onboarding note that an npub is a permanent pseudonym | [09](09-security-privacy.md) |
+| `30818` interop mirror for NIP-54 clients | [02](02-data-model-events.md) |
 
-### Bewusst anders gelöst als geplant
+### Deliberately solved differently than planned
 
-Kein Rückstand, sondern eine andere Wahl — jeweils dort begründet, wo die
-Entscheidung ursprünglich stand:
+Not a backlog, just a different choice — each justified where the original
+decision was made:
 
-| Statt | Jetzt | Wo begründet |
+| Instead of | Now | Justified in |
 |---|---|---|
-| Zustand als State-Bibliothek | eigene Stores über `useSyncExternalStore` | [07](07-tech-stack.md) |
-| MiniSearch | eigene Suche über die geladenen Seiten | [07](07-tech-stack.md) |
-| `diff3`-Paket | eigener 3-Wege-Merge | [07](07-tech-stack.md) |
-| Ordner `data/`, Dateien `revision-graph.ts`/`tree.ts` | `nostr/space-store.ts`, `domain/pages.ts` | [07](07-tech-stack.md) |
-| Sitzung mit Pubkey **und** Zeitstempel | nur Pubkey; geprüft wird vor jedem Schreiben | [03](03-auth-nip07-nip42.md) |
-| Merge-Dialog mit drei Knöpfen | Merge landet direkt im Editor, Entscheidung am fertigen Text | [05](05-versioning-history.md) |
-| Gelber Streifen "nur lokal gespeichert" | Editor bleibt offen und zeigt den Relay-Grund wörtlich | [06](06-ui-information-architecture.md) |
-| Ein Token `--diff-word-bg` | getrennte Tokens für hinzugefügt und entfernt | [12](12-theming.md) |
+| Zustand as a state library | our own stores via `useSyncExternalStore` | [07](07-tech-stack.md) |
+| MiniSearch | our own search over the loaded pages | [07](07-tech-stack.md) |
+| The `diff3` package | our own three-way merge | [07](07-tech-stack.md) |
+| A `data/` folder, files `revision-graph.ts`/`tree.ts` | `nostr/space-store.ts`, `domain/pages.ts` | [07](07-tech-stack.md) |
+| A session with pubkey **and** timestamp | pubkey only; checked before every write | [03](03-auth-nip07-nip42.md) |
+| A merge dialog with three buttons | the merge lands in the editor, the decision is made on the finished text | [05](05-versioning-history.md) |
+| A yellow "saved locally only" strip | the editor stays open and shows the relay's reason literally | [06](06-ui-information-architecture.md) |
+| A single `--diff-word-bg` token | separate tokens for added and removed | [12](12-theming.md) |
 
-**Ausserdem offen und für einen echten Einsatz nötig:** Die Gruppe entsteht
-bisher komplett ausserhalb der App über `nak` — es gibt keinen Knopf, um einen
-Space anzulegen (`9007`), seine Metadaten zu ändern (`9002`) oder einen
-Beitritt anzufragen (`9021`, für Relays ohne Auto-Join). Dazu ein Relay unter
-eigener Domain mit TLS statt `localhost`. Siehe [NOSTR.md](../NOSTR.md),
-Abschnitt „Stand jetzt".
+**Also open and required for real use:** the group is so far created entirely
+outside the app through `nak` — there is no button to create a space (`9007`),
+change its metadata (`9002`) or request to join (`9021`, for relays without
+auto-join). On top of that, a relay under its own domain with TLS instead of
+`localhost`. See [NOSTR.md](../NOSTR.md), section "Right now".
 
-## Reihenfolge-Begründung
+## Why this order
 
-Anforderung 5 (Historie) kommt spät, obwohl sie dir wichtig ist — weil das
-Datenmodell sie ab Phase 3 *automatisch* erzeugt. Jede Speicherung ist bereits
-eine unveränderliche, signierte Revision; Phase 5 baut nur die Ansicht darauf.
-Wäre die Historie ein nachträglich angeflanschtes Feature, müsste sie früher
-kommen. Genau deshalb ist das Event-Design so gewählt.
+Requirement 5 (history) comes late even though it matters a lot — because from
+phase 3 onwards the data model produces it *automatically*. Every save is
+already an immutable, signed revision; phase 5 only builds the view on top. If
+history were a feature bolted on afterwards, it would have to come earlier. That
+is exactly why the event design is what it is.

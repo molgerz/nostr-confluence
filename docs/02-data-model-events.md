@@ -1,154 +1,155 @@
-# 02 — Datenmodell & Events
+# 02 — Data model & events
 
-## Begriffe
+## Terminology
 
-| Confluence | Hier | Nostr-Umsetzung |
+| Confluence | Here | Nostr equivalent |
 |---|---|---|
-| Instanz | App | Statische Web-App im Browser |
-| Space | Space | NIP-29-Gruppe auf einem Relay |
-| Seite | Seite | `(Gruppen-ID, Slug)` + Kette von Revisionen |
-| Version | Revision | Unveränderliches, signiertes Event |
-| Nutzer | npub | Pubkey aus NIP-07 |
-| Berechtigung | Mitgliedschaft | Vom Relay durchgesetzt (NIP-29) |
+| Instance | App | Static web app in the browser |
+| Space | Space | NIP-29 group on a relay |
+| Page | Page | `(group id, slug)` + chain of revisions |
+| Version | Revision | Immutable, signed event |
+| User | npub | Pubkey from NIP-07 |
+| Permission | Membership | Enforced by the relay (NIP-29) |
 
-## Event-Kinds im Überblick
+## Event kinds at a glance
 
-| Kind | Herkunft | Rolle |
+| Kind | Origin | Role |
 |---|---|---|
-| `0` | Nutzer | Profil (Name, Avatar) für Bylines |
-| `22242` | Nutzer | NIP-42 Relay-AUTH |
-| `39000` | **Relay** | Gruppen-Metadaten: Name, Bild, `public`/`private`, `open`/`closed` |
-| `39001` | **Relay** | Admin-Liste der Gruppe |
-| `39002` | **Relay** | Mitgliederliste der Gruppe |
-| `39003` | **Relay** | Rollendefinitionen |
-| `9000`–`9009` | Nutzer (Admin) | Moderation: Mitglied hinzufügen/entfernen, Metadaten, Event löschen |
-| `9021` / `9022` | Nutzer | Beitritts- / Austritts-Anfrage |
-| `9` / `11` / `12` | Nutzer | Gruppen-Chat und Threads (Space-Diskussion, Phase 6) |
-| **`1818`** | Nutzer | **Seiten-Revision — der eigentliche Inhalt** |
-| `30818` | Nutzer | Seiten-Kopf als NIP-54-Wiki-Artikel (Interop-Spiegel, optional) |
-| `1111` | Nutzer | Kommentar (NIP-22) auf eine Seite |
-| `5` / `9005` | Nutzer / Admin | Löschanfrage bzw. Moderations-Löschung |
+| `0` | User | Profile (name, avatar) for bylines |
+| `22242` | User | NIP-42 relay AUTH |
+| `39000` | **Relay** | Group metadata: name, picture, `public`/`private`, `open`/`closed` |
+| `39001` | **Relay** | The group's admin list |
+| `39002` | **Relay** | The group's member list |
+| `39003` | **Relay** | Role definitions |
+| `9000`–`9009` | User (admin) | Moderation: add/remove member, edit metadata, delete event |
+| `9021` / `9022` | User | Join / leave request |
+| `9` / `11` / `12` | User | Group chat and threads (space discussion, phase 6) |
+| **`1818`** | User | **Page revision — the actual content** |
+| `30818` | User | Page head as a NIP-54 wiki article (interop mirror, optional) |
+| `1111` | User | Comment (NIP-22) on a page |
+| `5` / `9005` | User / admin | Deletion request, or moderated deletion |
 
-## Anhänge
+## Attachments
 
-Nostr speichert keine Dateien. Ein Anhang wird auf einen **Blossom**-Server
-geladen (BUD-01/02), liegt dort unter seinem sha256 und erscheint im Markdown
-nur als URL — im Event steht also nie die Datei selbst. Der Upload wird mit
-einem Event vom Kind `24242` autorisiert: der Server prüft eine Signatur,
-kein Passwort. Konfiguration über `VITE_BLOSSOM_SERVER`; ohne sie ist der
-Anhang-Knopf deaktiviert statt ins Leere zu laufen.
+Nostr does not store files. An attachment is uploaded to a **Blossom** server
+(BUD-01/02), lives there under its sha256 and appears in the Markdown only as a
+URL — the file itself is never inside the event. The upload is authorised with a
+kind `24242` event: the server verifies a signature, not a password. Configured
+via `VITE_BLOSSOM_SERVER`; without it the attachment button is disabled rather
+than failing silently.
 
-Für die lokale Entwicklung liegt ein winziger Server bei:
+A tiny server for local development ships with the repo:
 `node scripts/dev-blossom.mjs`.
 
-Vor dem ersten Publish prüft die App den Tag `supported_kinds` in `39000`:
-listet die Gruppe Kinds auf und `1818` fehlt, wird gewarnt statt blind
-publiziert ([04](04-permissions-nip29.md)).
+Before the first publish the app checks the `supported_kinds` tag in `39000`: if
+the group lists kinds and `1818` is missing, it warns instead of publishing
+blindly ([04](04-permissions-nip29.md)).
 
-**Entscheidung:** `1818` ist ein anwendungseigener Kind im regulären Bereich
-(also unveränderlich, nicht ersetzbar). NIP-54 belegt `818` für Merge-Requests im
-Wiki-Kontext; `1818` ist bewusst daran angelehnt, aber eigenständig.
-**Offen:** Ob wir stattdessen NIP-34-Patches (`1617`) verwenden — siehe
+**Decision:** `1818` is an application-specific kind in the regular range (so
+immutable, not replaceable). NIP-54 uses `818` for merge requests in a wiki
+context; `1818` deliberately echoes that but stands on its own.
+**Open:** whether to use NIP-34 patches (`1617`) instead — see
 [11](11-open-questions.md).
 
-## Kernevent: Seiten-Revision (`1818`)
+## The core event: page revision (`1818`)
 
 ```json
 {
   "kind": 1818,
-  "pubkey": "<npub der Autorin, hex>",
+  "pubkey": "<author's npub, hex>",
   "created_at": 1757250000,
-  "content": "# Onboarding\n\nWillkommen im Team …",
+  "content": "# Onboarding\n\nWelcome to the team …",
   "tags": [
     ["h", "engineering"],
     ["d", "onboarding"],
     ["title", "Onboarding"],
-    ["parent-rev", "<event-id der Vorgänger-Revision>"],
-    ["content-hash", "<sha256 des content>"],
-    ["page-parent", "handbuch"],
+    ["parent-rev", "<event id of the preceding revision>"],
+    ["content-hash", "<sha256 of content>"],
+    ["page-parent", "handbook"],
     ["m", "text/markdown"],
-    ["summary", "Tippfehler korrigiert"],
-    ["alt", "Wiki-Seite 'Onboarding' im Space engineering"],
+    ["summary", "fixed a typo"],
+    ["alt", "Wiki page 'Onboarding' in space engineering"],
     ["previous", "a1b2c3d4", "e5f6a7b8"]
   ],
   "id": "…", "sig": "…"
 }
 ```
 
-Bedeutung der Tags:
+What the tags mean:
 
-- **`h`** — Gruppen-ID. Pflicht in NIP-29; das Relay prüft an diesem Tag, ob die
-  Autorin schreiben darf. Das ist unser gesamter Rechte-Mechanismus.
-- **`d`** — normalisierter Slug der Seite (`kleinbuchstaben-mit-bindestrich`).
-  Einbuchstabige Tags sind relay-indexiert, also filterbar via `#d`.
-- **`parent-rev`** — Event-ID der Vorgänger-Revision. Keine Angabe = erste
-  Revision. Zwei Angaben = Merge-Revision.
-- **`content-hash`** — erlaubt, identische Inhalte zu erkennen (Restore,
-  No-Op-Speichern) ohne Volltextvergleich.
-- **`page-parent`** — Slug der Elternseite. Daraus baut die Sidebar den Baum.
-- **`previous`** — NIP-29-Timeline-Referenzen: Kurz-IDs kürzlich gesehener
-  Gruppen-Events. Verhindert, dass ein Relay Events fälscht oder in eine andere
-  Gruppen-Historie umhängt. **Noch nicht umgesetzt:** die App schreibt den Tag
-  nicht, und `groups_relay` prüft ihn ohnehin nicht ([09](09-security-privacy.md)).
+- **`h`** — group id. Mandatory in NIP-29; the relay uses this tag to check
+  whether the author may write. This is our entire permission mechanism.
+- **`d`** — the page's normalised slug (`lowercase-with-hyphens`). Single-letter
+  tags are indexed by relays, so they can be filtered with `#d`.
+- **`parent-rev`** — event id of the preceding revision. Absent = first
+  revision. Present twice = merge revision.
+- **`content-hash`** — lets us recognise identical content (restore, no-op save)
+  without comparing full text.
+- **`page-parent`** — slug of the parent page. The sidebar builds its tree from
+  this.
+- **`previous`** — NIP-29 timeline references: short ids of recently seen group
+  events. Prevents a relay from forging events or re-parenting them into a
+  different group history. **Not implemented yet:** the app does not write the
+  tag, and `groups_relay` does not verify it anyway
+  ([09](09-security-privacy.md)).
 
-**Entscheidung: Volltext-Snapshot statt Diff.** Jede Revision enthält den
-kompletten Markdown-Text, nicht nur die Änderung. Begründung: eine Seite lesen
-braucht dann genau ein Event statt einer Replay-Kette, Diffs lassen sich
-clientseitig aus zwei Snapshots berechnen, und Textseiten sind klein. Die
-`parent-rev`-Kette liefert die Git-Semantik, der Snapshot die Bequemlichkeit.
-Bei Bedarf lässt sich später eine Patch-Variante ergänzen.
+**Decision: full-text snapshot instead of a diff.** Every revision carries the
+complete Markdown text, not just the change. The reasoning: reading a page then
+needs exactly one event instead of replaying a chain, diffs can be computed
+client-side from two snapshots, and text pages are small. The `parent-rev` chain
+provides the Git semantics, the snapshot provides the convenience. A
+patch-based variant can be added later if needed.
 
-## Seitenidentität und Head-Auflösung
+## Page identity and head resolution
 
-Eine Seite ist `(h, d)`. Ihr aktueller Inhalt ist der **Head** der
-Revisionskette:
+A page is `(h, d)`. Its current content is the **head** of the revision chain:
 
-1. Alle `1818`-Events mit `#h=<group>` und `#d=<slug>` laden.
-2. Signaturen prüfen, Events mit fremdem `h` verwerfen.
-3. Gerichteten Graph über `parent-rev` bauen.
-4. Blätter (Events, auf die keine andere Revision zeigt) ermitteln.
-5. Ein Blatt → das ist der Head. Mehrere Blätter → Verzweigung, UI zeigt
-   Konflikt-Banner und Merge-Angebot ([05](05-versioning-history.md)).
+1. Load all `1818` events with `#h=<group>` and `#d=<slug>`.
+2. Verify signatures, discard events with a foreign `h`.
+3. Build a directed graph over `parent-rev`.
+4. Determine the leaves (events no other revision points at).
+5. One leaf → that is the head. Several leaves → a fork; the UI shows a conflict
+   banner and offers to merge ([05](05-versioning-history.md)).
 
-Bei mehreren Blättern gilt zum *Anzeigen* das jüngste (`created_at`, bei
-Gleichstand lexikografisch kleinere `id` — deterministisch für alle Clients).
-Verschwiegen wird die Verzweigung nie.
+With several leaves the *displayed* one is the newest (`created_at`, ties broken
+by the lexicographically smaller `id` — deterministic across clients). The fork
+is never hidden.
 
-## Seitenbaum für die Sidebar
+## The page tree for the sidebar
 
-Aus allen `1818`-Events der Gruppe wird pro `d`-Wert der Head bestimmt; dessen
-`title` und `page-parent` ergeben den Baum. Kein separates Index-Event nötig —
-der Baum ist eine Projektion der Revisionen.
+For each `d` value the head is determined from all `1818` events in the group;
+its `title` and `page-parent` produce the tree. No separate index event is
+needed — the tree is a projection of the revisions.
 
-- Vorteil: keine Inkonsistenz zwischen Index und Inhalt.
-- Kosten: beim ersten Laden eines Spaces müssen viele Events geladen werden.
-  Gegenmaßnahme: IndexedDB-Cache + Subscription nur ab letztem bekannten
+- Upside: no inconsistency between index and content.
+- Cost: loading a space for the first time means loading many events.
+  Mitigation: an IndexedDB cache plus subscribing only from the last known
   `created_at`.
-- **Offen:** Manuelle Sortierung der Sidebar (Confluence erlaubt Drag & Drop).
-  Vorschlag: adressierbares Admin-Event `30820` mit der Reihenfolge, erst Phase 5.
+- **Open:** manual sorting of the sidebar (Confluence allows drag & drop).
+  Suggestion: an addressable admin event `30820` holding the order, not before
+  phase 5.
 
-## Seiten-Kopf (`30818`) — bewusst nur Spiegel
+## Page head (`30818`) — deliberately only a mirror
 
-Zusätzlich kann jede Speicherung einen NIP-54-Wiki-Artikel `30818` mit
-`d = slug`, `h = group` und `rev = <revision-id>` schreiben. Nutzen: andere
-Nostr-Wiki-Clients können die Seite lesen, und Listen laden schnell.
+Every save may additionally write a NIP-54 wiki article `30818` with
+`d = slug`, `h = group` and `rev = <revision id>`. The benefit: other Nostr wiki
+clients can read the page, and lists load quickly.
 
-**Wichtig:** `30818` ist per `(kind, pubkey, d)` eindeutig, existiert also
-einmal *pro Autorin*. Es ist deshalb niemals die Wahrheit über den Seiteninhalt,
-sondern ein Hinweis. Wahrheit ist die Revisionskette. Diese Trennung ist der
-Grund, warum "jede/r darf bearbeiten" überhaupt funktioniert.
+**Important:** `30818` is unique per `(kind, pubkey, d)`, so it exists once *per
+author*. It is therefore never the truth about a page's content, only a hint.
+The truth is the revision chain. That separation is the reason "anyone may edit"
+works at all.
 
-## Kommentare (`1111`) — umgesetzt
+## Comments (`1111`) — implemented
 
-NIP-22-Kommentar, verankert an `h` (Gruppe) und `d` (Slug), mit `K = 1818` für
-die Art des Wurzelobjekts, `k` für die Art des direkten Bezugs und `e` auf den
-Elternkommentar bei Antworten.
+A NIP-22 comment, anchored to `h` (group) and `d` (slug), with `K = 1818` for
+the kind of the root object, `k` for the kind of the direct parent and `e`
+pointing at the parent comment in replies.
 
-**Abweichung vom Buchstaben des NIP:** NIP-22 verweist per `A`/`E` auf ein
-einzelnes Wurzel-Event. Unsere Seite *ist* kein einzelnes Event, sondern das
-Paar `(Gruppe, Slug)` — ein Verweis auf eine Revision würde mit der nächsten
-Bearbeitung ins Leere zeigen und den Faden verwaisen lassen. Deshalb dieselbe
-Verankerung wie bei den Revisionen.
+**Deviation from the letter of the NIP:** NIP-22 points at a single root event
+via `A`/`E`. Our page *is* not a single event but the pair `(group, slug)` — a
+reference to one revision would dangle after the next edit and orphan the
+thread. Hence the same anchoring the revisions use.
 
-**Offen:** Inline-Kommentare an einer Textstelle (Zitat-Anker). Braucht eine
-Selektions-API im Editor und damit CodeMirror.
+**Open:** inline comments on a text selection (quote anchors). Needs a selection
+API in the editor, and therefore CodeMirror.

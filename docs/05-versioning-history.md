@@ -1,118 +1,116 @@
-# 05 — Versionierung & gemeinsames Arbeiten
+# 05 — Versioning & working together
 
-## Modell: Git-Semantik in Nostr-Events
+## The model: Git semantics in Nostr events
 
-Eine Revision ist ein Commit:
+A revision is a commit:
 
-| Git | Hier |
+| Git | Here |
 |---|---|
-| Commit-Hash | Event-`id` (Hash über das Event) |
-| Autor | `pubkey` → npub, **kryptografisch, nicht behauptet** |
-| Zeitstempel | `created_at` |
-| Parent-Commit | Tag `parent-rev` |
-| Commit-Message | Tag `summary` |
-| Blob | `content` (kompletter Markdown-Snapshot) |
-| Branch-Head | Blatt der Kette |
-| Merge-Commit | Revision mit zwei `parent-rev`-Tags |
+| Commit hash | Event `id` (a hash over the event) |
+| Author | `pubkey` → npub, **cryptographic, not claimed** |
+| Timestamp | `created_at` |
+| Parent commit | Tag `parent-rev` |
+| Commit message | Tag `summary` |
+| Blob | `content` (complete Markdown snapshot) |
+| Branch head | Leaf of the chain |
+| Merge commit | Revision with two `parent-rev` tags |
 
-Die Kette ist damit nachprüfbar: Reihenfolge ergibt sich aus `parent-rev`, nicht
-aus dem Zeitstempel des Relays. Ein Relay kann Ereignisse verschweigen, aber
-keine falsche Reihenfolge behaupten und keine fremde Autorschaft erfinden.
+The chain is therefore verifiable: order comes from `parent-rev`, not from the
+relay's timestamp. A relay can withhold events, but it cannot claim a false
+order and cannot invent someone else's authorship.
 
 ```
-rev1 (alice) ──► rev2 (bob) ──► rev3 (carol)   ← Head
+rev1 (alice) ──► rev2 (bob) ──► rev3 (carol)   ← head
                      │
-                     └──► rev2b (dave)          ← Verzweigung, offener Konflikt
+                     └──► rev2b (dave)          ← fork, unresolved conflict
 ```
 
-## Speichern mit optimistischer Sperre
+## Saving with an optimistic lock
 
-Confluence sagt "Diese Seite wurde in der Zwischenzeit geändert". Genau das
-brauchen wir, weil parallele Bearbeitung sonst Text verliert.
+Confluence says "this page was changed in the meantime". That is exactly what we
+need, because concurrent editing loses text otherwise.
 
-1. Editor öffnet Seite auf Basis `base = <head-id>`.
-2. Beim Klick auf "Speichern": Head neu vom Relay holen.
-3. `head == base` → Revision mit `parent-rev = base` publishen. Fertig.
-4. `head != base` → **3-Wege-Merge**, und zwar ohne Dialog: die App führt
-   zusammen, schreibt das Ergebnis in den Editor und erklärt darüber, was
-   passiert ist. Nichts wird dabei publiziert.
-   - Berühren sich die Änderungen nicht, steht das fertige Ergebnis da und
-     muss nur noch geprüft und erneut gespeichert werden.
-   - Überschneiden sie sich, stehen Konfliktmarker im Text; Speichern bleibt
-     gesperrt, bis sie entfernt sind.
-5. Ergebnis einer Auflösung ist eine Merge-Revision mit zwei `parent-rev`-Tags.
+1. The editor opens the page on base `base = <head id>`.
+2. On "save": fetch the head from the relay again.
+3. `head == base` → publish a revision with `parent-rev = base`. Done.
+4. `head != base` → **three-way merge**, and without a dialog: the app merges,
+   writes the result into the editor and explains above it what happened.
+   Nothing is published in the process.
+   - If the changes do not touch each other, the finished result is right there
+     and only needs to be reviewed and saved again.
+   - If they overlap, conflict markers sit in the text and saving stays blocked
+     until they are removed.
+5. The result of a resolution is a merge revision with two `parent-rev` tags.
 
-**Anders gelöst als geplant:** Es gibt keinen Dialog mit drei Knöpfen und keine
-Option "als Verzweigung speichern". Ein Dialog hätte eine Entscheidung
-abgefragt, bevor man das Ergebnis sehen kann; so sieht man erst den
-zusammengeführten Text und entscheidet daran. Eine Verzweigung *entsteht*
-weiterhin, wenn zwei Leute gleichzeitig publishen — sie lässt sich über
-"Fassungen zusammenführen" auf der Seite auflösen.
+**Solved differently than planned:** there is no dialog with three buttons and
+no "save as a fork" option. A dialog would ask for a decision before you can see
+the result; this way you see the merged text first and decide based on it. A
+fork still *comes into being* when two people publish at the same time — it can
+be resolved via "merge versions" on the page.
 
-**Entscheidung:** Kein Silent-Overwrite. Wenn der Head sich bewegt hat, wird
-immer gefragt.
+**Decision:** no silent overwrite. If the head has moved, we always ask.
 
-## Historien-Ansicht
+## The history view
 
-Pro Seite eine Zeitachse, jüngste oben:
+One timeline per page, newest first:
 
 ```
-● 11:40  carol   „Abschnitt Deployment ergänzt"      [Diff] [Wiederherstellen]
-● 11:15  bob     „Tippfehler"                        [Diff] [Wiederherstellen]
-● 10:02  alice   Seite erstellt                      [Diff]
+● 11:40  carol   "added a deployment section"      [diff] [restore]
+● 11:15  bob     "typo"                            [diff] [restore]
+● 10:02  alice   created the page                  [diff]
 ```
 
-Jeder Eintrag zeigt Avatar + Anzeigename aus `kind 0`, darunter den gekürzten
-npub. Der npub ist die Wahrheit, der Anzeigename nur Komfort — das UI macht das
-sichtbar (Name grau, npub monospace daneben), damit zwei Personen mit gleichem
-Anzeigenamen nicht verwechselt werden können.
+Every entry shows an avatar and display name from `kind 0` with the shortened
+npub next to it. The npub is the truth, the display name is only convenience —
+the UI makes that visible (name in grey, npub in monospace beside it) so that
+two people with the same display name cannot be confused.
 
-Funktionen:
+Features:
 
-- **Diff** — Zwei Revisionen wählen, Zeilen-Diff mit Wort-Hervorhebung
-  (`jsdiff`). Weil jede Revision ein Volltext-Snapshot ist, ist jeder beliebige
-  Vergleich möglich, nicht nur benachbarte.
-- **Blame** — Zeilenweise Zuordnung: für jede Zeile die jüngste Revision, die sie
-  eingeführt hat, plus deren npub. Wird clientseitig aus der Kette berechnet.
-- **Wiederherstellen** — Publisht eine *neue* Revision mit dem alten Inhalt,
-  `parent-rev = aktueller Head`, plus Tag `restore-of = <alte-id>`. Nichts wird
-  gelöscht; die Historie bleibt append-only.
-- **Signatur prüfen** — Detailansicht einer Revision zeigt Event-ID, `sig`-Status
-  und `content-hash`. Das ist der Punkt, an dem "an den npub geknüpft" für
-  Nutzende überprüfbar wird und nicht nur behauptet.
+- **Diff** — pick two revisions, line diff with word-level highlighting
+  (`jsdiff`). Because every revision is a full-text snapshot, any pair can be
+  compared, not just neighbours.
+- **Blame** — line-by-line attribution: for each line the most recent revision
+  that introduced it, plus its npub. Computed client-side from the chain.
+- **Restore** — publishes a *new* revision with the old content,
+  `parent-rev = current head`, plus the tag `restore-of = <old id>`. Nothing is
+  deleted; the history stays append-only.
+- **Verify signature** — the detail view of a revision shows the event id, the
+  signature status and the `content-hash`. This is the point where "bound to an
+  npub" becomes checkable for users instead of merely asserted.
 
-## Löschen
+## Deleting
 
-- **Umgesetzt:** Admin löscht ein Event über NIP-29 `kind 9005`; das
-  Gruppen-Relay setzt das durch. Gilt für Revisionen und Kommentare, mit
-  Rückfrage im UI.
-- **Offen:** Nutzerin löscht ihre *eigene* Revision per NIP-09 `kind 5` — eine
-  *Bitte* an Relays, im UI als "Löschung anfragen" zu formulieren.
-- **Offen:** Seite als Ganzes verstecken — neue Revision mit Tombstone-Tag
-  plus `9005` auf die Vorgänger, damit Sidebar und Suche sie ausblenden.
+- **Implemented:** an admin deletes an event via NIP-29 `kind 9005`; the group
+  relay enforces it. Applies to revisions and comments, with a confirmation
+  prompt in the UI.
+- **Open:** a user deleting their *own* revision via NIP-09 `kind 5` — a
+  *request* to relays, to be phrased in the UI as "request deletion".
+- **Open:** hiding a whole page — a new revision with a tombstone tag plus
+  `9005` on the predecessors, so that sidebar and search leave it out.
 
-## Verhältnis zu ngit / NIP-34
+## Relationship to ngit / NIP-34
 
-Du hattest ngit im Kopf — das ist der Git-über-Nostr-Stack: NIP-34 mit
-`30617` Repo-Ankündigung, `1617` Patches, `1621` Issues. Zwei Wege:
+ngit was the original inspiration — the Git-over-Nostr stack: NIP-34 with
+`30617` repo announcements, `1617` patches, `1621` issues. Two routes:
 
-| Weg | Vorteil | Nachteil |
+| Route | Upside | Downside |
 |---|---|---|
-| **A: eigene Revisionskette (`1818`)** — gewählt | Genau auf Wiki-Seiten zugeschnitten, ein Event = eine lesbare Seite, kein Git-Repo nötig | Kein Tooling-Ökosystem, eigener Kind |
-| B: NIP-34-Patches (`1617`) | Kompatibel mit ngit/gitworkshop, echte Diffs, Merge-Requests vorhanden | Patch-Replay nötig, um eine Seite zu lesen; Repo-Konzept passt schlecht auf "Space mit 200 Seiten" |
+| **A: our own revision chain (`1818`)** — chosen | Tailored to wiki pages, one event = one readable page, no Git repo needed | No tooling ecosystem, an application-specific kind |
+| B: NIP-34 patches (`1617`) | Compatible with ngit/gitworkshop, real diffs, merge requests already exist | Reading a page requires replaying patches; the repo concept fits "space with 200 pages" poorly |
 
-**Entscheidung:** Weg A für den MVP, weil Lesen dadurch ein einziger
-Event-Fetch bleibt. Die Git-Eigenschaften, die dir wichtig sind (Autorschaft am
-npub, Parent-Verkettung, Diff, Blame, Merge), liefert Weg A vollständig.
-NIP-34-Export bleibt als späteres Feature möglich.
+**Decision:** route A for the MVP, because it keeps reading down to a single
+event fetch. The Git properties that matter here (authorship by npub, parent
+chaining, diff, blame, merge) are fully provided by route A. A NIP-34 export
+remains possible as a later feature.
 
-## Echtzeit-Kollaboration (Phase 6)
+## Real-time collaboration (phase 6)
 
-Für gleichzeitiges Tippen: CRDT (Yjs oder Loro) als Transport über ephemere
-Events (`20000`–`29999`) im `h`-Scope der Gruppe — Relays speichern die nicht.
-Beim Speichern wird der CRDT-Zustand als normale `1818`-Revision festgeschrieben.
-Damit bleibt die Historie sauber (eine Revision pro Speicherung), und Live-Cursor
-sind ein Zusatz statt eine Änderung am Datenmodell.
+For simultaneous typing: a CRDT (Yjs or Loro) transported over ephemeral events
+(`20000`–`29999`) scoped to the group's `h` — relays do not store those. On save
+the CRDT state is committed as a normal `1818` revision. That keeps the history
+clean (one revision per save), and live cursors become an addition rather than a
+change to the data model.
 
-**Nicht-Ziel im MVP** — bewusst später, weil das Konfliktmodell aus Schritt 4
-ohne CRDT schon funktioniert.
+**Non-goal for the MVP** — deliberately later, because the conflict model in
+step 4 already works without a CRDT.

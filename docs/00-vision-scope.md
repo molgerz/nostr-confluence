@@ -1,61 +1,61 @@
-# 00 — Vision & Scope
+# 00 — Vision & scope
 
-## Produktidee
+## The product idea
 
-Ein Team-Wiki, das sich anfühlt wie Confluence (linke Navigationsleiste, Seiten
-in einem Baum, Editor, Versionshistorie, "zuletzt geändert von …"), aber ohne
-Server-Account: Identität = npub, Speicher = Nostr-Relay, Rechte = NIP-29-Gruppe.
+A team wiki that feels like Confluence (left-hand navigation, pages in a tree,
+an editor, version history, "last edited by …") but without a server account:
+identity = npub, storage = Nostr relay, permissions = NIP-29 group.
 
-## Muss-Funktionen (aus deiner Anforderung)
+## Required features (from the original request)
 
-| # | Anforderung | Umsetzung im Konzept |
+| # | Requirement | How the design covers it |
 |---|---|---|
-| 1 | Login mit Nostr, zunächst nur NIP-07 | `window.nostr` + NIP-42-Relay-AUTH → [03](03-auth-nip07-nip42.md) |
-| 2 | Linke Task-/Navigationsleiste wie Confluence | Space-Sidebar mit Seitenbaum → [06](06-ui-information-architecture.md) |
-| 3 | Neue "Seiten" als Markdown anlegen | Seiten-Event + Revision → [02](02-data-model-events.md) |
-| 4 | Grundsätzlich darf jede/r bearbeiten | Offene NIP-29-Gruppe, Relay entscheidet → [04](04-permissions-nip29.md) |
-| 5 | Versionshistorie, an npub geknüpft | Hash-verkettete Revisions-Events, git-artig → [05](05-versioning-history.md) |
-| 6 | Gemeinsames Arbeiten | Optimistisches Speichern + 3-Wege-Merge, später CRDT → [05](05-versioning-history.md) |
-| 7 | Umschaltbar zwischen Hell und Dunkel | Token-basiertes Theming, Umschalter in der Topbar → [12](12-theming.md) |
+| 1 | Sign in with Nostr, NIP-07 only for now | `window.nostr` + NIP-42 relay AUTH → [03](03-auth-nip07-nip42.md) |
+| 2 | A left-hand navigation bar like Confluence | Space sidebar with a page tree → [06](06-ui-information-architecture.md) |
+| 3 | Create new "pages" as Markdown | Page event + revision → [02](02-data-model-events.md) |
+| 4 | Anyone may edit, in principle | Open NIP-29 group, the relay decides → [04](04-permissions-nip29.md) |
+| 5 | Version history tied to an npub | Hash-linked revision events, Git-like → [05](05-versioning-history.md) |
+| 6 | Working on pages together | Optimistic saving + three-way merge, CRDT later → [05](05-versioning-history.md) |
+| 7 | Switchable between light and dark | Token-based theming, switch in the top bar → [12](12-theming.md) |
 
-## Reifegrad
+## Maturity
 
-**Prototyp.** Der Space wird bisher ausschliesslich mit `nak` von der
-Kommandozeile angelegt; in der App gibt es dafür keinen Weg. Zusammen mit
-fehlendem TLS, Wegwerf-Schlüsseln im Seed und einem Event-Format, das sich noch
-ändern kann, heisst das: nichts hineinschreiben, dessen Verlust weh tut.
-Vollständige Begründung in [NOSTR.md](../NOSTR.md).
+**Prototype.** A space can so far only be created with `nak` from the command
+line; the app offers no way to do it. Together with the missing TLS, the
+throwaway keys in the seed script and an event format that may still change,
+this means: do not put anything in here whose loss would hurt. Full reasoning in
+[NOSTR.md](../NOSTR.md).
 
-## Zielbild Phase 1 (MVP)
+## Target picture for phase 1 (MVP)
 
-Zwei Personen mit Alby im Browser öffnen dieselbe URL, sehen denselben Space,
-legen Seiten an, bearbeiten sich gegenseitig die Seiten, und in der Historie
-steht bei jeder Version, welcher npub sie signiert hat. Ein Konflikt (beide
-bearbeiten gleichzeitig) wird erkannt und nicht stillschweigend überschrieben.
+Two people with Alby in their browser open the same URL, see the same space,
+create pages, edit each other's pages, and the history shows which npub signed
+each version. A conflict (both editing at once) is detected instead of silently
+overwritten.
 
-## Nicht-Ziele
+## Non-goals
 
-- **Nicht-Ziel:** Zeichen-für-Zeichen-Echtzeit-Kollaboration im MVP. Das ist
-  Phase 6 (CRDT über ephemere Events), nicht Phase 1.
-- **Nicht-Ziel:** Ende-zu-Ende-Verschlüsselung von Seiteninhalten. Eine "private"
-  NIP-29-Gruppe ist zugriffsbeschränkt, nicht verschlüsselt — das Relay sieht
-  Klartext. Siehe [09](09-security-privacy.md).
-- **Nicht-Ziel:** Kompatibilität mit dem gesamten Confluence-Funktionsumfang
-  (Makros, Jira-Integration, Blueprints, Berechtigungen pro Seite).
-- **Nicht-Ziel:** Login per nsec-Eingabe. Nie. NIP-07 in Phase 1, NIP-46
-  (Bunker) später.
-- **Nicht-Ziel:** Eigener Backend-Server mit Datenbank. Der Client spricht
-  direkt mit Relays.
+- **Non-goal:** character-by-character real-time collaboration in the MVP. That
+  is phase 6 (CRDT over ephemeral events), not phase 1.
+- **Non-goal:** end-to-end encryption of page content. A "private" NIP-29 group
+  is access-restricted, not encrypted — the relay sees plaintext. See
+  [09](09-security-privacy.md).
+- **Non-goal:** parity with the full Confluence feature set (macros, Jira
+  integration, blueprints, per-page permissions).
+- **Non-goal:** signing in by pasting an nsec. Never. NIP-07 in phase 1, NIP-46
+  (bunker) later.
+- **Non-goal:** our own backend server with a database. The client talks to
+  relays directly.
 
-## Grundsatz-Spannung, die das Design prägt
+## The fundamental tension that shapes the design
 
-Confluence hat *eine* kanonische Seite. Nostr hat *Events pro Autor* — ein
-adressierbares Event (`30xxx`) ist immer per `(kind, pubkey, d-Tag)` eindeutig,
-also gehört es genau einem Schlüsselpaar. Zwei Personen können nicht dasselbe
-adressierbare Event ersetzen.
+Confluence has *one* canonical page. Nostr has *events per author* — an
+addressable event (`30xxx`) is always unique per `(kind, pubkey, d tag)`, so it
+belongs to exactly one key pair. Two people cannot replace the same addressable
+event.
 
-Die Auflösung: die Seitenidentität ist nicht ein Event, sondern das Paar
-`(Gruppen-ID, Slug)`, und der Inhalt lebt in unveränderlichen Revisions-Events,
-die per `parent-rev` eine Kette bilden. Damit ist "eine Seite, viele Autoren"
-darstellbar, ohne dass jemand ein Event einer anderen Person überschreiben muss.
-Details in [02](02-data-model-events.md) und [05](05-versioning-history.md).
+The resolution: a page's identity is not an event but the pair
+`(group id, slug)`, and the content lives in immutable revision events that form
+a chain via `parent-rev`. That makes "one page, many authors" expressible
+without anyone having to overwrite someone else's event. Details in
+[02](02-data-model-events.md) and [05](05-versioning-history.md).

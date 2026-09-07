@@ -1,52 +1,55 @@
-# 11 — Offene Fragen
+# 11 — Open questions
 
-Punkte, bei denen ich eine Empfehlung habe, die Entscheidung aber dir gehört.
+Points where there is a recommendation, but the decision belongs to the project
+owner.
 
-## 1. Eigener Kind `1818` oder bestehende NIPs?
+## 1. Our own kind `1818`, or existing NIPs?
 
-| Variante | Bedeutung |
+| Option | What it means |
 |---|---|
-| **A (Empfehlung)** | Eigener Revisions-Kind `1818`, Volltext-Snapshots, `parent-rev`-Kette. Sauber auf den Anwendungsfall zugeschnitten |
-| B | NIP-54-Wiki (`30818` + Merge-Requests `818`) als Wahrheit. Interop mit Wiki-Clients, aber ein Event pro Autor statt einer Seite |
-| C | NIP-34-Patches (`1617`) wie ngit. Echtes Git-Modell, aber Lesen erfordert Patch-Replay |
+| **A (recommended)** | Our own revision kind `1818`, full-text snapshots, `parent-rev` chain. Cleanly tailored to the use case |
+| B | NIP-54 wiki (`30818` + merge requests `818`) as the source of truth. Interop with wiki clients, but one event per author instead of one page |
+| C | NIP-34 patches (`1617`) like ngit. A real Git model, but reading requires replaying patches |
 
-## 2. Snapshot oder Diff pro Revision?
+## 2. Snapshot or diff per revision?
 
-Empfehlung: Snapshot (siehe [02](02-data-model-events.md)). Alternative wäre
-Patch-Speicherung — kleiner bei großen Seiten, aber teurer beim Lesen.
-Relevant erst bei Seiten über ~100 kB.
+Recommendation: snapshot (see [02](02-data-model-events.md)). The alternative
+would be storing patches — smaller for large pages, but more expensive to read.
+Only relevant for pages beyond roughly 100 kB.
 
-## 3. Wie "offen" soll offen sein?
+## 3. How open should "open" be?
 
-*Teil-entschieden: eigenes Relay ist gesetzt, Relay-Betreiber darf mitlesen.*
+*Partly decided: running our own relay is settled, and the relay operator may
+read along.*
 
-`public` + `open` heißt: jeder npub der Welt kann beitreten und schreiben. Für
-ein internes Team-Wiki ist das ein Spam-Risiko. Alternative: `public` (lesen für
-alle) + `closed` (Beitritt nur per Einladungscode `9009`). Deine Anforderung 4
-klingt nach `open`; Empfehlung wäre `open` für den Prototyp und `closed` +
-Einladungslink, sobald es echt genutzt wird.
+`public` + `open` means any npub in the world can join and write. For an
+internal team wiki that is a spam risk. The alternative: `public` (anyone can
+read) + `closed` (joining only via invite code `9009`). Requirement 4 sounds
+like `open`; the recommendation would be `open` for the prototype and `closed`
+plus an invite link once it is used for real.
 
-## 4. Welches Relay ist die Autorität?
+## 4. Which relay is the authority?
 
-**Entschieden:** eigenes Relay. Umsetzung siehe [08](08-relay-setup.md) —
-`nak serve` für Phase 0–3, `verse-pbc/groups_relay` ab Phase 4.
-Restfrage: Rust (`groups_relay`) oder Go (`max21dev/groups-relay`), falls wir das
-Relay selbst patchen wollen.
+**Decided:** our own relay. Implementation in [08](08-relay-setup.md) —
+`nak serve` for phases 0–3, `verse-pbc/groups_relay` from phase 4 onwards.
+Remaining question: Rust (`groups_relay`) or Go (`max21dev/groups-relay`), should
+we want to patch the relay ourselves.
 
-## 5. Mehrere Spaces oder nur einer im MVP?
+## 5. Several spaces, or just one in the MVP?
 
-Ein Space macht Phase 2 deutlich kleiner. Empfehlung: Datenmodell und Routing
-von Anfang an mehr-Space-fähig (kostet fast nichts), UI-Space-Wechsler erst in
-Phase 6.
+A single space makes phase 2 considerably smaller. Recommendation: make the data
+model and routing multi-space capable from the start (costs almost nothing) and
+leave the space switcher in the UI for phase 6.
 
-## 6. Name und Domain
+## 6. Name and domain
 
-Arbeitstitel ist `nostr confluence`. "Confluence" ist eine eingetragene Marke von
-Atlassian — für ein öffentlich verbreitetes Produkt wäre ein eigener Name
-ratsam. Für ein internes Projekt/Prototyp ist der Arbeitstitel unkritisch.
+The working title is `nostr confluence`. "Confluence" is a registered trademark
+of Atlassian — for anything published widely, an own name would be advisable.
+For an internal project or prototype the working title is uncritical.
 
-## 7. Anhänge und Bilder
+## 7. Attachments and images
 
-Nostr speichert keine Dateien. Braucht das MVP Bilder? Wenn ja: Blossom-Server
-oder NIP-96-Host als zusätzliche Abhängigkeit einplanen (Phase 6 im aktuellen
-Plan).
+Nostr does not store files. *(Answered in the meantime: attachments are
+implemented via Blossom, see [02](02-data-model-events.md). A Blossom server is
+therefore an additional dependency in production; a tiny one for development
+ships with the repo.)*

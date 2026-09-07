@@ -1,73 +1,73 @@
-# 12 — Theming: Hell und Dunkel
+# 12 — Theming: light and dark
 
-**Anforderung:** Umschaltbar zwischen hellem und dunklem Modus.
+**Requirement:** switchable between light and dark mode.
 
-## Entscheidung
+## Decision
 
-Drei Zustände, nicht zwei: **System / Hell / Dunkel**. "System" ist der
-Default, folgt `prefers-color-scheme`; die manuelle Wahl überschreibt und wird
-in `localStorage` gehalten. Umschalter in der Topbar rechts neben dem Avatar.
+Three states, not two: **system / light / dark**. "System" is the default and
+follows `prefers-color-scheme`; a manual choice overrides it and is kept in
+`localStorage`. The switch sits in the top bar next to the account chip.
 
-Umsetzung: Attribut `data-theme="light|dark"` am `<html>`-Element, gesetzt von
-JavaScript. Tailwind wird per `dark`-Variante an dieses Attribut gekoppelt
-(nicht an die Media Query), sonst lässt sich der Modus nicht manuell erzwingen.
-Zusätzlich `color-scheme: light dark`, damit Scrollbars, Auswahlfarbe und
-Formular-Elemente vom Browser passend gerendert werden.
+Implementation: a `data-theme="light|dark"` attribute on the `<html>` element,
+set by JavaScript. Tailwind's `dark` variant is bound to that attribute (not to
+the media query), otherwise the mode cannot be forced manually. Additionally
+`color-scheme: light dark`, so that scrollbars, selection colour and form
+controls are rendered appropriately by the browser.
 
-## Token-Ebenen
+## Token layers
 
-Komponenten benutzen **niemals** Rohfarben, nur semantische Tokens. Genau eine
-Datei definiert beide Paletten:
+Components **never** use raw colours, only semantic tokens. Exactly one file
+defines both palettes:
 
-| Token | Bedeutung |
+| Token | Meaning |
 |---|---|
-| `--surface-0/1/2` | Seitenhintergrund, Sidebar/Karten, Vordergrundflächen |
-| `--text-primary/secondary/muted` | Fließtext, Sekundärtext, Hinweise |
-| `--border`, `--border-strong` | Trennlinien, Hover-Ränder |
-| `--accent`, `--bg-accent`, `--text-accent` | Aktion, aktive Sidebar-Zeile, Buttons |
-| `--danger`, `--warning`, `--success` (+ `bg-`/`text-`) | Konflikt-Banner, Publish-Fehler, "gespeichert" |
-| `--diff-add-bg`, `--diff-del-bg` | Diff-Ansicht: hinzugefügte und entfernte Zeilen |
-| `--diff-word-add-bg`, `--diff-word-del-bg` | Wort-Hervorhebung innerhalb einer geänderten Zeile (statt eines gemeinsamen `--diff-word-bg`: hinzugefügt und entfernt brauchen unterschiedliche Farben) |
-| `--code-bg`, `--code-border` | Codeblöcke im Markdown |
+| `--surface-0/1/2` | Page background, sidebar/cards, foreground surfaces |
+| `--text-primary/secondary/muted` | Body text, secondary text, hints |
+| `--border`, `--border-strong` | Dividers, hover borders |
+| `--accent`, `--bg-accent`, `--text-accent` | Actions, active sidebar row, buttons |
+| `--danger`, `--warning`, `--success` (+ `bg-`/`text-`) | Conflict banner, publish errors, "saved" |
+| `--diff-add-bg`, `--diff-del-bg` | Diff view: added and removed lines |
+| `--diff-word-add-bg`, `--diff-word-del-bg` | Word-level highlighting inside a changed line (instead of a single `--diff-word-bg`: added and removed need different colours) |
+| `--code-bg`, `--code-line` | Code blocks in Markdown |
 
-Regel: Wenn eine Komponente eine Farbe braucht, die es als Token nicht gibt,
-wird das Token ergänzt — nicht die Farbe inline geschrieben. Nur so bleibt der
-zweite Modus überhaupt wartbar.
+Rule: if a component needs a colour that does not exist as a token, add the
+token — do not write the colour inline. That is the only way the second mode
+stays maintainable at all.
 
-Im Dunkelmodus kein reines Schwarz als Fläche (zu harter Kontrast, Halation bei
-Text) und kein reines Weiß als Text. Kontrast überall mindestens 4,5:1 für
-Fließtext.
+In dark mode, no pure black as a surface (too harsh a contrast, halation around
+text) and no pure white as text. Contrast at least 4.5:1 for body text
+everywhere.
 
-## Die vier Stellen, die dabei üblicherweise brechen
+## The four places this usually breaks
 
-1. **Codeblöcke im Markdown** — Syntax-Highlighting braucht zwei Themes. Mit
-   Shiki gehen Dual-Themes über CSS-Variablen in einem Rendering; mit
-   highlight.js müssen zwei Stylesheets umgeschaltet werden. Vorschlag: Shiki,
-   damit kein Stylesheet-Wechsel zur Laufzeit nötig ist.
-2. **Der Editor** — CodeMirror 6 bringt sein eigenes Theme mit. Der Wechsel
-   muss über ein `Compartment` mit `reconfigure` passieren, nicht durch
-   Neuaufbau des Editors, sonst verliert man Cursor und Undo-Historie beim
-   Umschalten.
-3. **Die Diff-Ansicht** — Rot/Grün aus dem Hellmodus ist im Dunkelmodus
-   entweder unlesbar oder schreit. Eigene, entsättigte Tokens für beide Modi,
-   und Hinzufügen/Entfernen zusätzlich durch `+`/`−`-Marker kennzeichnen, nicht
-   nur durch Farbe (Rot-Grün-Sehschwäche).
-4. **Fremde Inhalte** — Avatare und eingebettete Bilder aus `kind 0` bzw. aus
-   Seiten kommen mit beliebigem Hintergrund. Keine Transparenz-Annahmen; Bilder
-   bekommen im Dunkelmodus einen neutralen Rahmen statt eines Filters.
+1. **Code blocks in Markdown** — syntax highlighting needs two themes. With
+   Shiki, dual themes work through CSS variables in a single rendering; with
+   highlight.js two stylesheets have to be swapped. Suggestion: Shiki, so that
+   no stylesheet swap is needed at runtime. *(Still open — code blocks currently
+   render without colour.)*
+2. **The editor** — CodeMirror 6 brings its own theme. The switch has to happen
+   through a `Compartment` with `reconfigure`, not by rebuilding the editor,
+   otherwise cursor and undo history are lost when switching.
+3. **The diff view** — the red/green from light mode is either unreadable or
+   shouting in dark mode. Separate, desaturated tokens for both modes, and mark
+   additions and removals with `+`/`−` as well, not by colour alone
+   (red-green colour blindness).
+4. **Foreign content** — avatars and embedded images from `kind 0` or from pages
+   arrive with arbitrary backgrounds. Make no transparency assumptions; in dark
+   mode images get a neutral border rather than a filter.
 
-## Kein Flackern beim Laden
+## No flash on load
 
-Ein winziges, blockierendes Inline-Skript in `index.html` liest `localStorage`
-und setzt `data-theme`, **bevor** das Bundle lädt. Ohne diesen Schritt sieht man
-bei jedem Reload kurz den hellen Modus aufblitzen.
+A tiny blocking inline script in `index.html` reads `localStorage` and sets
+`data-theme` **before** the bundle loads. Without that step, every reload
+briefly flashes light mode.
 
-## Zeitpunkt
+## Timing
 
-**Entscheidung:** Tokens und Umschalter kommen in **Phase 0**, nicht später.
-Dunkelmodus nachzurüsten heißt, jede Komponente ein zweites Mal anzufassen; von
-Anfang an mit Tokens zu arbeiten kostet fast nichts.
+**Decision:** tokens and the switch land in **phase 0**, not later. Retrofitting
+dark mode means touching every component a second time; working with tokens from
+the start costs almost nothing.
 
-Prüfung: **offen.** Geplant sind Playwright-Screenshots der vier Kernansichten
-(Seite lesen, Editor, Historie, Diff) in beiden Modi als Regressionstest.
-Bisher wird von Hand im Browser geprüft.
+Verification: **open.** Playwright screenshots of the four core views (reading a
+page, editor, history, diff) in both modes are planned as a regression test. For
+now testing is done by hand in the browser.

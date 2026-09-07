@@ -1,119 +1,121 @@
-# 08 — Relay-Setup & Testumgebung
+# 08 — Relay setup & test environment
 
-**Entscheidung (bestätigt):** Ein eigenes Relay ist Teil des Projekts. Dass der
-Relay-Betreiber (Firma/Admin) alle Inhalte im Klartext lesen kann, ist für den
-Einsatzzweck akzeptiert — siehe [09](09-security-privacy.md).
+**Decision (confirmed):** running our own relay is part of the project. The fact
+that the relay operator (the company or an admin) can read all content in
+plaintext is accepted for this use case — see [09](09-security-privacy.md).
 
-**Projektregel:** Gruppen werden **ausschließlich über `nak group`** angelegt und
-verändert. Die relay-generierten Events `39000`–`39003` werden nie selbst
-signiert. Begründung und Konsequenzen stehen in der [AGENTS.md](../AGENTS.md).
-Daraus folgt: die Entwicklung läuft von Anfang an gegen ein Relay, das NIP-29
-wirklich implementiert — nicht gegen eine Attrappe.
+**Project rule:** groups are created and modified **exclusively through
+`nak group`**. The relay-generated events `39000`–`39003` are never signed by us.
+Reasoning and consequences are in [AGENTS.md](../AGENTS.md). It follows that
+development runs against a relay that really implements NIP-29 from day one —
+not against a stand-in.
 
-## Entwicklungs-Relay: `verse-pbc/groups_relay`
+## Development relay: `verse-pbc/groups_relay`
 
 [verse-pbc/groups_relay](https://github.com/verse-pbc/groups_relay) (Rust,
-AGPL-3.0, letzter Commit 2026-02-11). Quellcode am 2026-09-07 geprüft:
+AGPL-3.0, last commit 2026-02-11). Source reviewed on 2026-09-07:
 
-- Setzt Mitgliedschaft durch: Nicht-Mitglieder werden in `closed`-Gruppen mit
-  "User is not a member of this group" abgewiesen (`src/group.rs`).
-- **Keine Kind-Whitelist innerhalb von Gruppen.** `validation_middleware.rs`
-  verlangt nur einen `h`-Tag (Ausnahmen in `NON_GROUP_ALLOWED_KINDS`). Unser
-  `kind 1818` läuft also ohne Relay-Patch durch — das war das größte offene
-  Risiko am Datenmodell.
-- In `open`-Gruppen wird der Autor beim Posten automatisch Mitglied ("Open
-  groups auto-join the author when posting") und `39002` wird aktualisiert.
-- Generiert `39000`–`39003` selbst, unterstützt `public`/`private`,
-  `open`/`closed`, `broadcast`, dazu NIP-09/40/42/70.
-- **Einschränkung:** Timeline-Referenzen (`previous`-Tag) sind laut README nicht
-  implementiert. Der Tag darf geschrieben werden, das Relay prüft ihn nicht.
+- Enforces membership: non-members are rejected in `closed` groups with "User is
+  not a member of this group" (`src/group.rs`).
+- **No kind allowlist inside groups.** `validation_middleware.rs` only requires
+  an `h` tag (exceptions in `NON_GROUP_ALLOWED_KINDS`). So our `kind 1818` goes
+  through without patching the relay — that was the biggest open risk in the
+  data model.
+- In `open` groups the author becomes a member when posting ("Open groups
+  auto-join the author when posting") and `39002` is updated.
+- Generates `39000`–`39003` itself, supports `public`/`private`, `open`/`closed`
+  and `broadcast`, plus NIP-09/40/42/70.
+- **Limitation:** timeline references (the `previous` tag) are not implemented
+  according to its README. The tag may be written, the relay does not check it.
 
-Nicht mehr verwenden: `fiatjaf/relay29` ist am 2026-04-20 archiviert worden und
-trägt selbst den Hinweis, ihm nichts Ernstes anzuvertrauen.
+No longer to be used: `fiatjaf/relay29` was archived on 2026-04-20 and carries a
+note not to trust it with anything serious.
 
-### Starten
+### Starting it
 
 ```bash
-./scripts/dev-relay-up.sh     # klont nach .local/, baut, startet auf :8080
-./scripts/dev-group-seed.sh   # Space, Mitglieder, Beispielseiten via nak group
+./scripts/dev-relay-up.sh     # clones into .local/, builds, starts on :8080
+./scripts/dev-group-seed.sh   # space, members and sample pages via nak group
 ```
 
-Das Seed-Skript macht fünf Schritte und ist wiederholbar:
+The seed script performs five steps and is repeatable:
 
-1. `nak group create-group` — beim zweiten Lauf meldet das Relay "Group already
-   exists", was das Skript abfängt.
-2. Ein `9002`-Moderationsevent mit ausdrücklichen `public`/`open`-Tags. Nötig,
-   weil das Relay Gruppen privat und geschlossen anlegt und `nak group
-   edit-metadata` diese Flags nicht zurücknehmen kann — Begründung in der
+1. `nak group create-group` — on a second run the relay reports "Group already
+   exists", which the script catches.
+2. A `9002` moderation event with explicit `public`/`open` tags. Necessary
+   because the relay creates groups private and closed, and `nak group
+   edit-metadata` cannot clear those flags — reasoning in
    [AGENTS.md](../AGENTS.md).
-3. `nak group put-user` für das zweite Testkonto.
-4. Drei `1818`-Revisionen (zwei Seiten, eine davon mit zweiter Revision und
-   `parent-rev`) — Inhalt, keine Gruppenverwaltung.
-5. Kontrolle über rohe `nak req`-Abfragen auf `39000`/`39001`/`39002`, weil
-   `nak group info` gegen dieses Relay hängt.
+3. `nak group put-user` for the second test account.
+4. Three `1818` revisions (two pages, one of them with a second revision and a
+   `parent-rev`) — content, not group administration.
+5. Verification through raw `nak req` queries for `39000`/`39001`/`39002`,
+   because `nak group info` hangs against this relay.
 
-Welche nak-Flags wann nötig sind (`--fpa` statt `--auth`, `create-group` ohne
-beides), steht in der [AGENTS.md](../AGENTS.md) — das ist der Teil, der beim
-ersten Versuch am meisten Zeit kostet.
+Which nak flags are needed when (`--fpa` instead of `--auth`, `create-group`
+with neither) is documented in [AGENTS.md](../AGENTS.md) — that is the part
+which costs the most time on a first attempt.
 
-Der Bau läuft **nativ über cargo**, nicht über Docker: der mitgelieferte
-`Dockerfile.dev` bricht an `cargo build --features console` ab (exit 101) — das
-Feature ist im Produktions-Dockerfile ausdrücklich als instabil deaktiviert.
-Ohne lokales Rust weicht das Skript auf Docker mit dem Produktions-Dockerfile
-aus ([docker/groups-relay.override.yml](../docker/groups-relay.override.yml)).
-Die Konfiguration kommt aus `config/settings.yml` plus `settings.local.yml` des
-Relays; Port und URL überschreibt das Skript per `NIP29__relay__*`-Umgebung.
+The build runs **natively through cargo**, not through Docker: the bundled
+`Dockerfile.dev` fails at `cargo build --features console` (exit 101) — the
+feature is explicitly disabled as unstable in the production Dockerfile. Without
+a local Rust toolchain the script falls back to Docker with the production
+Dockerfile ([docker/groups-relay.override.yml](../docker/groups-relay.override.yml)).
+Configuration comes from the relay's `config/settings.yml` plus
+`settings.local.yml`; the script overrides port and URL through
+`NIP29__relay__*` environment variables.
 
-### Gruppen adressieren
+### Addressing groups
 
-`nak group <befehl> <adresse>` nimmt zwei Formen:
+`nak group <command> <address>` accepts two forms:
 
-| Form | Auflösung | Lokal brauchbar |
+| Form | Resolution | Usable locally |
 |---|---|---|
-| `host/gruppe` (NIP-AD) | `https://<host>/.well-known/nostr.json` | nein, braucht TLS |
-| `naddr1…` | direkt aus dem Code | ja |
+| `host/group` (NIP-AD) | `https://<host>/.well-known/nostr.json` | no, needs TLS |
+| `naddr1…` | directly from the code | yes |
 
-Deshalb baut das Seed-Skript immer eine `naddr`:
+That is why the seed script always builds an `naddr`:
 
 ```bash
 nak encode naddr -d engineering -k 39000 -a "$RELAY_PUBKEY" -r ws://localhost:8080
 ```
 
-Den Relay-Pubkey liefert das NIP-11-Dokument (`nak relay <url>`, Feld `self`
-bzw. `pubkey`). Hintergrund: `fetchGroupMetadata` in nak nimmt zuerst diesen
-Pubkey als Autor der Gruppen-Metadaten und nur als Fallback den Autor aus der
-`naddr` — bei einem echten NIP-29-Relay ist also der Relay-Pubkey der richtige.
+The relay pubkey comes from the NIP-11 document (`nak relay <url>`, field `self`
+or `pubkey`). Background: `fetchGroupMetadata` in nak first takes that pubkey as
+the author of the group metadata and only falls back to the author from the
+`naddr` — so with a real NIP-29 relay the relay pubkey is the right one.
 
-## `nak serve`: nur ohne Gruppenlogik
+## `nak serve`: only for things without group logic
 
-`nak serve` startet ein In-Memory-Relay (`slicestore.SliceStore`), ist aber
-**kein NIP-29-Relay**. Geprüft am 2026-09-07 mit nak 0.20.6:
+`nak serve` starts an in-memory relay (`slicestore.SliceStore`), but it is **not
+a NIP-29 relay**. Verified on 2026-09-07 with nak 0.20.6:
 
-- NIP-11 meldet `supported_nips: [1, 11, 42, 70, 86, 40, 9, 45]` — 29 fehlt.
-- `9007` (create-group) und `9000` (put-user) werden roh gespeichert, ohne
-  Wirkung. Es entstehen keine `39000`–`39003`.
-- Jeder fremde Schlüssel darf in jede Gruppe schreiben.
+- Its NIP-11 reports `supported_nips: [1, 11, 42, 70, 86, 40, 9, 45]` — 29 is
+  missing.
+- `9007` (create-group) and `9000` (put-user) are stored raw, with no effect. No
+  `39000`–`39003` are produced.
+- Any foreign key may write into any group.
 
-Zulässig ist es damit nur für Dinge ohne Gruppenbezug — Event-Formate,
-NIP-42-Ablauf (`nak serve --auth`), Reconnect-Verhalten. Gruppen-Metadaten von
-Hand zu erzeugen ist ausdrücklich nicht mehr erlaubt.
+So it is only admissible for things unrelated to groups — event formats, the
+NIP-42 flow (`nak serve --auth`), reconnect behaviour. Creating group metadata
+by hand is explicitly no longer allowed.
 
-Zwei Eigenheiten, die dabei Zeit gekostet haben:
+Two quirks that cost time:
 
-- **Portkollision:** Default ist `10547`, wo auf diesem Rechner schon ein
-  `nostr-rs-relay`-Container lauscht. Zwei Listener auf demselben Port (IPv4
-  bzw. IPv6-Wildcard) führen dazu, dass `localhost` mal hier, mal dort landet.
-  Falls doch nötig: `nak serve --port 10577`.
-- **Ephemere Events** (20000–29999) lehnt `nak serve` mit
-  `mute: no one was listening for this` ab, wenn niemand abonniert hat. Das ist
-  kein Rechteproblem — die App klassifiziert solche Gründe entsprechend
+- **Port collision:** the default is `10547`, where a `nostr-rs-relay` container
+  already listens on this machine. Two listeners on the same port (IPv4 and the
+  IPv6 wildcard) mean `localhost` sometimes lands on one, sometimes the other.
+  If you do need it: `nak serve --port 10577`.
+- **Ephemeral events** (20000–29999) are rejected by `nak serve` with
+  `mute: no one was listening for this` when nobody has subscribed. That is not
+  a permission problem — the app classifies such reasons accordingly
   (`classifyRejection` in `src/nostr/client.ts`).
 
-## Betrieb
+## Operations
 
-- Relay hinter TLS (`wss://`), weil eine HTTPS-Seite kein `ws://` öffnen darf
-  (außer `localhost`).
-- Web-App als statisches Bundle auf beliebigem Host.
-- Backup = Event-Export als JSONL. Weil alles signiert ist, ist ein Export auf
-  einem anderen Relay verifizierbar wiederherstellbar. Das ist gleichzeitig die
-  Umzugsstrategie: Space umziehen heißt Events kopieren.
+- Put the relay behind TLS (`wss://`), because an HTTPS page may not open
+  `ws://` (except for `localhost`).
+- The web app is a static bundle on any host.
+- Backup = event export as JSONL. Because everything is signed, an export is
+  verifiably restorable on another relay. That is also the migration strategy:
+  moving a space means copying events.

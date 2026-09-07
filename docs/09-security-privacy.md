@@ -1,51 +1,50 @@
-# 09 — Sicherheit & Privacy
+# 09 — Security & privacy
 
-## Was kryptografisch garantiert ist
+## What is cryptographically guaranteed
 
-- **Autorschaft**: Jede Revision ist mit dem Schlüssel ihres npub signiert.
-  Niemand — auch das Relay nicht — kann Inhalte im Namen einer anderen Person
-  erzeugen.
-- **Integrität**: Die Event-`id` ist ein Hash über Inhalt und Tags. Nachträgliche
-  Änderung eines Events ist nicht möglich, nur eine neue Revision.
-- **Reihenfolge**: `parent-rev` verankert jede Revision an ihrem Vorgänger.
+- **Authorship**: every revision is signed with the key behind its npub. Nobody
+  — not even the relay — can produce content in someone else's name.
+- **Integrity**: the event `id` is a hash over content and tags. Changing an
+  event after the fact is impossible; only a new revision is.
+- **Order**: `parent-rev` anchors every revision to its predecessor.
 
-## Was ausdrücklich nicht garantiert ist
+## What is explicitly not guaranteed
 
-- **Vollständigkeit**: Ein Relay kann Events verschweigen. Teil-Mitigation:
-  `previous`-Timeline-Referenzen (NIP-29) machen Lücken erkennbar; die App zeigt
-  dann "Historie möglicherweise unvollständig" statt eine glatte Liste.
-  Einschränkung: `groups_relay` implementiert Timeline-Referenzen laut README
-  nicht, prüft den Tag also nicht. Die Lückenerkennung bleibt damit eine
-  clientseitige Heuristik über `parent-rev`-Ketten mit fehlenden Gliedern.
-- **Vertraulichkeit**: Eine `private` NIP-29-Gruppe ist *zugriffsbeschränkt*,
-  nicht verschlüsselt. Der Relay-Betreiber liest alles im Klartext.
-  **Entscheidung (bestätigt):** Das ist für den Einsatzzweck in Ordnung — das
-  Relay gehört der Firma bzw. dem Admin, das Vertrauensmodell entspricht einem
-  selbst gehosteten Wiki. Konsequenz für das UI: kein Schloss-Symbol und keine
-  Formulierung, die E2EE suggeriert. Stattdessen wörtlich: "Mitglieder und der
-  Relay-Betreiber sehen den Inhalt."
-  E2EE bleibt bewusst außerhalb des Projekts; sie wäre mit
-  relay-durchgesetzten Rechten und Volltextsuche auch nicht vereinbar.
-- **Löschung**: NIP-09 ist eine Bitte. Einmal publiziert, kann Inhalt auf Kopien
-  bestehen bleiben. UI-Wortwahl: "Löschung anfragen".
-- **Zeitstempel**: `created_at` setzt der Client, ist also manipulierbar. Für die
-  Sortierung gilt primär die `parent-rev`-Kette; die Uhrzeit ist Anzeige.
+- **Completeness**: a relay can withhold events. Partial mitigation: NIP-29
+  timeline references (`previous`) would make gaps detectable, and the app could
+  then say "history may be incomplete" instead of showing a smooth list.
+  Limitation: `groups_relay` does not implement timeline references according to
+  its README, so it does not check the tag — and we do not write it yet. Gap
+  detection therefore remains a client-side heuristic over `parent-rev` chains
+  with missing links.
+- **Confidentiality**: a `private` NIP-29 group is *access-restricted*, not
+  encrypted. The relay operator reads everything in plaintext.
+  **Decision (confirmed):** that is fine for this use case — the relay belongs
+  to the company or the admin, and the trust model matches a self-hosted wiki.
+  Consequence for the UI: no padlock icon and no wording that suggests E2EE.
+  Instead, literally: "members and the relay operator can see this content."
+  E2EE stays deliberately out of scope; it would also be incompatible with
+  relay-enforced permissions and full-text search.
+- **Deletion**: NIP-09 is a request. Once published, content may survive on
+  copies. UI wording: "request deletion".
+- **Timestamps**: `created_at` is set by the client and therefore manipulable.
+  Ordering primarily follows the `parent-rev` chain; the clock is for display.
 
-## Client-Angriffsflächen
+## Client-side attack surface
 
-| Risiko | Maßnahme |
+| Risk | Countermeasure |
 |---|---|
-| XSS über Markdown fremder npubs | `rehype-sanitize` mit strikter Allowlist, kein `dangerouslySetInnerHTML`, kein rohes HTML, keine `javascript:`-Links |
-| Bild-/Iframe-Einbettung als Tracker | **Umgesetzt:** Bilder von fremden Herkünften werden erst auf Klick geladen ("Bild von example.com laden"), Anhänge vom eigenen Blossom-Server direkt. Keine Iframes |
-| Gefälschte `h`-Tags (Event aus fremder Gruppe eingeschmuggelt) | Nach dem Laden prüfen: `h` muss dem geöffneten Space entsprechen, sonst verwerfen |
-| Signaturprüfung vergessen | Verifikation in der Datenschicht erzwingen, nicht optional pro Aufruf |
-| Impersonation über Anzeigenamen | npub immer mitanzeigen; Mitglieds-Badge nur bei Eintrag in `39002` |
-| Spam in offenen Spaces | Rate-Limits des Relays + Moderations-Löschung (`9005`) + UI-Filter "nur Mitglieder anzeigen" |
-| Schlüsseldiebstahl durch die App | Kein Umgang mit nsec. Ausschließlich NIP-07/NIP-46 |
+| XSS through Markdown from arbitrary npubs | `rehype-sanitize` with a strict allowlist, no `dangerouslySetInnerHTML`, no raw HTML, no `javascript:` links |
+| Images/iframes used as trackers | **Implemented:** images from foreign origins are only loaded on click ("load image from example.com"), attachments from our own Blossom server load directly. No iframes |
+| Forged `h` tags (an event from another group smuggled in) | Checked after loading: `h` must match the open space, otherwise the event is discarded |
+| Forgetting to verify signatures | Verification is enforced in the data layer, not optional per call |
+| Impersonation via display names | The npub is always shown alongside; the member badge only appears for entries in `39002` |
+| Spam in open spaces | Relay rate limits + moderated deletion (`9005`) + a "members only" UI filter |
+| Key theft through the app | No handling of nsec at all. NIP-07/NIP-46 only |
 
-## Datenschutz-Hinweis für Nutzende
+## Privacy note for users
 
-Ein npub ist ein dauerhaftes Pseudonym: alle Beiträge einer Person sind über
-Relays hinweg verknüpfbar. Für Teams mit Klarnamenbezug bedeutet das faktisch
-eine öffentliche Aktivitätshistorie. Das gehört in die Onboarding-Seite der App,
-nicht ins Kleingedruckte.
+An npub is a permanent pseudonym: everything a person posts is linkable across
+relays. For teams where npubs map to real names, that effectively means a public
+activity history. This belongs on the app's onboarding page, not in the fine
+print. **Open:** there is no onboarding page yet.

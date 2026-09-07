@@ -1,61 +1,61 @@
-# 07 — Tech-Stack
+# 07 — Tech stack
 
-| Bereich | Wahl | Begründung |
+| Area | Choice | Reasoning |
 |---|---|---|
-| Build | Vite + TypeScript | Statisches Bundle, kein Server nötig; deploybar auf jedem Static Host |
-| UI | React | Größtes Ökosystem für Editor/Diff-Komponenten |
-| Nostr | **`nostr-tools`** (entschieden in Phase 1) | `pool.automaticallyAuth` signiert NIP-42-Challenges automatisch, `pool.publish` wiederholt nach `auth-required` — genau die Haken, die [03](03-auth-nip07-nip42.md) verlangt. Dazu `nip19` für npub und `verifyEvent` |
-| Verworfen | NDK (`@nostr-dev-kit/ndk`) | Cache- und Event-Abstraktionen stehen unserem eigenen Revisions-DAG im Weg; die AUTH-Haken sind bei nostr-tools direkter zugänglich |
-| Cache | **noch keiner** | Geplant war IndexedDB für Sofort-Rendern und Offline-Lesen. Bisher lebt alles im Speicher und wird bei jedem Laden neu vom Relay geholt → offen |
-| State | **eigene Stores** (`useSyncExternalStore`) | Zustand war geplant, wurde aber nicht gebraucht: der Space-Zustand hängt an Relay-Abos, die ohnehin ein eigener Store sind. Eine Bibliothek hätte nur eine Schicht dazwischen gelegt |
-| Markdown rendern | `react-markdown` + `remark-gfm` + **`rehype-sanitize`** | Inhalte kommen von beliebigen npubs → Sanitizing ist Pflicht, nicht Option |
-| Editor | CodeMirror 6 (`@codemirror/lang-markdown`) | Robust, große Dokumente, gute Selektions-API für Inline-Kommentare später |
-| Diff | `diff` (jsdiff), `diffArrays` auf Zeilen-Arrays | Zeilen- und Wort-Diff, Basis für Blame und 3-Wege-Merge |
-| 3-Wege-Merge | **selbst geschrieben** (`src/domain/merge.ts`) | jsdiff v8 hat kein `merge` mehr. Der eigene Merge ist knapp 100 Zeilen, vollständig getestet und wir bestimmen die Konfliktdarstellung selbst |
-| Styling | Tailwind, `dark`-Variante an `data-theme` gekoppelt | Atlassian-artige Dichte in Tokens; manuelle Hell/Dunkel-Umschaltung nötig → [12](12-theming.md) |
-| Syntax-Highlighting im Editor | CodeMirror (`@codemirror/lang-markdown`) | Deckt den Editor ab |
-| Syntax-Highlighting in der Anzeige | **noch keins** | Codeblöcke werden ungefärbt gerendert. Shiki mit Dual-Theme war geplant → offen |
-| Suche | **selbst geschrieben** (`src/domain/search.ts`) | MiniSearch war geplant; für die Titel- und Zeilensuche über die geladenen Seiten reichen 60 Zeilen ohne Abhängigkeit und ohne Index, der veralten kann |
-| Unit-Tests | Vitest | Kettenlogik (Head, Merge, Blame, Suche) ist reine Funktionslogik → 73 Tests |
-| End-to-End-Tests | **noch keine** | Playwright war geplant, auch für die Farbmodus-Regression aus [12](12-theming.md). Bisher wird von Hand im Browser geprüft → offen |
+| Build | Vite + TypeScript | Static bundle, no server needed; deployable to any static host |
+| UI | React | Largest ecosystem for editor and diff components |
+| Nostr | **`nostr-tools`** (decided in phase 1) | `pool.automaticallyAuth` signs NIP-42 challenges automatically, `pool.publish` retries after `auth-required` — exactly the hooks [03](03-auth-nip07-nip42.md) asks for. Plus `nip19` for npubs and `verifyEvent` |
+| Rejected | NDK (`@nostr-dev-kit/ndk`) | Its cache and event abstractions get in the way of our own revision DAG; the AUTH hooks are more directly accessible in nostr-tools |
+| Cache | **none yet** | IndexedDB was planned for instant rendering and offline reading. So far everything lives in memory and is fetched from the relay on every load → open |
+| State | **our own stores** (`useSyncExternalStore`) | Zustand was planned but turned out unnecessary: space state hangs off relay subscriptions, which are a store anyway. A library would only have added a layer in between |
+| Rendering Markdown | `react-markdown` + `remark-gfm` + **`rehype-sanitize`** | Content comes from arbitrary npubs → sanitising is mandatory, not optional |
+| Editor | CodeMirror 6 (`@codemirror/lang-markdown`) | Robust, handles large documents, good selection API for inline comments later |
+| Diff | `diff` (jsdiff), `diffArrays` over line arrays | Line and word diff, the basis for blame and the three-way merge |
+| Three-way merge | **written ourselves** (`src/domain/merge.ts`) | jsdiff v8 no longer ships `merge`. Ours is about 100 lines, fully tested, and we control how conflicts are presented |
+| Styling | Tailwind, `dark` variant bound to `data-theme` | Atlassian-like density in tokens; a manual light/dark switch is required → [12](12-theming.md) |
+| Syntax highlighting in the editor | CodeMirror (`@codemirror/lang-markdown`) | Covers the editor |
+| Syntax highlighting when displaying | **none yet** | Code blocks render without colour. Shiki with dual themes was planned → open |
+| Search | **written ourselves** (`src/domain/search.ts`) | MiniSearch was planned; for title and line search over the loaded pages, 60 lines are enough — no dependency and no index that can go stale |
+| Unit tests | Vitest | The chain logic (head, merge, blame, search) is pure function logic → 76 tests |
+| End-to-end tests | **none yet** | Playwright was planned, also for the colour-mode regression from [12](12-theming.md). So far testing is done by hand in the browser → open |
 
-## Konfiguration
+## Configuration
 
-`.env.example` zeigt die beiden Schalter: `VITE_RELAY_URL` für das
-Gruppen-Relay und `VITE_PROFILE_RELAYS` für die Relays, von denen Profile
-(Kind 0) geholt werden. Zweiteres ist nötig, weil ein NIP-29-Relay Kind 0 gar
-nicht annimmt — dort braucht jedes Event einen `h`-Tag. Ohne Konfiguration
-zeigt die App npubs statt Namen, und das ist ehrlicher als ein erfundener Name.
+`.env.example` documents the switches: `VITE_RELAY_URL` for the group relay,
+`VITE_PROFILE_RELAYS` for the relays profiles (kind 0) are fetched from, and
+`VITE_BLOSSOM_SERVER` for attachments. The profile relays are needed because a
+NIP-29 relay does not accept kind 0 at all — every event there needs an `h` tag.
+Without configuration the app shows npubs instead of names, which is more honest
+than an invented name.
 
-## Struktur des Codes
+## Structure of the code
 
-So sieht sie tatsächlich aus:
+This is what it actually looks like:
 
 ```
 src/
-  nostr/     kinds.ts (alle Kinds und Tags), client.ts (Relay, NIP-42),
+  nostr/     kinds.ts (all kinds and tags), client.ts (relay, NIP-42),
              signer.ts, space-store.ts, profile-store.ts, publish-page.ts,
              publish-comment.ts, moderation.ts, blossom.ts, relay-status.ts
   domain/    revision.ts, pages.ts, merge.ts, blame.ts, diff.ts, search.ts,
-             comment.ts, toc.ts, group-state.ts   — reine Funktionen, getestet
-  session/   session.tsx   (Anmeldung, Sitzung, Account-Wechsel)
-  theme/     theme.tsx     (System/Hell/Dunkel)
-  ui/        layout/ und Bausteine (Markdown, DiffView, PageEditor, …)
+             comment.ts, toc.ts, group-state.ts   — pure functions, tested
+  session/   session.tsx   (sign-in, session, account switch)
+  theme/     theme.tsx     (system/light/dark)
+  ui/        layout/ and building blocks (Markdown, DiffView, PageEditor, …)
   routes/
-  dev/       fake-nip07.ts (nur im Entwicklungsmodus)
+  dev/       fake-nip07.ts (development mode only)
 ```
 
-Abweichungen vom ursprünglichen Plan, jeweils mit Grund:
+Deviations from the original plan, each with a reason:
 
-- **Kein `data/`-Ordner.** Die geplante Cache-Schicht ist nicht gebaut; was
-  von ihr gebraucht wurde (Abos, Zustand pro Space), liegt in
-  `nostr/space-store.ts`.
-- **Andere Dateinamen in `domain/`.** Statt `revision-graph.ts` und `tree.ts`
-  gibt es `pages.ts` (Head-Auflösung, Baum, gemeinsamer Vorfahre) und
-  `revision.ts` (Event → Revision). Dazu kamen `diff.ts`, `search.ts`,
-  `comment.ts` und `toc.ts`.
-- **`session/` und `theme/` als eigene Ordner**, weil beides
-  React-Kontext ist und weder Domäne noch Nostr-Schicht.
+- **No `data/` folder.** The planned cache layer was not built; what was needed
+  from it (subscriptions, per-space state) lives in `nostr/space-store.ts`.
+- **Different file names in `domain/`.** Instead of `revision-graph.ts` and
+  `tree.ts` there are `pages.ts` (head resolution, tree, common ancestor) and
+  `revision.ts` (event → revision). `diff.ts`, `search.ts`, `comment.ts` and
+  `toc.ts` were added along the way.
+- **`session/` and `theme/` as their own folders**, because both are React
+  context and belong to neither the domain nor the Nostr layer.
 
-Unverändert gilt: alles in `domain/` ist netzwerkfrei und getestet — das ist
-der Kern der Anwendung.
+What has not changed: everything in `domain/` is network-free and tested — that
+is the core of the application.

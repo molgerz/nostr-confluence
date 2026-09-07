@@ -1,67 +1,69 @@
-# 01 — Architektur
+# 01 — Architecture
 
-## Beteiligte
+## The parties involved
 
 ```
-Browser-Tab                     Browser-Extension            Relay
+Browser tab                     Browser extension            Relay
 ┌──────────────────────┐        ┌──────────────────┐        ┌───────────────────┐
-│ UI-Schicht           │        │ NIP-07 Signer    │        │ NIP-29 Relay      │
-│ Nostr-Datenschicht   │◄──────►│ (Alby, nos2x)    │        │ Gruppen-Autorität │
-│ Lokaler Cache        │◄───────┴──────────────────┘        │ Event-Speicher    │
+│ UI layer             │        │ NIP-07 signer    │        │ NIP-29 relay      │
+│ Nostr data layer     │◄──────►│ (Alby, nos2x)    │        │ group authority   │
+│ Local cache          │◄───────┴──────────────────┘        │ event storage     │
 └──────────┬───────────┘   signEvent / getPublicKey         └─────────┬─────────┘
            └──────────────────── WebSocket (REQ / EVENT / AUTH) ──────┘
 ```
 
-Es gibt kein eigenes Backend. Alles, was ein klassisches Wiki serverseitig macht
-(Rechte, Speicher, Historie), übernehmen Relay + Event-Design.
+There is no backend of our own. Everything a classic wiki does server-side
+(permissions, storage, history) is handled by the relay plus the event design.
 
-## Schichten im Client
+## Layers in the client
 
-1. **UI-Schicht** — React-Komponenten: Sidebar, Seitenansicht, Editor,
-   Historie, Diff. Kennt keine Relay-Details, nur Domänenobjekte
-   (`Space`, `Page`, `Revision`, `Member`).
-2. **Domänenschicht** — übersetzt zwischen Nostr-Events und Domänenobjekten:
-   Seitenbaum aus Revisions-Events aufbauen, Head-Auflösung, Diff berechnen,
-   Konflikte erkennen.
-3. **Nostr-Datenschicht** — Relay-Verbindungen, Subscriptions, Signieren,
-   NIP-42-AUTH, Retry. Einzige Schicht, die `kind`-Nummern kennt.
-4. **Cache-Schicht** — *noch nicht gebaut.* Geplant ist IndexedDB für
-   Sofort-Rendern beim Reload und Offline-Lesen. Bisher hält der Space-Store
-   alles nur im Speicher; nach einem Reload wird erneut vom Relay geladen, und
-   die Volltextsuche läuft über genau diese geladenen Seiten.
+1. **UI layer** — React components: sidebar, page view, editor, history, diff.
+   Knows nothing about relays, only domain objects (`Space`, `Page`,
+   `Revision`, `Member`).
+2. **Domain layer** — translates between Nostr events and domain objects:
+   building the page tree from revision events, head resolution, computing
+   diffs, detecting conflicts.
+3. **Nostr data layer** — relay connections, subscriptions, signing, NIP-42
+   AUTH, retries. The only layer that knows `kind` numbers.
+4. **Cache layer** — *not built yet.* IndexedDB is planned, for instant
+   rendering on reload and offline reading. For now the space store keeps
+   everything in memory; after a reload it loads from the relay again, and
+   full-text search runs over exactly those loaded pages.
 
-**Entscheidung:** Kind-Nummern und Tag-Namen existieren an genau einer Stelle im
-Code (`src/nostr/kinds.ts`). Keine magischen Zahlen in Komponenten.
+**Decision:** kind numbers and tag names exist in exactly one place in the code
+(`src/nostr/kinds.ts`). No magic numbers in components.
 
-## Datenfluss: Seite öffnen
+## Data flow: opening a page
 
-1. Route `/space/:groupId/:slug` wird geöffnet.
-2. *(geplant: Cache-Treffer sofort rendern — siehe oben)*
-3. Subscription: alle Revisions-Events mit `#h=groupId` und `#s=slug`.
-4. Domänenschicht baut die Revisionskette, ermittelt den Head.
-5. UI rendert Markdown des Heads + Byline (npub, Zeit) + Konflikt-Banner,
-   falls die Kette sich verzweigt hat.
+1. The route `/s/:group/:slug` is opened.
+2. *(planned: render a cache hit immediately — see above)*
+3. Subscription: all revision events with `#h=<group>` and `#d=<slug>`.
+4. The domain layer builds the revision chain and determines the head.
+5. The UI renders the head's Markdown plus a byline (npub, time) and a conflict
+   banner if the chain has forked.
 
-## Datenfluss: Seite speichern
+## Data flow: saving a page
 
-1. Editor kennt die Basis-Revision `base` (die, auf der er geöffnet wurde).
-2. Vor dem Publish: Head erneut abfragen.
-3. `head == base` → Revision mit `parent-rev = base` signieren und publishen.
-4. `head != base` → 3-Wege-Merge-Dialog (Basis / meine Version / ihre Version).
-5. Nach `OK` vom Relay: Cache aktualisieren, UI umschalten auf Leseansicht.
+1. The editor knows the base revision it was opened on.
+2. Before publishing, the current head is checked again.
+3. `head == base` → sign and publish a revision with `parent-rev = base`.
+4. `head != base` → three-way merge. The result goes straight into the editor
+   with an explanation; nothing is published until a human has looked at it
+   ([05](05-versioning-history.md)).
+5. After the relay answers `OK`, the UI switches back to reading view.
 
-## Relay-Strategie
+## Relay strategy
 
-- **Ein Gruppen-Relay pro Space** ist die Autorität. Eine NIP-29-Gruppe wird als
-  `<relay-host>'<group-id>` identifiziert — das Relay ist Teil der Identität.
-- Zusätzliche Relays optional als Read-Replica/Backup (Events sind signiert,
-  also verifizierbar auch von unbefugten Relays), aber die Rechteprüfung passiert
-  nur auf dem Gruppen-Relay.
-- **Offen:** Ob Spiegel-Relays im MVP überhaupt geschrieben werden. Vorschlag:
-  nein, erst ab Phase 5.
+- **One group relay per space** is the authority. A NIP-29 group is identified
+  as `<relay-host>'<group-id>` — the relay is part of the identity.
+- Additional relays are optional as read replicas or backups (events are signed,
+  so they are verifiable even from relays that have no say), but the permission
+  check only happens on the group relay.
+- **Open:** whether mirror relays are written to at all in the MVP. Suggestion:
+  no, not before phase 5.
 
-## Warum kein Backend?
+## Why no backend?
 
-Weil jedes Backend die Vertrauensfrage nur verschiebt. Signatur + `parent-rev`
-liefern Nachvollziehbarkeit ohne Server-Vertrauen; das Relay bleibt austauschbar,
-weil die Historie in den Events selbst steckt.
+Because any backend only moves the trust question somewhere else. Signatures
+plus `parent-rev` provide traceability without having to trust a server, and the
+relay stays replaceable because the history lives in the events themselves.

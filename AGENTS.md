@@ -1,121 +1,121 @@
-# Hinweise für KI-Agenten in diesem Repo
+# Notes for AI agents working in this repo
 
-Projekt: Confluence-artiges Wiki auf Nostr. Konzeption vollständig in
-[`docs/`](docs/README.md) — dort steht die Begründung für jede Entscheidung,
-hier stehen nur Arbeitsregeln.
+Project: a Confluence-like wiki on Nostr. The full design lives in
+[`docs/`](docs/README.md) — that is where the reasoning behind every decision
+is. This file only contains working rules.
 
-## Gruppen immer mit `nak group` verwalten
+## Always manage groups with `nak group`
 
-**Regel:** NIP-29-Gruppen werden ausschließlich über `nak group` angelegt und
-verändert — `create-group`, `edit-metadata`, `put-user`, `remove-user`,
-`create-invite`, `delete-event`. Niemals die relay-generierten Events `39000`,
-`39001`, `39002`, `39003` selbst signieren und publishen.
+**Rule:** NIP-29 groups are created and modified exclusively through
+`nak group` — `create-group`, `edit-metadata`, `put-user`, `remove-user`,
+`create-invite`, `delete-event`. Never sign and publish the relay-generated
+events `39000`, `39001`, `39002`, `39003` yourself.
 
-**Warum:** Bei NIP-29 ist das Relay die Autorität. Selbst signierte
-Metadaten-Events sind eine Attrappe: sie sehen im Client richtig aus, aber das
-Relay setzt nichts durch, Mitgliedschaft und Rollen sind Fiktion, und
-Verhaltensunterschiede zum echten Relay fallen erst spät auf.
+**Why:** with NIP-29 the relay is the authority. Self-signed metadata events are
+a stand-in: they look right in the client, but the relay enforces nothing,
+membership and roles are fiction, and behavioural differences from a real relay
+surface late.
 
-**Folge daraus:** Es muss ein Relay laufen, das NIP-29 wirklich implementiert.
-`nak serve` tut das nicht (sein NIP-11 nennt kein NIP 29, `9007`/`9000` werden
-nur rohgespeichert). Deshalb:
+**Consequence:** a relay that really implements NIP-29 has to be running.
+`nak serve` does not (its NIP-11 lists no NIP 29, and `9007`/`9000` are only
+stored raw). Therefore:
 
 ```bash
-./scripts/dev-relay-up.sh     # verse-pbc/groups_relay auf :8080 (nativ via cargo)
-./scripts/dev-group-seed.sh   # Gruppe und Mitglieder via nak group
+./scripts/dev-relay-up.sh     # verse-pbc/groups_relay on :8080 (natively via cargo)
+./scripts/dev-group-seed.sh   # group and members via nak group
 ```
 
-Der Bau läuft nativ über cargo, weil der mitgelieferte `Dockerfile.dev` an
-`cargo build --features console` scheitert. Ohne Rust weicht das Skript auf
-Docker mit dem Produktions-Dockerfile aus.
+The build runs natively through cargo because the bundled `Dockerfile.dev` fails
+at `cargo build --features console`. Without Rust the script falls back to
+Docker with the production Dockerfile.
 
-`nak serve` ist nur für Arbeiten ohne Docker und ohne Gruppenlogik zulässig
-(z. B. reine Event-Formatprüfungen) — und dann ohne gefälschte Gruppen-Metadaten.
+`nak serve` is only admissible for work without Docker and without group logic
+(for example pure event-format checks) — and then without faked group metadata.
 
-`nak group` ist ein **Client**, kein Relay: es ersetzt kein laufendes Relay.
+`nak group` is a **client**, not a relay: it does not replace a running relay.
 
-## Adressierung von Gruppen mit nak
+## Addressing groups with nak
 
-`nak group <befehl> <adresse>` akzeptiert zwei Formen:
+`nak group <command> <address>` accepts two forms:
 
-- NIP-AD-Webadresse `host/gruppe` — wird über `https://<host>/.well-known/nostr.json`
-  aufgelöst, funktioniert bei `localhost` ohne TLS also **nicht**.
-- `naddr1…` — funktioniert immer:
-  `nak encode naddr -d <gruppe> -k 39000 -a <relay-pubkey> -r <relay-url>`
+- NIP-AD web address `host/group` — resolved via
+  `https://<host>/.well-known/nostr.json`, so it does **not** work against
+  `localhost` without TLS.
+- `naddr1…` — always works:
+  `nak encode naddr -d <group> -k 39000 -a <relay-pubkey> -r <relay-url>`
 
-Den Relay-Pubkey liefert das NIP-11-Dokument (`nak relay <url>`, Feld `self`
-bzw. `pubkey`).
+The relay pubkey comes from the NIP-11 document (`nak relay <url>`, field `self`
+or `pubkey`).
 
-## nak gegen `groups_relay`: welche Flags wann
+## nak against `groups_relay`: which flags when
 
-Am 2026-09-07 durchgemessen. Ohne diese Regeln laufen Befehle ins Leere oder
-hängen:
+Measured on 2026-09-07. Without these rules commands come back empty or hang:
 
-| Aufruf | Flags | Grund |
+| Call | Flags | Reason |
 |---|---|---|
-| `nak req`, Lesen allgemein | `--fpa --sec <key>` | Das Relay filtert unauthentifizierte Leser bei privaten Gruppen **stillschweigend** heraus, statt mit `auth-required` abzulehnen. `--auth` reagiert nur auf eine Ablehnung und greift deshalb nicht; `--fpa` (force-pre-auth) wartet die Challenge ab |
-| `nak event` (publishen) | `--fpa --sec <key>` | funktioniert; `--auth` allein genügt oft, `--fpa` ist verlässlicher |
-| `nak group create-group` | **nur** `--sec` | mit `--fpa` hängt der Befehl: er liest vor dem Publish Metadaten und wartet dort auf eine Challenge, die auf diesem Pfad nicht kommt |
-| `nak group put-user` | `--fpa --sec` | funktioniert |
-| `nak group info`, `members`, `edit-metadata` | — | **unbrauchbar gegen dieses Relay.** Sie rufen `fetchGroupMetadata` über nak's internen Pool auf, der kein AUTH kennt; `info` hängt endlos. Zustand stattdessen per `nak req -k 39000 -k 39001 -k 39002` prüfen |
+| `nak req`, reading in general | `--fpa --sec <key>` | For private groups the relay **silently** filters out unauthenticated readers instead of rejecting with `auth-required`. `--auth` only reacts to a rejection and therefore never fires; `--fpa` (force-pre-auth) waits for the challenge |
+| `nak event` (publishing) | `--fpa --sec <key>` | Works; `--auth` alone is often enough, `--fpa` is more reliable |
+| `nak group create-group` | **only** `--sec` | With `--fpa` the command hangs: it reads metadata before publishing and waits there for a challenge that never arrives on that path |
+| `nak group put-user` | `--fpa --sec` | Works |
+| `nak group info`, `members`, `edit-metadata` | — | **Unusable against this relay.** They call `fetchGroupMetadata` through nak's internal pool, which knows no AUTH; `info` hangs forever. Check state with `nak req -k 39000 -k 39001 -k 39002` instead |
 
-Zwei inhaltliche Folgen daraus:
+Two substantive consequences:
 
-- **Gruppe öffnen braucht ein rohes `9002`.** Das Relay legt Gruppen als
-  `private` + `closed` an. `nak group edit-metadata` lässt die Tags `public`
-  und `open` weg, wenn die Flags falsch sind — `apply_tags` im Relay ist aber
-  additiv und ändert nur, was als Tag vorhanden ist. `private` liesse sich so
-  nie zurücknehmen. Deshalb einmal
-  `nak event -k 9002 -h <gruppe> -t public= -t open= …`. Das ist weiterhin der
-  vorgesehene NIP-29-Weg (ein Moderationsevent, das das Relay auswertet) und
-  **kein** selbst signiertes `39000`.
-- **Kind 0 wird abgelehnt.** Ein echtes NIP-29-Relay verlangt an jedem Event
-  einen `h`-Tag; Profile gehören auf die Relays der Nutzerin
-  (`VITE_PROFILE_RELAYS`). Lokal zeigt die App deshalb npubs statt Namen.
+- **Opening a group needs a raw `9002`.** The relay creates groups as `private`
+  + `closed`. `nak group edit-metadata` omits the `public` and `open` tags when
+  those flags are false — but `apply_tags` in the relay is additive and only
+  changes what is present as a tag. `private` could therefore never be cleared.
+  Hence one
+  `nak event -k 9002 -h <group> -t public= -t open= …`. That is still the
+  intended NIP-29 path (a moderation event the relay evaluates) and **not** a
+  self-signed `39000`.
+- **Kind 0 is rejected.** A real NIP-29 relay requires an `h` tag on every
+  event; profiles belong on the user's own relays (`VITE_PROFILE_RELAYS`).
+  Locally the app therefore shows npubs instead of names.
 
-## Ports auf diesem Rechner
+## Ports on this machine
 
-| Zweck | Port | Grund |
+| Purpose | Port | Reason |
 |---|---|---|
-| App (Vite) | 5273 | 5173 ist von einem Container belegt |
-| NIP-29-Relay | 8080 | — |
-| `nak serve` (nur Notfall) | 10577 | 10547 ist von einem Relay-Container belegt |
+| App (Vite) | 5273 | 5173 is taken by a container |
+| NIP-29 relay | 8080 | — |
+| `nak serve` (emergencies only) | 10577 | 10547 is taken by a relay container |
+| Blossom dev server | 3355 | — |
 
-## Kleinigkeiten, die Zeit gekostet haben
+## Small things that cost time
 
-- **zsh:** `GID` ist eine reservierte Variable. `GID=engineering` bricht mit
-  "failed to change group ID" ab. In Skripten `GROUP_ID` verwenden.
-- **Jeder** nak-Aufruf in einem Skript braucht `</dev/null` — auch
-  `nak key public`. Sonst blockieren sie auf stdin, wenn das Skript aus einer
-  Pipe läuft. `nak event` ohne `-c` wartet ebenfalls auf stdin.
-- nak liefert für erwartbare Zustände Exit 1 (z. B. "Group already exists").
-  Mit `set -e` bricht ein Skript daran stumm ab — `|| true` setzen und die
-  Ausgabe selbst prüfen.
-- Ephemere Events (20000–29999) lehnt `nak serve` mit
-  `mute: no one was listening for this` ab, wenn niemand abonniert hat. Das ist
-  kein Rechteproblem.
+- **zsh:** `GID` is a reserved variable. `GID=engineering` fails with "failed to
+  change group ID". Use `GROUP_ID` in scripts.
+- **Every** nak call in a script needs `</dev/null` — including
+  `nak key public`. Otherwise they block on stdin when the script runs from a
+  pipe. `nak event` without `-c` waits on stdin as well.
+- nak exits with 1 for expected states (for example "Group already exists").
+  With `set -e` a script dies silently at that point — add `|| true` and check
+  the output yourself.
+- Ephemeral events (20000–29999) are rejected by `nak serve` with
+  `mute: no one was listening for this` when nobody has subscribed. That is not
+  a permission problem.
 
-## Fallen in der Nostr-Schicht
+## Traps in the Nostr layer
 
-- **`relay.onclose` nicht überschreiben.** `SimplePool.ensureRelay` hängt dort
-  selbst einen Handler ein, der die tote Verbindung aus der Registry wirft. Wer
-  ihn ersetzt, bekommt beim nächsten `ensureRelay` dasselbe tote Objekt zurück.
-  Anhängen statt ersetzen.
-- **Abos sterben mit ihrer Verbindung.** Nach einem Reconnect oder einem
-  Signer-Wechsel (AUTH gilt pro Verbindung) müssen alle Subscriptions neu
-  aufgesetzt werden. Der Client zählt dafür pro Relay eine `epoch` hoch.
-- **`pool.get` kennt keinen `onauth`-Haken.** Auf einem Relay mit erzwungenem
-  NIP-42 liefert es stillschweigend leere Ergebnisse. Lesen über
-  `subscribeEose` mit `onauth`.
-- **`subscribeEose` schliesst bei EOSE.** Für den Rückweg eines ephemeren
-  Events ist das zu früh — dort `pool.subscribe` verwenden.
-- **`useSyncExternalStore` braucht eine memoisierte `subscribe`-Funktion.** Eine
-  neue Funktionsidentität pro Render abonniert neu; startet der Store dabei
-  etwas, dreht sich die Schleife endlos.
+- **Do not overwrite `relay.onclose`.** `SimplePool.ensureRelay` installs its
+  own handler there which removes the dead connection from the registry.
+  Replacing it means the next `ensureRelay` hands back the same dead object.
+  Chain onto it instead of replacing it.
+- **Subscriptions die with their connection.** After a reconnect or a signer
+  change (AUTH is per connection) all subscriptions have to be set up again. The
+  client counts an `epoch` per relay for exactly this.
+- **`pool.get` has no `onauth` hook.** On a relay with enforced NIP-42 it
+  silently returns empty results. Read through `subscribeEose` with `onauth`.
+- **`subscribeEose` closes on EOSE.** That is too early for the echo of an
+  ephemeral event — use `pool.subscribe` there.
+- **`useSyncExternalStore` needs a memoised `subscribe` function.** A new
+  function identity per render resubscribes; if the store starts something while
+  doing so, the loop never ends.
 
-## Konventionen
+## Conventions
 
-- Doku, Kommentare und Commit-Nachrichten auf Deutsch.
-- Kind-Nummern und Tag-Namen nur in `src/nostr/kinds.ts`.
-- Vor jedem Commit: `npm run typecheck && npm run build`.
-- Platzhalter im UI benennen ihre Phase aus `docs/10-roadmap.md`.
+- Documentation, code comments and commit messages in English.
+- Kind numbers and tag names only in `src/nostr/kinds.ts`.
+- Before every commit: `npm run typecheck && npm run build && npm test`.
+- Placeholders in the UI name their phase from `docs/10-roadmap.md`.

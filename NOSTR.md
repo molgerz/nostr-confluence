@@ -1,262 +1,261 @@
-# Was dieses Projekt von Nostr benutzt
+# What this project uses from Nostr
 
-nostr confluence ist ein Wiki ohne eigenen Server: Identität ist ein npub,
-Speicher sind Relay-Events, Rechte kommen von einer NIP-29-Gruppe. Diese Datei
-listet auf, welche NIPs, Event-Kinds und Tags dabei tatsächlich im Spiel sind —
-inklusive dem, was bewusst **nicht** dem Standard folgt.
+nostr confluence is a wiki with no server of its own: identity is an npub,
+storage is relay events, permissions come from a NIP-29 group. This file lists
+which NIPs, event kinds and tags are actually involved — including everything
+that deliberately does **not** follow the spec.
 
-Legende: ✅ umgesetzt · ⚠️ umgesetzt, aber mit Einschränkung oder Eigenbau ·
-❌ bewusst (noch) nicht
+Legend: ✅ implemented · ⚠️ implemented, but with a caveat or home-grown ·
+❌ deliberately not (yet)
 
 * * *
 
-## Stand jetzt: Prototyp, nicht produktiv einsetzen
+## Right now: a prototype, not for production
 
-> **Der Space wird derzeit ausschliesslich mit der Kommandozeile `nak` erzeugt
-> — die App selbst kann keine Gruppe anlegen. Solange das so ist, gehört hier
-> nichts hinein, dessen Verlust weh tut.**
+> **A space can currently only be created from the command line with `nak` —
+> the app itself cannot create a group. As long as that is the case, do not put
+> anything in here whose loss would hurt.**
 
-Wichtig für jede/n, der das hier zum ersten Mal liest — **so soll es nicht
-bleiben**:
+Important for anyone reading this for the first time — **it is not meant to stay
+this way**:
 
-- **Die App kann keinen Space anlegen und keine Gruppen-Metadaten ändern.**
-  Beides passiert ausschliesslich über die Kommandozeile mit `nak`, gebündelt
-  in [`scripts/dev-group-seed.sh`](scripts/dev-group-seed.sh):
-  `nak group create-group` legt die Gruppe an, ein `9002`-Event öffnet sie
-  (`public`, `open`, `supported_kinds`), `nak group put-user` nimmt Leute auf.
-  In der App gibt es dafür bisher keinen einzigen Knopf.
-- **Die Beispielinhalte kommen ebenfalls aus dem Seed-Skript**, nicht aus einer
-  echten Nutzung: zwei Seiten, eine zweite Revision, zwei Wegwerf-Schlüssel.
-- **Es läuft alles lokal.** Relay auf `localhost:8080`, Anhänge auf
-  `localhost:3355`, Profile auf `localhost:10577`. Es gibt kein Deployment,
-  keine Domain, kein TLS.
+- **The app can neither create a space nor change group metadata.** Both happen
+  exclusively on the command line with `nak`, bundled in
+  [`scripts/dev-group-seed.sh`](scripts/dev-group-seed.sh):
+  `nak group create-group` creates the group, a `9002` event opens it
+  (`public`, `open`, `supported_kinds`), and `nak group put-user` adds people.
+  The app has not a single button for any of it.
+- **The sample content also comes from the seed script**, not from real usage:
+  two pages, a second revision, two throwaway keys.
+- **Everything runs locally.** Relay on `localhost:8080`, attachments on
+  `localhost:3355`, profiles on `localhost:10577`. There is no deployment, no
+  domain, no TLS.
 
-Was dagegen **nicht** (mehr) simuliert wird: die Gruppe selbst. Sie liegt auf
-einem echten NIP-29-Relay ([`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay)),
-das Mitgliedschaft und Rechte wirklich durchsetzt. Eine frühere Fassung hatte
-die Gruppen-Metadaten `39000`/`39001`/`39002` mit `nak serve` selbst signiert —
-das war eine Attrappe, in der nichts geprüft wurde, und ist bewusst rausgeflogen
-(Begründung in der [AGENTS.md](AGENTS.md)).
+What is **not** (any longer) simulated: the group itself. It lives on a real
+NIP-29 relay ([`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay))
+that genuinely enforces membership and permissions. An earlier version signed
+the group metadata `39000`/`39001`/`39002` itself using `nak serve` — that was a
+stand-in in which nothing was checked, and it was deliberately removed
+(reasoning in [AGENTS.md](AGENTS.md)).
 
-**Damit fehlt für einen echten Einsatz:** Space in der App anlegen (`9007`),
-Metadaten in der App ändern (`9002`), Beitritt anfragen (`9021`) für Relays
-ohne Auto-Join, und ein Relay unter eigener Domain mit TLS. Alles im Backlog,
-siehe [docs/10](docs/10-roadmap.md).
+**What is therefore missing for real use:** creating a space from the app
+(`9007`), changing metadata from the app (`9002`), requesting to join (`9021`)
+for relays without auto-join, and a relay under its own domain with TLS. All in
+the backlog, see [docs/10](docs/10-roadmap.md).
 
-### Warum „noch nicht produktiv"
+### Why "not for production yet"
 
-| Grund | Bedeutung im Alltag |
+| Reason | What it means in practice |
 |---|---|
-| Space nur per `nak` erzeugbar | Wer keinen Terminalzugang hat, kann keinen Space anlegen. Es gibt keinen Weg über die Oberfläche |
-| Nur lokal, kein TLS | Ein Browser lässt `ws://` von einer HTTPS-Seite nicht zu — ausserhalb von `localhost` läuft es so gar nicht |
-| Wegwerf-Schlüssel im Seed | `scripts/.dev-keys` sind Testschlüssel, keine Identitäten |
-| Eigener Kind `1818` | Das Datenmodell ist nicht in Stein gemeisselt. Ändert sich ein Tag, müssten vorhandene Events migriert werden — dafür gibt es bisher kein Werkzeug |
-| Kein E2EE | Der Relay-Betreiber liest alles im Klartext. Bewusste Entscheidung, aber sie muss zum Inhalt passen |
-| Löschen ist relativ | `9005` wirkt auf diesem Relay; Kopien anderswo bleiben |
-| Kein Backup-Ablauf | Ein Event-Export ist möglich und verifizierbar, aber nicht eingerichtet |
+| A space can only be created with `nak` | Anyone without terminal access cannot create a space. There is no path through the UI |
+| Local only, no TLS | A browser will not allow `ws://` from an HTTPS page — outside `localhost` this does not run at all |
+| Throwaway keys in the seed | `scripts/.dev-keys` are test keys, not identities |
+| Our own kind `1818` | The data model is not set in stone. If a tag changes, existing events would need migrating — and there is no tool for that yet |
+| No E2EE | The relay operator reads everything in plaintext. A deliberate decision, but it has to fit the content |
+| Deletion is relative | `9005` takes effect on this relay; copies elsewhere remain |
+| No backup procedure | An event export is possible and verifiable, but not set up |
 
 * * *
 
 ## NIPs
 
-| NIP | Status | Wofür | Code |
+| NIP | Status | What for | Code |
 |---|---|---|---|
-| [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) Basis | ✅ | Events, Filter, `REQ`/`EVENT`/`OK` | `src/nostr/client.ts` |
-| [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md) Browser-Signer | ✅ | Anmeldung über `window.nostr`, Signieren ohne Schlüssel in der App | `src/nostr/signer.ts` |
-| [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md) Relay-Info | ✅ | Relay-Name, `supported_nips`, Relay-Pubkey für `naddr` | `src/nostr/relay-status.ts` |
-| [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) bech32 | ✅ | `npub` anzeigen, npub-Eingabe in der Mitgliederverwaltung | `src/nostr/profile.ts` |
-| [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) Kommentare | ⚠️ | Kommentare (Kind 1111) — Verankerung weicht ab, siehe unten | `src/domain/comment.ts` |
-| [NIP-29](https://github.com/nostr-protocol/nips/blob/master/29.md) Gruppen | ✅ | Spaces, Mitgliedschaft, Moderation. Das Relay ist die Autorität | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
-| [NIP-31](https://github.com/nostr-protocol/nips/blob/master/31.md) `alt` | ✅ | Klartext-Beschreibung an eigenen Kinds, damit fremde Clients etwas anzeigen können | `src/nostr/publish-page.ts` |
-| [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) AUTH | ✅ | Anmeldung am Relay, automatisch bei jeder neuen Verbindung, Wiederholung nach `auth-required` | `src/nostr/client.ts` |
-| [Blossom](https://github.com/hzrd149/blossom) BUD-01/02 | ✅ | Anhänge: Blob liegt beim Server unter seinem sha256, im Event steht nur die URL | `src/nostr/blossom.ts` |
-| [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) Löschanfrage | ❌ | Gelöscht wird nur über NIP-29 (`9005`), das ein Relay wirklich durchsetzt | — |
-| [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md) Bunker | ❌ | Geplant als zweite Signer-Implementierung hinter demselben Interface | — |
-| [NIP-50](https://github.com/nostr-protocol/nips/blob/master/50.md) Suche | ❌ | Bewusst nicht: unterstützt nicht jedes Relay, und eine relay-abhängige Suche wäre offline kaputt. Gesucht wird lokal | `src/domain/search.ts` |
-| [NIP-54](https://github.com/nostr-protocol/nips/blob/master/54.md) Wiki | ⚠️ | Vorbild für die Slug-Normalisierung; `30818` als Interop-Spiegel ist geplant, nicht gebaut | `src/nostr/kinds.ts` |
-| [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md) git | ❌ | Geprüft und verworfen: Patch-Replay zum Lesen einer Seite. Die Git-Semantik steckt stattdessen im eigenen Revisions-Kind | [docs/05](docs/05-versioning-history.md) |
-| [NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md) Dateien | ❌ | Alternative zu Blossom, nicht implementiert | — |
+| [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) base | ✅ | Events, filters, `REQ`/`EVENT`/`OK` | `src/nostr/client.ts` |
+| [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md) browser signer | ✅ | Sign-in via `window.nostr`, signing without a key in the app | `src/nostr/signer.ts` |
+| [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md) relay info | ✅ | Relay name, `supported_nips`, relay pubkey for `naddr` | `src/nostr/relay-status.ts` |
+| [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) bech32 | ✅ | Displaying `npub`, accepting npub input in member administration | `src/nostr/profile.ts` |
+| [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) comments | ⚠️ | Comments (kind 1111) — the anchoring deviates, see below | `src/domain/comment.ts` |
+| [NIP-29](https://github.com/nostr-protocol/nips/blob/master/29.md) groups | ✅ | Spaces, membership, moderation. The relay is the authority | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
+| [NIP-31](https://github.com/nostr-protocol/nips/blob/master/31.md) `alt` | ✅ | Plain-text description on our own kinds so foreign clients can show something | `src/nostr/publish-page.ts` |
+| [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) AUTH | ✅ | Authenticating to the relay, automatically on every new connection, retried after `auth-required` | `src/nostr/client.ts` |
+| [Blossom](https://github.com/hzrd149/blossom) BUD-01/02 | ✅ | Attachments: the blob lives on the server under its sha256, the event only holds the URL | `src/nostr/blossom.ts` |
+| [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) deletion request | ❌ | Deleting happens only through NIP-29 (`9005`), which a relay actually enforces | — |
+| [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md) bunker | ❌ | Planned as a second signer implementation behind the same interface | — |
+| [NIP-50](https://github.com/nostr-protocol/nips/blob/master/50.md) search | ❌ | Deliberately not: not every relay supports it, and a relay-dependent search would break offline. Search runs locally | `src/domain/search.ts` |
+| [NIP-54](https://github.com/nostr-protocol/nips/blob/master/54.md) wiki | ⚠️ | The model for slug normalisation; `30818` as an interop mirror is planned, not built | `src/nostr/kinds.ts` |
+| [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md) git | ❌ | Evaluated and rejected: reading a page would require replaying patches. The Git semantics live in our own revision kind instead | [docs/05](docs/05-versioning-history.md) |
+| [NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md) file storage | ❌ | An alternative to Blossom, not implemented | — |
 
 * * *
 
-## Event-Kinds
+## Event kinds
 
-### Wir schreiben
+### What we write
 
-| Kind | Status | Bedeutung |
+| Kind | Status | Meaning |
 |---|---|---|
-| **1818** Seiten-Revision | ⚠️ eigener Kind | Der eigentliche Inhalt. Unveränderlich, mit `parent-rev` verkettet, Volltext-Snapshot. **Kein Standard** — fremde Clients zeigen das nicht an |
-| **1111** Kommentar | ⚠️ | NIP-22, aber an `(h, d)` verankert statt an einem Wurzel-Event |
-| **20817** Diagnose-Ping | ⚠️ eigener Kind | Ephemer (20000–29999), wird nicht gespeichert. Nur für „darf ich hier schreiben?" |
-| **24242** Blossom-Upload | ✅ | Autorisiert einen Datei-Upload. Kein Relay-Event, geht per HTTP an den Blossom-Server |
-| **22242** Relay-AUTH | ✅ | NIP-42, erzeugt von `nostr-tools` |
-| **9000** / **9001** Mitglied auf/abnehmen | ✅ | Antrag an das Relay, das die Admin-Eigenschaft prüft |
-| **9005** Event löschen | ✅ | Moderation; das Relay setzt die Löschung durch |
-| **9002** Metadaten ändern | ⚠️ nur im Seed | Wird von `scripts/dev-group-seed.sh` gesendet, nicht aus der App |
-| **9007** Gruppe anlegen | ⚠️ nur im Seed | Über `nak group create-group` |
+| **1818** page revision | ⚠️ our own kind | The actual content. Immutable, chained via `parent-rev`, a full-text snapshot. **Not a standard** — other clients will not render it |
+| **1111** comment | ⚠️ | NIP-22, but anchored to `(h, d)` instead of a root event |
+| **20817** diagnostic ping | ⚠️ our own kind | Ephemeral (20000–29999), not stored. Only answers "may I write here?" |
+| **24242** Blossom upload | ✅ | Authorises a file upload. Not a relay event; it goes to the Blossom server over HTTP |
+| **22242** relay AUTH | ✅ | NIP-42, produced by `nostr-tools` |
+| **9000** / **9001** add/remove member | ✅ | A request to the relay, which verifies admin status |
+| **9005** delete event | ✅ | Moderation; the relay enforces the deletion |
+| **9002** edit metadata | ⚠️ seed only | Sent by `scripts/dev-group-seed.sh`, not from the app |
+| **9007** create group | ⚠️ seed only | Via `nak group create-group` |
 
-### Wir lesen
+### What we read
 
-| Kind | Status | Bedeutung |
+| Kind | Status | Meaning |
 |---|---|---|
-| **0** Profil | ✅ | Anzeigename und Avatar, gebündelt geholt. Ein NIP-29-Relay nimmt Kind 0 nicht an — Profile kommen von anderen Relays (`VITE_PROFILE_RELAYS`) |
-| **39000** Gruppen-Metadaten | ✅ | Name, Beschreibung, Flags, `supported_kinds`. Vom Relay signiert |
-| **39001** Admins | ✅ | Rollen; steuert, wer Moderationsknöpfe sieht |
-| **39002** Mitglieder | ✅ | Mitgliederliste |
-| **39003** Rollen-Definitionen | ❌ | Wird nicht ausgewertet |
-| **30818** Wiki-Artikel | ❌ | Als Interop-Spiegel geplant |
-| **5** Löschanfrage | ❌ | Siehe NIP-09 oben |
-| **9021** Beitritt | ❌ | In offenen Gruppen unnötig: das Relay nimmt den Autor beim ersten Schreiben automatisch auf. Fallback für strengere Relays fehlt noch |
+| **0** profile | ✅ | Display name and avatar, fetched in batches. A NIP-29 relay does not accept kind 0 — profiles come from other relays (`VITE_PROFILE_RELAYS`) |
+| **39000** group metadata | ✅ | Name, description, flags, `supported_kinds`. Signed by the relay |
+| **39001** admins | ✅ | Roles; controls who sees the moderation controls |
+| **39002** members | ✅ | Member list |
+| **39003** role definitions | ❌ | Not evaluated |
+| **30818** wiki article | ❌ | Planned as an interop mirror |
+| **5** deletion request | ❌ | See NIP-09 above |
+| **9021** join | ❌ | Unnecessary in open groups: the relay adds the author on their first write. The fallback for stricter relays is still missing |
 
 * * *
 
 ## Tags
 
-| Tag | Wo | Bedeutung |
+| Tag | Where | Meaning |
 |---|---|---|
-| `h` | überall | Gruppen-ID. **Daran prüft das Relay die Schreibberechtigung** — das ist unser gesamtes Rechtesystem |
-| `d` | 1818, 1111 | Normalisierter Seiten-Slug. Einbuchstabig, also relay-indexiert und filterbar |
-| `title` | 1818 | Anzeigetitel |
-| `parent-rev` | 1818 | Vorgänger-Revision. Keiner = erste Revision, zwei = Zusammenführung |
-| `page-parent` | 1818 | Slug der Elternseite; daraus entsteht der Sidebar-Baum |
-| `summary` | 1818 | Änderungsnotiz, entspricht der Commit-Message |
-| `content-hash` | 1818 | sha256 des Inhalts |
-| `restore-of` | 1818 | Wiederherstellung verweist auf ihre Vorlage |
-| `m` | 1818 | Immer `text/markdown` |
-| `alt` | 1818, 1111 | NIP-31-Fallback für fremde Clients |
-| `K` / `k` / `e` / `p` | 1111 | NIP-22: Art des Wurzelobjekts, Art des Bezugs, Elternkommentar, dessen Autor |
-| `supported_kinds` | 39000 (gelesen) | Kinds, die die Gruppe annimmt. Fehlt `1818`, warnt die App **vor** dem Publish |
-| `previous` | — | ❌ NIP-29-Timeline-Referenzen werden **nicht** geschrieben. `groups_relay` prüft sie ohnehin nicht |
+| `h` | everywhere | Group id. **This is the tag the relay checks write permission against** — it is our entire permission system |
+| `d` | 1818, 1111 | Normalised page slug. Single-letter, so relay-indexed and filterable |
+| `title` | 1818 | Display title |
+| `parent-rev` | 1818 | Preceding revision. None = first revision, two = a merge |
+| `page-parent` | 1818 | Slug of the parent page; the sidebar tree is built from it |
+| `summary` | 1818 | Change note, the equivalent of a commit message |
+| `content-hash` | 1818 | sha256 of the content |
+| `restore-of` | 1818 | A restore points at the revision it copied |
+| `m` | 1818 | Always `text/markdown` |
+| `alt` | 1818, 1111 | NIP-31 fallback for foreign clients |
+| `K` / `k` / `e` / `p` | 1111 | NIP-22: kind of the root object, kind of the direct parent, parent comment, its author |
+| `supported_kinds` | 39000 (read) | Kinds the group accepts. If `1818` is missing, the app warns **before** publishing |
+| `previous` | — | ❌ NIP-29 timeline references are **not** written. `groups_relay` does not check them anyway |
 
-### Beispiel: eine Seiten-Revision
+### Example: a page revision
 
 ```json
 {
   "kind": 1818,
-  "pubkey": "<npub der Autorin, hex>",
-  "content": "# Onboarding\n\nWillkommen im Team …",
+  "pubkey": "<author's npub, hex>",
+  "content": "# Onboarding\n\nWelcome to the team …",
   "tags": [
     ["h", "engineering"],
     ["d", "onboarding"],
     ["title", "Onboarding"],
     ["m", "text/markdown"],
     ["content-hash", "<sha256>"],
-    ["alt", "Wiki-Seite \"Onboarding\" im Space engineering"],
-    ["page-parent", "handbuch"],
-    ["summary", "Abschnitt Zugänge ergänzt"],
-    ["parent-rev", "<id der Vorgänger-Revision>"]
+    ["alt", "Wiki page \"Onboarding\" in space engineering"],
+    ["page-parent", "handbook"],
+    ["summary", "added an access section"],
+    ["parent-rev", "<id of the preceding revision>"]
   ]
 }
 ```
 
-Eine Seite ist damit **kein einzelnes Event**, sondern das Paar
-`(Gruppe, Slug)` plus die Kette ihrer Revisionen. Warum das so sein muss:
-adressierbare Events (`30xxx`) gehören immer genau einem Schlüsselpaar — zwei
-Leute könnten dieselbe Seite sonst gar nicht bearbeiten. Ausführlich in
-[docs/02](docs/02-data-model-events.md).
+A page is therefore **not a single event** but the pair `(group, slug)` plus the
+chain of its revisions. Why it has to be that way: addressable events (`30xxx`)
+always belong to exactly one key pair — two people could not otherwise edit the
+same page. In detail in [docs/02](docs/02-data-model-events.md).
 
 * * *
 
-## Was das Relay können muss
+## What the relay has to support
 
-| Anforderung | Warum |
+| Requirement | Why |
 |---|---|
-| NIP-29 (`supported_nips` enthält 29) | Ohne echte Gruppenlogik sind Mitgliedschaft und Rechte Attrappe |
-| NIP-42 | Private Gruppen und Schreibzugriff hängen daran |
-| `1818` und `1111` in `supported_kinds` der Gruppe | Sonst lehnt das Relay die Seiten ab, obwohl die Person Mitglied ist |
-| Gruppe auf `public` + `open` (kein `private`, kein `closed`) | Damit Lesen ohne Anmeldung geht und jede/r schreiben darf |
+| NIP-29 (`supported_nips` contains 29) | Without real group logic, membership and permissions are a stand-in |
+| NIP-42 | Private groups and write access depend on it |
+| `1818` and `1111` in the group's `supported_kinds` | Otherwise the relay rejects pages even though the person is a member |
+| The group set to `public` + `open` (no `private`, no `closed`) | So that reading works without signing in and anyone may write |
 
-Geprüft und empfohlen: [`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay).
-`nak serve` ist **kein** NIP-29-Relay — Details und die Fallstricke stehen in
-[docs/08](docs/08-relay-setup.md) und der [AGENTS.md](AGENTS.md).
+Verified and recommended: [`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay).
+`nak serve` is **not** a NIP-29 relay — details and pitfalls are in
+[docs/08](docs/08-relay-setup.md) and [AGENTS.md](AGENTS.md).
 
 ```bash
-./scripts/dev-relay-up.sh     # Relay auf ws://localhost:8080
-./scripts/dev-group-seed.sh   # Gruppe und Beispielseiten, ausschliesslich via nak group
+./scripts/dev-relay-up.sh     # relay on ws://localhost:8080
+./scripts/dev-group-seed.sh   # group and sample pages, exclusively via nak group
 ```
 
 * * *
 
-## Mit `nak` nachsehen
+## Inspecting things with `nak`
 
-Wichtig gegen dieses Relay: `--fpa` (force-pre-auth), nicht `--auth` — es
-filtert unauthentifizierte Leser stillschweigend heraus, statt sie abzulehnen.
+Important against this relay: use `--fpa` (force-pre-auth), not `--auth` — it
+filters out unauthenticated readers silently instead of rejecting them.
 
 ```bash
 source scripts/.dev-keys
 
-# alle Seiten-Revisionen der Gruppe
+# every page revision in the group
 nak req --fpa --sec "$ALICE_SEC" -k 1818 -t h=engineering ws://localhost:8080
 
-# eine bestimmte Seite mit ihrer Kette
+# one specific page with its chain
 nak req --fpa --sec "$ALICE_SEC" -k 1818 -t d=onboarding ws://localhost:8080
 
-# den vom Relay erzeugten Gruppenzustand
+# the group state produced by the relay
 nak req --fpa --sec "$ALICE_SEC" -k 39000 -k 39001 -k 39002 ws://localhost:8080
 
-# Kommentare
+# comments
 nak req --fpa --sec "$ALICE_SEC" -k 1111 -t h=engineering ws://localhost:8080
 
-# eine Seite von Hand schreiben
-nak event --fpa --sec "$ALICE_SEC" -k 1818 -h engineering -d notizen \
-  -t title=Notizen -t m=text/markdown -c '# Notizen' ws://localhost:8080
+# write a page by hand
+nak event --fpa --sec "$ALICE_SEC" -k 1818 -h engineering -d notes \
+  -t title=Notes -t m=text/markdown -c '# Notes' ws://localhost:8080
 ```
 
-`nak group info|members|edit-metadata` funktioniert gegen dieses Relay **nicht**
-(sein interner Pool authentifiziert nicht, `info` hängt). Deshalb rohe `req`.
+`nak group info|members|edit-metadata` does **not** work against this relay (its
+internal pool does not authenticate, and `info` hangs). Hence the raw `req`.
 
 * * *
 
-## Konfiguration
+## Configuration
 
-| Variable | Default | Bedeutung |
+| Variable | Default | Meaning |
 |---|---|---|
-| `VITE_RELAY_URL` | `ws://localhost:8080` | Das Gruppen-Relay. Es ist Teil der Space-Identität (`host'gruppe`) |
-| `VITE_PROFILE_RELAYS` | leer | Relays für Kind 0. Leer heisst: die App zeigt npubs statt Namen — ehrlicher als ein erfundener Name |
-| `VITE_BLOSSOM_SERVER` | leer | Blossom-Server für Anhänge. Leer heisst: der Anhang-Knopf ist deaktiviert |
+| `VITE_RELAY_URL` | `ws://localhost:8080` | The group relay. It is part of a space's identity (`host'group`) |
+| `VITE_PROFILE_RELAYS` | empty | Relays for kind 0. Empty means the app shows npubs instead of names — more honest than an invented name |
+| `VITE_BLOSSOM_SERVER` | empty | Blossom server for attachments. Empty means the attachment button is disabled |
 
 * * *
 
-## Abweichungen und Grenzen
+## Deviations and limits
 
-Ehrlich benannt, weil sie beim Weiterbauen wichtig sind:
+Named honestly, because they matter when building on top of this:
 
-- ⚠️ **`1818` ist kein Standard-Kind.** Der Inhalt ist für andere
-  Nostr-Clients unsichtbar. Der `alt`-Tag ist der einzige Trost. Ein
-  `30818`-Spiegel für NIP-54-Wiki-Clients ist geplant.
-- ⚠️ **Kommentare sind an `(h, d)` verankert**, nicht per `A`/`E` an einem
-  Wurzel-Event. Ein Verweis auf eine Revision wäre nach der nächsten
-  Bearbeitung verwaist ([docs/02](docs/02-data-model-events.md)).
-- ⚠️ **`previous`-Timeline-Referenzen fehlen.** Ein Relay kann Events
-  verschweigen; erkennbar wären Lücken nur über diese Tags. `groups_relay`
-  prüft sie ohnehin nicht.
-- ⚠️ **Zeilenherkunft folgt dem ersten Vorgänger.** Bei einer
-  Merge-Revision erscheinen die Zeilen des zweiten Zweigs als von der
-  Zusammenführung eingeführt — wie `git blame` ohne Zusatzoptionen.
-- ⚠️ **Rechte gelten pro Gruppe, nicht pro Seite.** NIP-29 kennt nichts
-  Feineres. Eine „gesperrte Seite" wäre reine UI-Kosmetik, deshalb gibt es sie
-  nicht ([docs/04](docs/04-permissions-nip29.md)).
-- ⚠️ **Kein E2EE.** Eine `private` Gruppe ist zugriffsbeschränkt, nicht
-  verschlüsselt: der Relay-Betreiber liest mit. Bewusste Entscheidung
+- ⚠️ **`1818` is not a standard kind.** The content is invisible to other Nostr
+  clients. The `alt` tag is the only consolation. A `30818` mirror for NIP-54
+  wiki clients is planned.
+- ⚠️ **Comments are anchored to `(h, d)`**, not to a root event via `A`/`E`. A
+  reference to one revision would dangle after the next edit
+  ([docs/02](docs/02-data-model-events.md)).
+- ⚠️ **`previous` timeline references are missing.** A relay can withhold
+  events; gaps would only be detectable through those tags. `groups_relay` does
+  not check them anyway.
+- ⚠️ **Line origin follows the first parent.** In a merge revision the lines of
+  the second branch appear as introduced by the merge — like `git blame` without
+  extra options.
+- ⚠️ **Permissions apply per group, not per page.** NIP-29 knows nothing finer.
+  A "locked page" would be pure UI cosmetics, so it does not exist
+  ([docs/04](docs/04-permissions-nip29.md)).
+- ⚠️ **No E2EE.** A `private` group is access-restricted, not encrypted: the
+  relay operator reads along. A deliberate decision
   ([docs/09](docs/09-security-privacy.md)).
-- ⚠️ **Löschen ist relativ.** `9005` wirkt auf diesem Relay; Kopien anderswo
-  bleiben.
-- ⚠️ **`created_at` ist manipulierbar**, weil der Client ihn setzt. Für die
-  Reihenfolge zählt primär die `parent-rev`-Kette, die Uhrzeit ist Anzeige.
+- ⚠️ **Deletion is relative.** `9005` takes effect on this relay; copies
+  elsewhere remain.
+- ⚠️ **`created_at` is manipulable**, because the client sets it. Ordering
+  primarily follows the `parent-rev` chain; the clock is for display.
 
 * * *
 
-## Wo was liegt
+## Where things live
 
-| Thema | Datei |
+| Topic | File |
 |---|---|
-| Alle Kinds und Tags an einer Stelle | `src/nostr/kinds.ts` |
-| Relay-Verbindung, NIP-42, Publish mit Retry | `src/nostr/client.ts` |
-| Signer-Interface (NIP-07, später NIP-46) | `src/nostr/signer.ts` |
-| Revisionen lesen, Head auflösen, Seitenbaum | `src/domain/revision.ts`, `src/domain/pages.ts` |
-| 3-Wege-Merge | `src/domain/merge.ts` |
-| Gruppen-Zustand und Moderation | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
-| Anhänge | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
+| All kinds and tags in one place | `src/nostr/kinds.ts` |
+| Relay connection, NIP-42, publish with retry | `src/nostr/client.ts` |
+| Signer interface (NIP-07, NIP-46 later) | `src/nostr/signer.ts` |
+| Reading revisions, head resolution, page tree | `src/domain/revision.ts`, `src/domain/pages.ts` |
+| Three-way merge | `src/domain/merge.ts` |
+| Group state and moderation | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
+| Attachments | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 
-Die Begründung hinter jeder Entscheidung steht in [docs/](docs/README.md),
-die Arbeitsregeln für dieses Repo in [AGENTS.md](AGENTS.md).
+The reasoning behind every decision is in [docs/](docs/README.md), the working
+rules for this repo in [AGENTS.md](AGENTS.md).

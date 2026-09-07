@@ -1,59 +1,59 @@
-# 03 — Login: NIP-07 und NIP-42
+# 03 — Sign-in: NIP-07 and NIP-42
 
-## Was NIP-07 ist
+## What NIP-07 is
 
-Eine Browser-Extension (Alby, nos2x, Nostr Connect …) stellt `window.nostr`
-bereit. Die App ruft daran:
+A browser extension (Alby, nos2x, Nostr Connect …) provides `window.nostr`. The
+app calls into it:
 
-| Aufruf | Zweck |
+| Call | Purpose |
 |---|---|
-| `getPublicKey()` | Pubkey hex → Identität, daraus `npub…` per NIP-19 |
-| `signEvent(event)` | Signiert ein Event. Der private Schlüssel verlässt die Extension nie |
-| `getRelays()` | Vorschlagsliste von Relays der Nutzerin (optional) |
-| `nip44.encrypt/decrypt` | Erst relevant, wenn wir private Inhalte verschlüsseln (nicht MVP) |
+| `getPublicKey()` | Pubkey in hex → identity, rendered as `npub…` via NIP-19 |
+| `signEvent(event)` | Signs an event. The private key never leaves the extension |
+| `getRelays()` | The user's suggested relay list (optional) |
+| `nip44.encrypt/decrypt` | Only relevant once we encrypt private content (not in the MVP) |
 
-**Entscheidung:** Die App speichert nie einen privaten Schlüssel und bietet auch
-kein Feld dafür an. Alles Signieren geht durch die Extension.
+**Decision:** the app never stores a private key and offers no field for one.
+All signing goes through the extension.
 
-Umgesetzt ist die Sitzung als **nur der Pubkey** in `localStorage`
-(`nc-pubkey`) — der geplante Zeitstempel entfiel, weil es keinen Ablauf gibt,
-den er steuern könnte: eine Sitzung gilt, solange die Extension denselben
-Account liefert, und genau das wird vor jedem Schreibvorgang geprüft.
+The session is implemented as **just the pubkey** in `localStorage`
+(`nc-pubkey`) — the originally planned timestamp was dropped because there is no
+expiry for it to drive: a session is valid as long as the extension reports the
+same account, and exactly that is checked before every write.
 
-## Ablauf
+## The flow
 
-1. **Erkennen** — Nach dem Mount kurz auf `window.nostr` warten (Extensions
-   injizieren asynchron; ~500 ms Polling). Fehlt sie: Hinweisseite mit Link auf
-   Alby/nos2x statt Login-Button ins Leere.
-2. **Identität** — `getPublicKey()`. Das löst den Extension-Dialog aus, muss also
-   aus einer Nutzeraktion (Klick) kommen, nicht beim Seitenladen.
-3. **Profil** — `kind 0` der Nutzerin laden für Name und Avatar. Fällt zurück auf
-   `npub1abc…xyz` (gekürzt), wenn kein Profil existiert.
-4. **Relay-AUTH (NIP-42)** — Das NIP-29-Relay schickt beim Verbinden
-   `["AUTH", "<challenge>"]`. Der Client signiert ein `kind 22242`-Event mit
-   `relay`- und `challenge`-Tag und antwortet mit `["AUTH", <event>]`. Erst
-   danach darf er in Gruppen schreiben und private Gruppen lesen.
-5. **Session aktiv** — Gruppenliste laden (`39002`, gefiltert auf den eigenen
-   Pubkey → "meine Spaces"), Sidebar rendern.
+1. **Detect** — after mounting, wait briefly for `window.nostr` (extensions
+   inject asynchronously; poll for ~500 ms). If it is missing, show a hint page
+   linking to Alby/nos2x instead of a login button that does nothing.
+2. **Identity** — `getPublicKey()`. This opens the extension's dialog, so it
+   must come from a user action (a click), not from page load.
+3. **Profile** — load the user's `kind 0` for name and avatar. Falls back to a
+   shortened `npub1abc…xyz` when no profile exists.
+4. **Relay AUTH (NIP-42)** — on connect the NIP-29 relay sends
+   `["AUTH", "<challenge>"]`. The client signs a `kind 22242` event carrying
+   `relay` and `challenge` tags and answers with `["AUTH", <event>]`. Only then
+   may it write to groups and read private ones.
+5. **Session active** — load the group list (`39002`, filtered by the user's own
+   pubkey → "my spaces") and render the sidebar.
 
-## Praktische Fallen
+## Practical pitfalls
 
-- **Zweiter Signaturdialog**: `getPublicKey()` und AUTH sind zwei Dialoge.
-  Alby merkt sich Berechtigungen pro Domain; trotzdem im UI erklären, warum
-  zweimal gefragt wird.
-- **AUTH-Wiederholung**: Bei Reconnect kommt eine neue Challenge. Die
-  Datenschicht muss AUTH automatisch erneut abwickeln, sonst schlägt der nächste
-  Publish still fehl. Publish-Fehler (`OK false`, Grund `auth-required`) müssen
-  in einen Retry nach AUTH laufen.
-- **Mehrere Accounts**: Extension-Wechsel während der Session → Pubkey vor jedem
-  Publish erneut abfragen und mit der Session vergleichen. Bei Abweichung
-  Session neu aufsetzen statt fremd signieren.
-- **Read-only ohne Login**: Öffentliche Spaces sollen ohne Extension lesbar sein.
-  Also: Login nur für Schreibaktionen erzwingen, Leseansicht funktioniert anonym.
+- **A second signing dialog**: `getPublicKey()` and AUTH are two dialogs. Alby
+  remembers permissions per domain, but the UI should still explain why it asks
+  twice.
+- **Repeating AUTH**: a reconnect brings a new challenge. The data layer has to
+  perform AUTH again automatically, otherwise the next publish fails silently.
+  Publish failures (`OK false` with reason `auth-required`) must run into a
+  retry after AUTH.
+- **Multiple accounts**: if the extension switches accounts mid-session, the
+  pubkey must be fetched again before every publish and compared with the
+  session. On a mismatch, restart the session rather than sign as someone else.
+- **Read-only without signing in**: public spaces should be readable without an
+  extension. So only writes require signing in; reading works anonymously.
 
-## Später: NIP-46
+## Later: NIP-46
 
-NIP-46 (Bunker/Remote-Signer) erlaubt Login ohne Extension, z. B. am Handy. Das
-Interface ist dasselbe (`getPublicKey`, `signEvent`), daher: Signer hinter einem
-Interface `Signer` abstrahieren, damit NIP-46 eine zweite Implementierung ist und
-kein Umbau.
+NIP-46 (bunker / remote signer) allows signing in without an extension, for
+example on a phone. The interface is the same (`getPublicKey`, `signEvent`),
+which is why the signer sits behind a `Signer` interface — NIP-46 then becomes a
+second implementation rather than a rewrite.

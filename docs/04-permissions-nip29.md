@@ -1,135 +1,138 @@
-# 04 — Rechte: NIP-29-Gruppen
+# 04 — Permissions: NIP-29 groups
 
-## Grundprinzip
+## The basic principle
 
-Bei NIP-29 ist **das Relay die Autorität**. Es kennt die Mitglieder, prüft bei
-jedem eingehenden Event mit `h`-Tag, ob der Absender schreiben darf, und lehnt
-sonst mit `OK false` ab. Der Client setzt keine Rechte durch — er zeigt nur an,
-was er weiß, und rechnet damit, abgelehnt zu werden.
+With NIP-29 **the relay is the authority**. It knows the members, checks every
+incoming event carrying an `h` tag to see whether the sender may write, and
+otherwise rejects it with `OK false`. The client enforces nothing — it only
+displays what it knows and expects to be rejected.
 
-Eine Gruppe wird identifiziert als `<relay-host>'<group-id>`, z. B.
-`relay.example.com'engineering`. Das Relay gehört zur Identität des Spaces.
+A group is identified as `<relay-host>'<group-id>`, for example
+`relay.example.com'engineering`. The relay is part of the space's identity.
 
-## Relay-generierte Zustandsevents (nur lesen)
+## Relay-generated state events (read only)
 
-| Kind | Inhalt | Nutzung im UI |
+| Kind | Contents | Use in the UI |
 |---|---|---|
-| `39000` | Name, Bild, `about`, Flags, `supported_kinds` | Space-Kopf in der Sidebar, Sichtbarkeits-Badge |
-| `39001` | Admins mit Rollen | "Space-Einstellungen", Moderations-Buttons nur für Admins |
-| `39002` | Mitglieder | Mitgliederliste, Autor-Badge "Mitglied" an Revisionen |
-| `39003` | Verfügbare Rollen | Rollenauswahl beim Einladen |
+| `39000` | Name, picture, `about`, flags, `supported_kinds` | Space header in the sidebar, visibility badge |
+| `39001` | Admins with roles | Moderation controls shown only to admins |
+| `39002` | Members | Member list, "member" badge on revision authors |
+| `39003` | Available roles | Role selection when inviting |
 
-Diese Events sind vom Relay signiert, nicht von Nutzern. Sie sind Anzeige- und
-Filtergrundlage, nicht Beweis.
+These events are signed by the relay, not by users. They are a basis for display
+and filtering, not proof.
 
-## Nutzer-Events zur Verwaltung
+## User events for administration
 
-| Kind | Aktion | Wer |
+| Kind | Action | Who |
 |---|---|---|
-| `9007` | Gruppe erstellen | wer darf (relayabhängig) |
-| `9002` | Metadaten ändern (Name, Bild, Flags) | Admin |
-| `9000` | Mitglied hinzufügen / Rolle setzen | Admin |
-| `9001` | Mitglied entfernen | Admin |
-| `9005` | Event löschen (Moderation) | Admin |
-| `9009` | Einladungscode erzeugen | Admin |
-| `9021` | Beitritt anfragen (optional mit Code) | jede/r |
-| `9022` | Austritt | Mitglied |
+| `9007` | Create group | whoever is allowed (relay-dependent) |
+| `9002` | Edit metadata (name, picture, flags) | admin |
+| `9000` | Add member / set role | admin |
+| `9001` | Remove member | admin |
+| `9005` | Delete event (moderation) | admin |
+| `9009` | Create invite code | admin |
+| `9021` | Request to join (optionally with a code) | anyone |
+| `9022` | Leave | member |
 
-### Flags in `39000` (Stand der aktuellen NIP-29-Implementierung)
+### Flags in `39000` (as of the current NIP-29 implementation)
 
-Geprüft an `fiatjaf.com/nostr/nip29` (2026-09-07): die Metadaten kennen die
-Tags `private`, `restricted`, `closed`, `hidden`, `livekit`, `supported_kinds`
-sowie `parent`/`child` für verschachtelte Gruppen.
+Checked against `fiatjaf.com/nostr/nip29` (2026-09-07): the metadata knows the
+tags `private`, `restricted`, `closed`, `hidden`, `livekit`, `supported_kinds`
+as well as `parent`/`child` for nested groups.
 
-| Tag | Wirkung bei Anwesenheit | Fehlt der Tag |
+| Tag | Effect when present | When the tag is missing |
 |---|---|---|
-| `restricted` | Nur Mitglieder dürfen publishen | **Nicht-Mitglieder dürfen publishen** |
-| `closed` | Beitritt nur per Einladung/Freigabe | Jede/r darf beitreten |
-| `private` | Inhalt nur für Mitglieder lesbar | Inhalt öffentlich lesbar |
-| `hidden` | Gruppe nicht in Relay-Listen sichtbar | Gruppe auffindbar |
-| `supported_kinds` | Liste der akzeptierten Kinds | Unspezifiziert |
+| `restricted` | Only members may publish | **Non-members may publish** |
+| `closed` | Joining requires an invite or approval | Anyone may join |
+| `private` | Content readable by members only | Content publicly readable |
+| `hidden` | Group not listed by the relay | Group is discoverable |
+| `supported_kinds` | List of accepted kinds | Unspecified |
 
-Am laufenden `groups_relay` am 2026-09-07 nachgemessen:
+Measured against a running `groups_relay` on 2026-09-07:
 
-- Eine neu angelegte Gruppe ist **`private` + `closed`** — nicht offen. Das
-  Öffnen ist ein eigener Schritt.
-- `apply_tags` im Relay ist **additiv**: ein Flag ändert sich nur, wenn der
-  entsprechende Tag im `9002` vorhanden ist. `public` und `open` müssen also
-  ausdrücklich gesendet werden, sonst bleibt die Gruppe privat.
-- Solange eine Gruppe `private` ist, liefert das Relay ihre Metadaten an
-  unauthentifizierte Leser **gar nicht** aus (Log: "User is not authenticated,
-  cannot see event … kind 39000") — ohne Fehlermeldung, einfach leer.
-- Ist sie `public`, gilt im Relay-Code "Public groups are always visible":
-  Lesen ohne Anmeldung funktioniert. Damit hält die Zusage aus
-  [06](06-ui-information-architecture.md), dass Lesen keinen Login braucht —
-  aber nur für öffentliche Spaces.
+- A newly created group is **`private` + `closed`** — not open. Opening it is a
+  separate step.
+- `apply_tags` in the relay is **additive**: a flag only changes when the
+  corresponding tag is present in the `9002`. So `public` and `open` have to be
+  sent explicitly, otherwise the group stays private.
+- While a group is `private`, the relay does **not** serve its metadata to
+  unauthenticated readers at all (log: "User is not authenticated, cannot see
+  event … kind 39000") — no error, simply empty.
+- Once it is `public`, the relay code says "Public groups are always visible":
+  reading without signing in works. That keeps the promise from
+  [06](06-ui-information-architecture.md) that reading needs no login — but only
+  for public spaces.
 
-Für uns wichtig: **weglassen** ist die offene Variante. Für Anforderung 4 setzen
-wir also weder `restricted` noch `closed` noch `private`. Und `supported_kinds`
-sollte `1818` enthalten — die App liest den Tag und warnt sonst.
+The important part for us: **leaving a flag out** is the open variant. So for
+requirement 4 we set neither `restricted` nor `closed` nor `private`. And
+`supported_kinds` should contain `1818` — the app reads the tag and warns
+otherwise.
 
-`parent`/`child` erlauben verschachtelte Gruppen. Das ist eine mögliche
-Alternative zu unserem seitenbasierten Baum, wenn Spaces später Unter-Spaces
-bekommen sollen. **Offen**, bewusst nicht im MVP.
+`parent`/`child` allow nested groups. That is a possible alternative to our
+page-based tree should spaces ever need sub-spaces. **Open**, deliberately not
+in the MVP.
 
-## Anforderung 4: "grundsätzlich darf jeder bearbeiten"
+## Requirement 4: "anyone may edit, in principle"
 
-Das ist im NIP-29-Modell eine Flag-Kombination:
+In the NIP-29 model this is a combination of flags:
 
-- **`open`** — Beitrittsanfragen (`9021`) werden automatisch angenommen. Wer die
-  Gruppe kennt, wird Mitglied und darf damit schreiben.
-- **`public`** — Die Gruppeninhalte sind ohne Mitgliedschaft lesbar.
+- **`open`** — join requests (`9021`) are accepted automatically. Whoever knows
+  the group becomes a member and may therefore write.
+- **`public`** — the group's content is readable without membership.
 
-**Entscheidung MVP:** Space ist `public` + `open`. Effekt: jede/r mit npub kann
-lesen, und mit einem Klick ("Diesem Space beitreten") schreiben. Kein Admin muss
-freischalten.
+**MVP decision:** the space is `public` + `open`. The effect: anyone with an
+npub can read, and can write after a single click ("join this space"). No admin
+has to approve anything.
 
-**Geprüft am Quellcode von `verse-pbc/groups_relay` (2026-09-07):** In einer
-`open`-Gruppe wird der Autor beim Posten automatisch Mitglied ("Open groups
-auto-join the author when posting"), und `39002` wird dabei aktualisiert. Ein
-expliziter `9021`-Beitritt ist dort also nicht nötig — Schreiben genügt.
+**Checked against the source of `verse-pbc/groups_relay` (2026-09-07):** in an
+`open` group the author is added as a member when posting ("Open groups
+auto-join the author when posting"), and `39002` is updated in the process. An
+explicit `9021` join is therefore unnecessary there — writing is enough.
 
-Umgesetzt ist bisher nur der Auto-Join-Fall: die App publisht direkt, und in
-einer offenen Gruppe nimmt das Relay die Autorin dabei auf. Eine Ablehnung
-zeigt sie mit dem Relay-Grund an.
+Only the auto-join case is implemented so far: the app publishes directly, and
+in an open group the relay adds the author while doing so. A rejection is shown
+with the relay's own reason.
 
-**Offen** für Relays ohne Auto-Join: bei einer Ablehnung mit
-Mitgliedschaftsgrund ein `9021` senden, auf das neue `39002` warten und erneut
-publishen — samt UI-Zuständen "Beitritt läuft" und "Beitritt abgelehnt".
+**Open** for relays without auto-join: on a rejection citing membership, send a
+`9021`, wait for the new `39002` and publish again — including the UI states
+"joining" and "join rejected".
 
-## Umgesetzt in der App
+## What is implemented in the app
 
-Die Space-Übersicht zeigt die Mitgliederliste aus `39002` mit den Rollen aus
-`39001`. Admins bekommen dort zusätzlich ein Feld, um jemanden per npub oder
-Hex aufzunehmen (`9000`), und pro Mitglied einen Knopf zum Entfernen (`9001`).
-In Historie und Kommentaren können Admins einzelne Events entfernen (`9005`),
-mit Rückfrage, weil das Relay diese Löschung wirklich durchsetzt.
+The space overview shows the member list from `39002` with the roles from
+`39001`. Admins additionally get a field to add someone by npub or hex (`9000`)
+and a remove button per member (`9001`). In the history and in comments, admins
+can remove individual events (`9005`), with a confirmation prompt because the
+relay really enforces that deletion.
 
-Alle diese Aktionen sind **Anträge**: Das Relay prüft die Admin-Eigenschaft und
-lehnt sonst ab. Die App korrigiert die Mitgliederliste deshalb nie lokal,
-sondern zeigt, was das Relay als neues `39002` zurückschickt.
+All of these actions are **requests**: the relay checks who is an admin and
+rejects otherwise. That is why the app never corrects the member list locally —
+it shows whatever the relay sends back as the new `39002`.
 
-## Rechte-Stufen, die wir abbilden
+## The permission levels we model
 
-| Stufe | Wie durchgesetzt |
+| Level | How it is enforced |
 |---|---|
-| Lesen | Relay: bei `private` nur Mitglieder (nach NIP-42-AUTH) |
-| Schreiben / Bearbeiten | Relay: Absender muss Mitglied sein (`h`-Tag-Prüfung) |
-| Moderieren (löschen, Mitglieder) | Relay: Absender muss Admin sein (`39001`) |
-| Seiten sperren ("nur Admins dürfen diese Seite ändern") | **nicht** relay-durchsetzbar |
+| Reading | Relay: for `private`, members only (after NIP-42 AUTH) |
+| Writing / editing | Relay: the sender must be a member (`h` tag check) |
+| Moderating (delete, members) | Relay: the sender must be an admin (`39001`) |
+| Locking a page ("only admins may change this page") | **not** enforceable by the relay |
 
-Der letzte Punkt ist eine echte Grenze: NIP-29 kennt Rechte pro Gruppe, nicht
-pro Seite. Eine "gesperrte Seite" wäre nur eine UI-Konvention, die ein anderer
-Client ignorieren kann. **Entscheidung:** Wir bauen keine Seitensperre und sagen
-das offen, statt Scheinsicherheit anzuzeigen. Wer Seiten mit engeren Rechten
-braucht, bekommt einen eigenen Space.
+The last row is a genuine limit: NIP-29 knows permissions per group, not per
+page. A "locked page" would only be a UI convention that another client can
+ignore. **Decision:** we do not build page locking and say so openly instead of
+displaying fake security. Anyone who needs pages with tighter permissions gets
+their own space.
 
-## Was ein bösartiges Relay kann
+## What a malicious relay can do
 
-- Events verschweigen (Historie unvollständig zeigen) → mitigiert durch
-  `previous`-Timeline-Referenzen: fehlende Vorgänger sind erkennbar, und die App
-  zeigt "Historie unvollständig" statt stillschweigend zu kürzen.
-- Mitgliederlisten fälschen → betrifft nur die Anzeige; Autorschaft der
-  Revisionen bleibt durch die Signatur unangreifbar.
-- Nicht möglich: Inhalte im Namen einer anderen Person schreiben. Ohne deren
-  privaten Schlüssel gibt es keine gültige Signatur.
+- Withhold events (show an incomplete history). NIP-29 timeline references
+  (`previous`) would make gaps detectable, but we do not write that tag yet and
+  `groups_relay` does not verify it — so this is currently only mitigated by the
+  client noticing missing links in the `parent-rev` chain
+  ([09](09-security-privacy.md)).
+- Forge member lists → affects display only; authorship of revisions stays
+  unassailable because of the signature.
+- Not possible: writing content in someone else's name. Without their private
+  key there is no valid signature.
