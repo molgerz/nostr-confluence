@@ -217,7 +217,7 @@ class NostrClient {
       const [promise] = this.pool.publish([url], event, { onauth })
       const message = await promise
       void this.refreshAuth(url)
-      return { ok: true, message: message || 'akzeptiert' }
+      return { ok: true, message: message || 'accepted' }
     } catch (error) {
       void this.refreshAuth(url)
       return { ok: false, reason: describeError(error) }

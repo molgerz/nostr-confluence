@@ -103,7 +103,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (!provider) {
         setExtension('missing')
         setSession({ status: 'anonymous' })
-        setError('Keine NIP-07-Extension gefunden.')
+        setError('No NIP-07 extension found.')
         return
       }
       setExtension('available')
@@ -162,6 +162,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
 export function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext)
-  if (!ctx) throw new Error('useSession braucht einen SessionProvider')
+  if (!ctx) throw new Error('useSession needs a SessionProvider')
   return ctx
 }

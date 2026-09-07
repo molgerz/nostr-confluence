@@ -158,14 +158,14 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
           {replyTo ? (
             <div className="flex items-center gap-2 text-xs text-fg-subtle">
               <span>
-                Antwort an <span className="font-mono">{shortNpub(toNpub(replyTo.author))}</span>
+                Replying to <span className="font-mono">{shortNpub(toNpub(replyTo.author))}</span>
               </span>
               <button
                 type="button"
                 onClick={() => setReplyTo(null)}
                 className="rounded-md border border-line px-2 py-0.5 text-fg-muted"
               >
-                abbrechen
+                cancel
               </button>
             </div>
           ) : null}
@@ -190,9 +190,9 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
       ) : (
         <p className="text-xs text-fg-subtle">
           <Link to="/login" className="text-accent-fg underline">
-            Anmelden
+            Sign in
           </Link>{' '}
-          zum Kommentieren — Lesen geht ohne.
+          to comment — reading works without.
         </p>
       )}
     </section>
