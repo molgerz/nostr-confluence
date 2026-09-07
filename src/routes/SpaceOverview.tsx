@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { WriteCheck } from '../ui/WriteCheck'
+import { MemberAdmin } from '../ui/MemberAdmin'
 import { useSession } from '../session/session'
 import { KINDS } from '../nostr/kinds'
 
@@ -96,32 +97,13 @@ export function SpaceOverview() {
         )}
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-fg">Mitglieder ({space.members.length})</h2>
-        <ul className="space-y-1 text-xs">
-          {space.members.map((pubkey) => {
-            const npub = toNpub(pubkey)
-            const roles = space.admins.find((admin) => admin.pubkey === pubkey)?.roles ?? []
-            return (
-              <li key={pubkey} className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-fg-muted" title={npub}>
-                  {shortNpub(npub)}
-                </span>
-                {roles.length > 0 ? (
-                  <span className="rounded bg-surface-1 px-1.5 py-0.5 text-fg-subtle">
-                    {roles.join(', ')}
-                  </span>
-                ) : null}
-              </li>
-            )
-          })}
-          {space.members.length === 0 ? (
-            <li className="text-fg-subtle">
-              {space.loading ? 'lade…' : 'Das Relay meldet keine Mitgliederliste.'}
-            </li>
-          ) : null}
-        </ul>
-      </section>
+      <MemberAdmin
+        relayUrl={group.relayUrl}
+        groupId={group.id}
+        members={space.members}
+        admins={space.admins}
+        loading={space.loading}
+      />
 
       <section className="space-y-2 rounded-xl border border-line bg-surface-1 p-4">
         <h2 className="text-sm font-medium text-fg">Schreibzugriff prüfen</h2>

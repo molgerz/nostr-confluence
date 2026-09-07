@@ -78,6 +78,20 @@ class SpaceStore {
   }
 
   /**
+   * Ein vom Relay gelöschtes Event lokal vergessen. Das Relay teilt Löschungen
+   * nicht aktiv mit, deshalb muss die auslösende Stelle Bescheid geben.
+   */
+  forget(eventId: string): void {
+    const hadRevision = this.revisions.delete(eventId)
+    const hadComment = this.comments.delete(eventId)
+    if (hadRevision) {
+      const pages = buildPages([...this.revisions.values()])
+      this.emit({ pages, tree: buildTree(pages) })
+    }
+    if (hadComment) this.emit({ comments: [...this.comments.values()] })
+  }
+
+  /**
    * Abos sterben mit ihrer Verbindung und mit jedem Signer-Wechsel (AUTH gilt
    * pro Verbindung). Beides hier erkennen und neu aufsetzen — sonst zeigt die
    * App nach einem Relay-Neustart stillschweigend veraltete Daten.
@@ -190,6 +204,11 @@ export function getSpaceStore(relayUrl: string, groupId: string): SpaceStore {
     stores.set(key, store)
   }
   return store
+}
+
+/** Ein gelöschtes Event aus dem lokalen Zustand entfernen. */
+export function forgetEvent(relayUrl: string, groupId: string, eventId: string): void {
+  getSpaceStore(relayUrl, groupId).forget(eventId)
 }
 
 export function useSpace(relayUrl: string, groupId: string): SpaceSnapshot {

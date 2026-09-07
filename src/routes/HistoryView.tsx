@@ -6,6 +6,8 @@ import { DiffView } from '../ui/DiffView'
 import { useSession } from '../session/session'
 import { publishRevision } from '../nostr/publish-page'
 import { classifyRejection } from '../nostr/client'
+import { deleteGroupEvent } from '../nostr/moderation'
+import { forgetEvent } from '../nostr/space-store'
 import type { Revision } from '../domain/revision'
 
 export function HistoryView() {
@@ -28,7 +30,37 @@ export function HistoryView() {
     )
   }
 
+  const isAdmin =
+    session.status === 'signed-in' &&
+    space.admins.some((admin) => admin.pubkey === session.pubkey)
   const revisions = page.revisions
+
+  const removeRevision = async (revision: Revision) => {
+    if (session.status !== 'signed-in') return
+    // Das Relay setzt diese Löschung wirklich durch — deshalb nachfragen.
+    const ok = window.confirm(
+      `Revision vom ${new Date(revision.createdAt * 1000).toLocaleString('de-DE')} auf dem Relay löschen? Das lässt sich nicht rückgängig machen.`,
+    )
+    if (!ok) return
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await deleteGroupEvent(session.signer, {
+        relayUrl: group.relayUrl,
+        groupId: group.id,
+        eventId: revision.id,
+      })
+      if (result.ok) {
+        forgetEvent(group.relayUrl, group.id, revision.id)
+        return
+      }
+      setError(`Nicht gelöscht: ${result.reason}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+    } finally {
+      setBusy(false)
+    }
+  }
   const from = selection ? revisions.find((r) => r.id === selection.from) : revisions[1]
   const to = selection ? revisions.find((r) => r.id === selection.to) : revisions[0]
 
@@ -185,6 +217,16 @@ export function HistoryView() {
                     className="rounded-md border border-line px-2 py-1 text-fg-muted"
                   >
                     Mit aktueller vergleichen
+                  </button>
+                ) : null}
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void removeRevision(revision)}
+                    className="rounded-md border border-danger px-2 py-1 text-danger disabled:opacity-60"
+                  >
+                    Löschen (Admin)
                   </button>
                 ) : null}
               </div>

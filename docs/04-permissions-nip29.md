@@ -99,6 +99,18 @@ Die App behandelt beides, weil andere Relays strenger sein können:
 
 UI-Zustände dafür: "Beitritt läuft" und "Beitritt abgelehnt".
 
+## Umgesetzt in der App
+
+Die Space-Übersicht zeigt die Mitgliederliste aus `39002` mit den Rollen aus
+`39001`. Admins bekommen dort zusätzlich ein Feld, um jemanden per npub oder
+Hex aufzunehmen (`9000`), und pro Mitglied einen Knopf zum Entfernen (`9001`).
+In Historie und Kommentaren können Admins einzelne Events entfernen (`9005`),
+mit Rückfrage, weil das Relay diese Löschung wirklich durchsetzt.
+
+Alle diese Aktionen sind **Anträge**: Das Relay prüft die Admin-Eigenschaft und
+lehnt sonst ab. Die App korrigiert die Mitgliederliste deshalb nie lokal,
+sondern zeigt, was das Relay als neues `39002` zurückschickt.
+
 ## Rechte-Stufen, die wir abbilden
 
 | Stufe | Wie durchgesetzt |

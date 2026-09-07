@@ -34,6 +34,25 @@ export function toNpub(pubkeyHex: string): string {
   }
 }
 
+/**
+ * Eingabe eines Schlüssels entgegennehmen: npub oder 64 Hex-Zeichen. Gibt den
+ * Hex-Pubkey zurück oder null — damit ein Tippfehler nicht als gültiger
+ * Schlüssel im Moderations-Event landet.
+ */
+export function parsePubkeyInput(input: string): string | null {
+  const value = input.trim()
+  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase()
+  if (value.startsWith('npub')) {
+    try {
+      const decoded = nip19.decode(value)
+      if (decoded.type === 'npub' && typeof decoded.data === 'string') return decoded.data
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
 /** npub1abcd…wxyz — kurz genug für die Byline, lang genug zum Vergleichen. */
 export function shortNpub(npub: string): string {
   return npub.length > 20 ? `${npub.slice(0, 10)}…${npub.slice(-6)}` : npub

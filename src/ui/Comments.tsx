@@ -4,6 +4,8 @@ import { buildCommentTree, countComments } from '../domain/comment'
 import type { Comment, CommentNode } from '../domain/comment'
 import { classifyRejection } from '../nostr/client'
 import { publishComment } from '../nostr/publish-comment'
+import { deleteGroupEvent } from '../nostr/moderation'
+import { forgetEvent } from '../nostr/space-store'
 import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { Markdown } from './Markdown'
@@ -13,6 +15,8 @@ type Props = {
   groupId: string
   slug: string
   comments: Comment[]
+  /** Admins dürfen fremde Kommentare vom Relay entfernen (Kind 9005) */
+  isAdmin?: boolean
 }
 
 function timeLabel(seconds: number): string {
@@ -28,7 +32,7 @@ function timeLabel(seconds: number): string {
  * Verankert an (Gruppe, Slug), nicht an einer einzelnen Revision — sonst wäre
  * der Faden nach der nächsten Bearbeitung verwaist.
  */
-export function Comments({ relayUrl, groupId, slug, comments }: Props) {
+export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }: Props) {
   const { session, ensureSamePubkey } = useSession()
   const [replyTo, setReplyTo] = useState<Comment | null>(null)
   const [text, setText] = useState('')
@@ -78,6 +82,26 @@ export function Comments({ relayUrl, groupId, slug, comments }: Props) {
     }
   }
 
+  const remove = async (comment: Comment) => {
+    if (session.status !== 'signed-in') return
+    if (!window.confirm('Diesen Kommentar auf dem Relay löschen?')) return
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await deleteGroupEvent(session.signer, {
+        relayUrl,
+        groupId,
+        eventId: comment.id,
+      })
+      if (result.ok) forgetEvent(relayUrl, groupId, comment.id)
+      else setError(`Nicht gelöscht: ${result.reason}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const renderNode = (node: CommentNode) => (
     <li key={node.id} style={{ marginLeft: `${node.depth * 16}px` }} className="space-y-1">
       <div className="rounded-xl border border-line bg-surface-1 p-3">
@@ -91,13 +115,25 @@ export function Comments({ relayUrl, groupId, slug, comments }: Props) {
           <Markdown>{node.content}</Markdown>
         </div>
         {session.status === 'signed-in' ? (
-          <button
-            type="button"
-            onClick={() => setReplyTo(node)}
-            className="mt-2 rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
-          >
-            Antworten
-          </button>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setReplyTo(node)}
+              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
+            >
+              Antworten
+            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void remove(node)}
+                className="rounded-md border border-danger px-2 py-1 text-xs text-danger disabled:opacity-60"
+              >
+                Löschen (Admin)
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {node.replies.length > 0 ? (

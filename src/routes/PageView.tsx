@@ -126,6 +126,10 @@ export function PageView() {
         groupId={group.id}
         slug={page.slug}
         comments={space.comments}
+        isAdmin={
+          session.status === 'signed-in' &&
+          space.admins.some((admin) => admin.pubkey === session.pubkey)
+        }
       />
     </div>
   )
