@@ -6,6 +6,7 @@ import { PageView } from './PageView'
 import { EditorView } from './EditorView'
 import { NewPageView } from './NewPageView'
 import { HistoryView } from './HistoryView'
+import { BlameView } from './BlameView'
 import { Login } from './Login'
 import { NotFound } from './NotFound'
 
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: '/s/:group/:slug', element: <PageView /> },
       { path: '/s/:group/:slug/edit', element: <EditorView /> },
       { path: '/s/:group/:slug/history', element: <HistoryView /> },
+      { path: '/s/:group/:slug/blame', element: <BlameView /> },
       { path: '*', element: <NotFound /> },
     ],
   },

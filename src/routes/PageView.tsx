@@ -101,6 +101,12 @@ export function PageView() {
         >
           Historie ({page.revisions.length})
         </Link>
+        <Link
+          to={`${base}/${page.slug}/blame`}
+          className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
+        >
+          Zeilenherkunft
+        </Link>
         <button
           type="button"
           onClick={() => navigate(`${base}/new?parent=${encodeURIComponent(page.slug)}`)}

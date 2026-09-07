@@ -14,6 +14,8 @@ export type RevisionInput = {
   content: string
   /** Vorgänger-Revisionen: leer bei einer neuen Seite, zwei bei einem Merge */
   parentRevs: string[]
+  /** Wiederherstellung: Event-ID der Revision, deren Inhalt übernommen wurde */
+  restoreOf?: string
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -41,6 +43,9 @@ export async function publishRevision(
   if (input.parentSlug) tags.push([TAGS.PAGE_PARENT, input.parentSlug])
   if (input.summary) tags.push([TAGS.SUMMARY, input.summary])
   for (const parent of input.parentRevs) tags.push([TAGS.PARENT_REV, parent])
+  // Wiederherstellen löscht nichts: es entsteht eine neue Revision mit altem
+  // Inhalt, die auf ihre Vorlage verweist. docs/05-versioning-history.md
+  if (input.restoreOf) tags.push([TAGS.RESTORE_OF, input.restoreOf])
 
   const event = await signer.signEvent({
     kind: KINDS.PAGE_REVISION,

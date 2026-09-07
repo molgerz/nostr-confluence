@@ -137,11 +137,34 @@ Und der Merge startete, sobald zwei Blätter geladen waren, während die
 gemeinsame Basis noch unterwegs war; der Editor wartet jetzt auf das
 vollständige Laden.
 
-## Phase 5 — Historie (Anforderung 5)
+## Phase 5 — Historie (Anforderung 5) ✅ (2026-09-07)
 - Zeitachse pro Seite mit npub, Zeit, `summary`
 - Diff zwischen beliebigen Revisionen, Blame pro Zeile
 - Wiederherstellen als neue Revision, Signatur-Detailansicht
 - **Fertig, wenn:** jede Version einer Seite einem npub zugeordnet und verifizierbar ist
+
+| Baustein | Ort |
+|---|---|
+| Zeilen-Diff mit Zeilennummern beider Seiten, Faltung langer Strecken | `src/domain/diff.ts`, `src/ui/DiffView.tsx` |
+| Zeilenherkunft über die Kette | `src/domain/blame.ts`, `src/routes/BlameView.tsx` |
+| Vergleich beliebiger Revisionen, Details, Wiederherstellen | `src/routes/HistoryView.tsx` |
+
+Vergleichen geht zwischen **beliebigen** Revisionen, nicht nur benachbarten —
+möglich, weil jede Revision einen Volltext-Snapshot trägt. Hinzufügen und
+Entfernen sind zusätzlich mit `+` und `−` gekennzeichnet, nicht nur farbig.
+
+Wiederherstellen löscht nichts: es entsteht eine neue Revision mit dem alten
+Inhalt, die per `restore-of` auf ihre Vorlage verweist und als Vorgänger den
+aktuellen Kopf hat.
+
+Am laufenden Relay durchgespielt; die Kette der Testseite zeigt den ganzen
+Bogen: Wurzel, Verzweigung, Merge-Revision mit zwei Vorgängern, konkurrierende
+Revision, Konfliktauflösung, Wiederherstellung mit `restore-of`.
+
+**Bekannte Vereinfachung:** Die Zeilenherkunft folgt dem ersten Vorgänger. Bei
+einer Merge-Revision erscheinen die Zeilen des zweiten Zweiges deshalb als von
+der Zusammenführung eingeführt — dasselbe Verhalten wie `git blame` ohne
+Zusatzoptionen.
 
 ## Phase 6 — Ausbau
 Moderation (`9000`/`9001`/`9005`), Kommentare (`1111`), Volltextsuche,
