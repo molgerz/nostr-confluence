@@ -12,6 +12,8 @@ import { parseRevision } from '../domain/revision'
 import type { Revision } from '../domain/revision'
 import { buildPages, buildTree } from '../domain/pages'
 import type { Page, PageNode } from '../domain/pages'
+import { parseComment } from '../domain/comment'
+import type { Comment } from '../domain/comment'
 import type { Event } from 'nostr-tools'
 
 export type SpaceSnapshot = {
@@ -21,6 +23,7 @@ export type SpaceSnapshot = {
   members: string[]
   pages: Page[]
   tree: PageNode[]
+  comments: Comment[]
 }
 
 const EMPTY: SpaceSnapshot = {
@@ -30,6 +33,7 @@ const EMPTY: SpaceSnapshot = {
   members: [],
   pages: [],
   tree: [],
+  comments: [],
 }
 
 /**
@@ -42,6 +46,7 @@ class SpaceStore {
   private snapshot: SpaceSnapshot = EMPTY
   private listeners = new Set<() => void>()
   private revisions = new Map<string, Revision>()
+  private comments = new Map<string, Comment>()
   private metadataEvent: Event | null = null
   private stop: (() => void)[] = []
   private generation = -1
@@ -97,7 +102,7 @@ class SpaceStore {
 
     const onEose = () => {
       this.eoseSeen += 1
-      if (this.eoseSeen >= 2) this.emit({ loading: false })
+      if (this.eoseSeen >= 3) this.emit({ loading: false })
     }
 
     this.stop.push(
@@ -111,6 +116,12 @@ class SpaceStore {
         this.relayUrl,
         { kinds: [KINDS.PAGE_REVISION], '#h': [this.groupId] },
         (event) => this.applyRevision(event),
+        onEose,
+      ),
+      client.subscribe(
+        this.relayUrl,
+        { kinds: [KINDS.COMMENT], '#h': [this.groupId] },
+        (event) => this.applyComment(event),
         onEose,
       ),
     )
@@ -153,6 +164,14 @@ class SpaceStore {
     this.revisions.set(event.id, revision)
     const pages = buildPages([...this.revisions.values()])
     this.emit({ pages, tree: buildTree(pages) })
+  }
+
+  private applyComment(event: Event): void {
+    if (this.comments.has(event.id)) return
+    const comment = parseComment(event, this.groupId)
+    if (!comment) return
+    this.comments.set(event.id, comment)
+    this.emit({ comments: [...this.comments.values()] })
   }
 
   private emit(change: Partial<SpaceSnapshot>): void {

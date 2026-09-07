@@ -4,6 +4,7 @@ import { Markdown } from '../ui/Markdown'
 import { Byline } from '../ui/Byline'
 import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { Comments } from '../ui/Comments'
 
 export function PageView() {
   const { group, space, base, slug } = useSpaceRoute()
@@ -119,6 +120,13 @@ export function PageView() {
       <article className="border-t border-line pt-4">
         <Markdown>{page.head.content}</Markdown>
       </article>
+
+      <Comments
+        relayUrl={group.relayUrl}
+        groupId={group.id}
+        slug={page.slug}
+        comments={space.comments}
+      />
     </div>
   )
 }

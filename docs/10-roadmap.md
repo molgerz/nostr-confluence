@@ -174,8 +174,9 @@ Erledigt:
 |---|---|
 | Volltextsuche über Titel und Inhalt, lokal statt über NIP-50 | `src/domain/search.ts`, `src/routes/SearchView.tsx` |
 | Einklappbare Sidebar, Zustand bleibt erhalten | `src/ui/layout/Sidebar.tsx` |
+| Kommentare mit Threads (Kind 1111) | `src/domain/comment.ts`, `src/ui/Comments.tsx` |
 
-Offen: Moderation (`9000`/`9001`/`9005`), Kommentare (`1111`), Anhänge
+Offen: Moderation (`9000`/`9001`/`9005`), Anhänge
 (Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
 Echtzeit-CRDT, NIP-46-Login, mobiles Layout, CodeMirror-Editor,
 Anzeigenamen über `VITE_PROFILE_RELAYS`.

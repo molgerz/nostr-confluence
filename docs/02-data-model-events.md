@@ -125,8 +125,17 @@ einmal *pro Autorin*. Es ist deshalb niemals die Wahrheit über den Seiteninhalt
 sondern ein Hinweis. Wahrheit ist die Revisionskette. Diese Trennung ist der
 Grund, warum "jede/r darf bearbeiten" überhaupt funktioniert.
 
-## Kommentare (`1111`, Phase 6)
+## Kommentare (`1111`) — umgesetzt
 
-NIP-22-Kommentar mit Bezug auf die Seite (`A`/`a` bzw. `h` + `d`) und optional
-auf eine Textstelle (`q`-Anker mit Zitat), damit Inline-Kommentare wie in
-Confluence möglich sind.
+NIP-22-Kommentar, verankert an `h` (Gruppe) und `d` (Slug), mit `K = 1818` für
+die Art des Wurzelobjekts, `k` für die Art des direkten Bezugs und `e` auf den
+Elternkommentar bei Antworten.
+
+**Abweichung vom Buchstaben des NIP:** NIP-22 verweist per `A`/`E` auf ein
+einzelnes Wurzel-Event. Unsere Seite *ist* kein einzelnes Event, sondern das
+Paar `(Gruppe, Slug)` — ein Verweis auf eine Revision würde mit der nächsten
+Bearbeitung ins Leere zeigen und den Faden verwaisen lassen. Deshalb dieselbe
+Verankerung wie bei den Revisionen.
+
+**Offen:** Inline-Kommentare an einer Textstelle (Zitat-Anker). Braucht eine
+Selektions-API im Editor und damit CodeMirror.
