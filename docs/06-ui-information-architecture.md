@@ -69,11 +69,13 @@ Der letzte Zustand ist Pflicht, nicht Kür: bei einem verteilten Speicher darf
 
 ## Editor
 
-- **Umgesetzt (Phase 3)**: Textfeld mit umschaltbarer Vorschau, Feld für die
-  Änderungsnotiz, automatisch abgeleiteter Slug, Elternseite wählbar.
-- **Geplant**: Markdown-Quelltext (CodeMirror 6) mit Live-Vorschau, Toolbar für
-  Überschriften/Listen/Links/Codeblock, Bild per Drag & Drop (Phase 6, braucht
-  Blossom/NIP-96-Upload).
+- **Umgesetzt**: CodeMirror 6 mit Markdown-Hervorhebung und umschaltbarer
+  Vorschau, Feld für die Änderungsnotiz, automatisch abgeleiteter Slug,
+  Elternseite wählbar. Der Farbmodus wird über ein `Compartment`
+  umkonfiguriert, damit Cursor und Undo-Historie beim Umschalten erhalten
+  bleiben.
+- **Geplant**: Toolbar für Überschriften/Listen/Links/Codeblock, Bild per
+  Drag & Drop (braucht Blossom/NIP-96-Upload).
 - **Später**: WYSIWYG (TipTap), das Markdown erzeugt. Bewusst nicht zuerst, weil
   WYSIWYG plus Merge-Konflikte gleichzeitig zu viel Risiko ist.
 

@@ -96,10 +96,8 @@ Gegen das laufende NIP-29-Relay geprüft: Seite "Deployment" als Unterseite von
 `parent-rev` auf die erste, die Historie listet beide mit npub und Notiz, und
 der Sidebar-Baum hängt die Seite unter ihre Elternseite.
 
-**Abweichung vom Konzept:** Der Editor ist vorerst ein Textfeld mit
-umschaltbarer Vorschau statt CodeMirror 6. Für das Schreiben von Markdown
-reicht das; CodeMirror bringt Syntaxhervorhebung und eine bessere
-Selektions-API für Inline-Kommentare und kommt deshalb zusammen mit Phase 6.
+**Abweichung inzwischen aufgelöst:** Der Editor war zunächst ein einfaches
+Textfeld; seit Phase 6 ist es CodeMirror 6 mit Markdown-Hervorhebung.
 
 Die Verzweigungserkennung aus Phase 4 ist als Anzeige schon da: hat eine Seite
 mehr als ein Blatt, zeigen Seite und Sidebar das an. Das Zusammenführen fehlt
@@ -179,10 +177,11 @@ Erledigt:
 | Mobiles Layout: Sidebar als Overlay, kompakte Topbar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
 | Inhaltsverzeichnis "Auf dieser Seite" mit Sprungmarken | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
 | Anzeigenamen und Avatare aus Kind 0, gebündelt geladen | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
+| CodeMirror-6-Editor mit Markdown-Hervorhebung | `src/ui/MarkdownEditor.tsx` |
 
 Offen: Anhänge
 (Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
-Echtzeit-CRDT, NIP-46-Login, CodeMirror-Editor.
+Echtzeit-CRDT, NIP-46-Login, Editor-Toolbar.
 
 ## Reihenfolge-Begründung
 

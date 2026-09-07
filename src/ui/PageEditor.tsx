@@ -5,6 +5,7 @@ import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
 import { useSession } from '../session/session'
 import { Markdown } from './Markdown'
+import { MarkdownEditor } from './MarkdownEditor'
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import type { Page } from '../domain/pages'
@@ -197,9 +198,7 @@ export function PageEditor({
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label htmlFor="content" className="text-xs font-medium text-fg-subtle">
-            Inhalt (Markdown)
-          </label>
+          <span className="text-xs font-medium text-fg-subtle">Inhalt (Markdown)</span>
           <button
             type="button"
             onClick={() => setShowPreview((value) => !value)}
@@ -213,14 +212,7 @@ export function PageEditor({
             <Markdown>{content || '_noch leer_'}</Markdown>
           </div>
         ) : (
-          <textarea
-            id="content"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            rows={16}
-            placeholder={'# Überschrift\n\nText …'}
-            className="w-full rounded-md border border-line bg-surface-2 p-3 font-mono text-xs text-fg"
-          />
+          <MarkdownEditor value={content} onChange={setContent} ariaLabel="Inhalt in Markdown" />
         )}
       </div>
 

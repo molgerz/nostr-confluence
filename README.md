@@ -8,8 +8,9 @@ npub gebunden.
 **Status: Phase 0 bis 5 stehen.** Anmelden mit NIP-07, Space mit Mitgliedern
 und Seitenbaum, Seiten anlegen und bearbeiten, 3-Wege-Merge bei gleichzeitigem
 Speichern, Versionshistorie mit Diff, Zeilenherkunft und Wiederherstellen —
-alles gegen ein echtes NIP-29-Relay. Offen ist Phase 6 (Moderation,
-Kommentare, Suche, Anhänge, Echtzeit).
+alles gegen ein echtes NIP-29-Relay. Dazu Suche, Kommentare, Moderation,
+Anzeigenamen, mobiles Layout und ein CodeMirror-Editor. Offen sind noch
+Anhänge, Echtzeit-Bearbeitung und NIP-46-Login.
 Konzeption unter [`docs/`](docs/), Phasenplan in
 [`docs/10-roadmap.md`](docs/10-roadmap.md).
 
