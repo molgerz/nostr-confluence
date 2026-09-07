@@ -1,5 +1,5 @@
-import { collapseContext, countChanges, diffTexts } from '../domain/diff'
-import type { DiffLine } from '../domain/diff'
+import { collapseContext, countChanges, diffTexts, wordDiffsForPairs } from '../domain/diff'
+import type { DiffLine, WordPart } from '../domain/diff'
 
 const LINE_STYLE: Record<DiffLine['type'], string> = {
   added: 'bg-diff-add',
@@ -14,6 +14,30 @@ const PREFIX: Record<DiffLine['type'], string> = {
 }
 
 /**
+ * Innerhalb einer ersetzten Zeile das geänderte Wort hervorheben. Ohne das
+ * muss man zwei fast gleiche Zeilen von Hand vergleichen.
+ */
+function LineText({ text, parts }: { text: string; parts?: WordPart[] }) {
+  if (!parts || parts.length === 0) return <>{text.length === 0 ? ' ' : text}</>
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.kind === 'same' ? (
+          <span key={index}>{part.text}</span>
+        ) : (
+          <span
+            key={index}
+            className={`rounded-sm ${part.kind === 'added' ? 'bg-diff-word-add' : 'bg-diff-word-del'}`}
+          >
+            {part.text}
+          </span>
+        ),
+      )}
+    </>
+  )
+}
+
+/**
  * Zeilen-Diff zweier Revisionen. Hinzufügen und Entfernen werden zusätzlich
  * durch + und − gekennzeichnet, nicht nur durch Farbe — Rot-Grün allein wäre
  * für einen Teil der Leute unlesbar. docs/12-theming.md
@@ -21,7 +45,10 @@ const PREFIX: Record<DiffLine['type'], string> = {
 export function DiffView({ before, after }: { before: string; after: string }) {
   const lines = diffTexts(before, after)
   const { added, removed } = countChanges(lines)
-  const rows = collapseContext(lines)
+  const wordDiffs = wordDiffsForPairs(lines)
+  // collapseContext wirft Zeilen weg, deshalb die Wortmarkierungen vorher an
+  // die Zeile hängen statt später über den Index zu suchen
+  const rows = collapseContext(lines.map((line, index) => ({ ...line, index })))
 
   if (added === 0 && removed === 0) {
     return <p className="text-xs text-fg-subtle">Kein Unterschied im Text.</p>
@@ -53,7 +80,7 @@ export function DiffView({ before, after }: { before: string; after: string }) {
                   </td>
                   <td className="px-2 py-0.5 whitespace-pre-wrap text-fg">
                     <span className="mr-1 text-fg-subtle select-none">{PREFIX[row.type]}</span>
-                    {row.text.length === 0 ? ' ' : row.text}
+                    <LineText text={row.text} parts={wordDiffs.get(row.index)} />
                   </td>
                 </tr>
               ),

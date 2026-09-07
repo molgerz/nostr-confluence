@@ -33,13 +33,21 @@ brauchen wir, weil parallele Bearbeitung sonst Text verliert.
 1. Editor öffnet Seite auf Basis `base = <head-id>`.
 2. Beim Klick auf "Speichern": Head neu vom Relay holen.
 3. `head == base` → Revision mit `parent-rev = base` publishen. Fertig.
-4. `head != base` → **3-Wege-Merge**: gemeinsame Basis, "deine Änderungen",
-   "Änderungen von <npub>". Drei Optionen im Dialog:
-   - automatisch zusammenführen (wenn die Änderungen unterschiedliche Absätze
-     betreffen — `diff3`-artig, clientseitig)
-   - manuell auflösen im Editor mit Konfliktmarkern
-   - als Verzweigung speichern (zwei Blätter, bewusst offen gelassen)
+4. `head != base` → **3-Wege-Merge**, und zwar ohne Dialog: die App führt
+   zusammen, schreibt das Ergebnis in den Editor und erklärt darüber, was
+   passiert ist. Nichts wird dabei publiziert.
+   - Berühren sich die Änderungen nicht, steht das fertige Ergebnis da und
+     muss nur noch geprüft und erneut gespeichert werden.
+   - Überschneiden sie sich, stehen Konfliktmarker im Text; Speichern bleibt
+     gesperrt, bis sie entfernt sind.
 5. Ergebnis einer Auflösung ist eine Merge-Revision mit zwei `parent-rev`-Tags.
+
+**Anders gelöst als geplant:** Es gibt keinen Dialog mit drei Knöpfen und keine
+Option "als Verzweigung speichern". Ein Dialog hätte eine Entscheidung
+abgefragt, bevor man das Ergebnis sehen kann; so sieht man erst den
+zusammengeführten Text und entscheidet daran. Eine Verzweigung *entsteht*
+weiterhin, wenn zwei Leute gleichzeitig publishen — sie lässt sich über
+"Fassungen zusammenführen" auf der Seite auflösen.
 
 **Entscheidung:** Kein Silent-Overwrite. Wenn der Head sich bewegt hat, wird
 immer gefragt.

@@ -13,8 +13,12 @@ bereit. Die App ruft daran:
 | `nip44.encrypt/decrypt` | Erst relevant, wenn wir private Inhalte verschlüsseln (nicht MVP) |
 
 **Entscheidung:** Die App speichert nie einen privaten Schlüssel und bietet auch
-kein Feld dafür an. Session = Pubkey + Zeitstempel in `localStorage`, alles
-Signieren geht durch die Extension.
+kein Feld dafür an. Alles Signieren geht durch die Extension.
+
+Umgesetzt ist die Sitzung als **nur der Pubkey** in `localStorage`
+(`nc-pubkey`) — der geplante Zeitstempel entfiel, weil es keinen Ablauf gibt,
+den er steuern könnte: eine Sitzung gilt, solange die Extension denselben
+Account liefert, und genau das wird vor jedem Schreibvorgang geprüft.
 
 ## Ablauf
 

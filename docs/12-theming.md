@@ -26,7 +26,8 @@ Datei definiert beide Paletten:
 | `--border`, `--border-strong` | Trennlinien, Hover-Ränder |
 | `--accent`, `--bg-accent`, `--text-accent` | Aktion, aktive Sidebar-Zeile, Buttons |
 | `--danger`, `--warning`, `--success` (+ `bg-`/`text-`) | Konflikt-Banner, Publish-Fehler, "gespeichert" |
-| `--diff-add-bg`, `--diff-del-bg`, `--diff-word-bg` | Diff-Ansicht |
+| `--diff-add-bg`, `--diff-del-bg` | Diff-Ansicht: hinzugefügte und entfernte Zeilen |
+| `--diff-word-add-bg`, `--diff-word-del-bg` | Wort-Hervorhebung innerhalb einer geänderten Zeile (statt eines gemeinsamen `--diff-word-bg`: hinzugefügt und entfernt brauchen unterschiedliche Farben) |
 | `--code-bg`, `--code-border` | Codeblöcke im Markdown |
 
 Regel: Wenn eine Komponente eine Farbe braucht, die es als Token nicht gibt,

@@ -64,10 +64,16 @@ Logo, Space-Wechsler, Suche, "+ Erstellen", **Theme-Umschalter
 | Konflikt | Banner "Diese Seite wurde von <npub> geändert" + Merge-Dialog |
 | Nicht eingeloggt | Aktionen deaktiviert, Hinweis "Mit Nostr anmelden zum Bearbeiten" |
 | Kein Mitglied | Button "Beitreten und bearbeiten" (löst `9021` aus) |
-| Nur lokal (Publish fehlgeschlagen) | Gelber Streifen "Nicht auf dem Relay gespeichert — erneut versuchen" |
+| Publish fehlgeschlagen | Fehlermeldung im Editor mit dem **wörtlichen Relay-Grund**, eingeordnet nach Ursache (AUTH nötig, Rechte, sonstiges). Der Text bleibt im Editor stehen, es geht nichts verloren |
 
 Der letzte Zustand ist Pflicht, nicht Kür: bei einem verteilten Speicher darf
 "gespeichert" nie behauptet werden, bevor das Relay `OK true` geschickt hat.
+
+**Anders gelöst als geplant:** Statt eines gelben Streifens "nur lokal
+gespeichert" bleibt der Editor einfach offen und zeigt den Relay-Grund. Ein
+Entwurf, der nur im Browser liegt, wäre ein zweiter Speicherort mit eigenen
+Fragen (Wo? Wie lange? Was bei Account-Wechsel?) — dafür bräuchte es den noch
+nicht gebauten lokalen Cache.
 
 ## Editor
 

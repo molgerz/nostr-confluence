@@ -200,9 +200,21 @@ Stand 2026-09-07, beim Abgleich Doku gegen Code gefunden:
 | Onboarding-Hinweis, dass ein npub ein dauerhaftes Pseudonym ist | [09](09-security-privacy.md) |
 | `30818`-Interop-Spiegel für NIP-54-Clients | [02](02-data-model-events.md) |
 
-Bewusst anders gelöst als geplant (kein Rückstand, nur andere Wahl): eigene
-Stores statt Zustand, eigene Suche statt MiniSearch, eigener 3-Wege-Merge statt
-`diff3` — begründet in [07](07-tech-stack.md).
+### Bewusst anders gelöst als geplant
+
+Kein Rückstand, sondern eine andere Wahl — jeweils dort begründet, wo die
+Entscheidung ursprünglich stand:
+
+| Statt | Jetzt | Wo begründet |
+|---|---|---|
+| Zustand als State-Bibliothek | eigene Stores über `useSyncExternalStore` | [07](07-tech-stack.md) |
+| MiniSearch | eigene Suche über die geladenen Seiten | [07](07-tech-stack.md) |
+| `diff3`-Paket | eigener 3-Wege-Merge | [07](07-tech-stack.md) |
+| Ordner `data/`, Dateien `revision-graph.ts`/`tree.ts` | `nostr/space-store.ts`, `domain/pages.ts` | [07](07-tech-stack.md) |
+| Sitzung mit Pubkey **und** Zeitstempel | nur Pubkey; geprüft wird vor jedem Schreiben | [03](03-auth-nip07-nip42.md) |
+| Merge-Dialog mit drei Knöpfen | Merge landet direkt im Editor, Entscheidung am fertigen Text | [05](05-versioning-history.md) |
+| Gelber Streifen "nur lokal gespeichert" | Editor bleibt offen und zeigt den Relay-Grund wörtlich | [06](06-ui-information-architecture.md) |
+| Ein Token `--diff-word-bg` | getrennte Tokens für hinzugefügt und entfernt | [12](12-theming.md) |
 
 **Ausserdem offen und für einen echten Einsatz nötig:** Die Gruppe entsteht
 bisher komplett ausserhalb der App über `nak` — es gibt keinen Knopf, um einen

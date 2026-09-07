@@ -56,10 +56,10 @@ export function countChanges(lines: DiffLine[]): { added: number; removed: numbe
  * Lange unveränderte Strecken zusammenfalten, damit die Ansicht lesbar bleibt.
  * Es wird nur gefaltet, wenn dadurch wirklich etwas gespart wird.
  */
-export function collapseContext(
-  lines: DiffLine[],
+export function collapseContext<T extends DiffLine>(
+  lines: T[],
   context = 3,
-): (DiffLine | DiffGap)[] {
+): (T | DiffGap)[] {
   const keep = new Set<number>()
   lines.forEach((line, index) => {
     if (line.type === 'context') return
@@ -68,7 +68,7 @@ export function collapseContext(
     }
   })
 
-  const out: (DiffLine | DiffGap)[] = []
+  const out: (T | DiffGap)[] = []
   let hidden = 0
   lines.forEach((line, index) => {
     if (keep.has(index)) {
@@ -86,6 +86,42 @@ export function collapseContext(
 }
 
 export type WordPart = { text: string; kind: 'same' | 'added' | 'removed' }
+
+/**
+ * Zeilenpaare finden, bei denen eine entfernte direkt durch eine hinzugefügte
+ * ersetzt wurde, und dafür den wortgenauen Unterschied berechnen. Nur so sieht
+ * man bei einer geänderten Zeile, *was* sich geändert hat, statt die ganze
+ * Zeile doppelt zu lesen.
+ */
+export function wordDiffsForPairs(lines: DiffLine[]): Map<number, WordPart[]> {
+  const result = new Map<number, WordPart[]>()
+
+  for (let i = 0; i < lines.length; i += 1) {
+    if (lines[i].type !== 'removed') continue
+
+    // Lauf von entfernten Zeilen, danach Lauf von hinzugefügten Zeilen
+    let end = i
+    while (end < lines.length && lines[end].type === 'removed') end += 1
+    let addedEnd = end
+    while (addedEnd < lines.length && lines[addedEnd].type === 'added') addedEnd += 1
+
+    const removed = end - i
+    const added = addedEnd - end
+    if (added > 0) {
+      for (let k = 0; k < Math.min(removed, added); k += 1) {
+        const before = lines[i + k].text
+        const after = lines[end + k].text
+        if (before === after) continue
+        const parts = diffWordsInLine(before, after)
+        result.set(i + k, parts.filter((part) => part.kind !== 'added'))
+        result.set(end + k, parts.filter((part) => part.kind !== 'removed'))
+      }
+    }
+    i = addedEnd - 1
+  }
+
+  return result
+}
 
 /** Wortgenauer Vergleich für ein Zeilenpaar, das sich nur leicht unterscheidet. */
 export function diffWordsInLine(before: string, after: string): WordPart[] {

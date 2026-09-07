@@ -27,17 +27,35 @@ Gruppen-Relay und `VITE_PROFILE_RELAYS` für die Relays, von denen Profile
 nicht annimmt — dort braucht jedes Event einen `h`-Tag. Ohne Konfiguration
 zeigt die App npubs statt Namen, und das ist ehrlicher als ein erfundener Name.
 
-## Struktur des Codes (geplant)
+## Struktur des Codes
+
+So sieht sie tatsächlich aus:
 
 ```
 src/
-  nostr/        kinds.ts, signer.ts, pool.ts, auth.ts      (kennt Kinds)
-  domain/       page.ts, revision-graph.ts, merge.ts, tree.ts, blame.ts
-  data/         cache.ts, queries.ts, mutations.ts
-  ui/           layout/, sidebar/, page/, editor/, history/
+  nostr/     kinds.ts (alle Kinds und Tags), client.ts (Relay, NIP-42),
+             signer.ts, space-store.ts, profile-store.ts, publish-page.ts,
+             publish-comment.ts, moderation.ts, blossom.ts, relay-status.ts
+  domain/    revision.ts, pages.ts, merge.ts, blame.ts, diff.ts, search.ts,
+             comment.ts, toc.ts, group-state.ts   — reine Funktionen, getestet
+  session/   session.tsx   (Anmeldung, Sitzung, Account-Wechsel)
+  theme/     theme.tsx     (System/Hell/Dunkel)
+  ui/        layout/ und Bausteine (Markdown, DiffView, PageEditor, …)
   routes/
+  dev/       fake-nip07.ts (nur im Entwicklungsmodus)
 ```
 
-Wichtig: `domain/revision-graph.ts` (Head-Auflösung), `domain/merge.ts` und
-`domain/blame.ts` sind reine Funktionen ohne Netzwerk. Sie sind der Kern der
-Anwendung und werden zuerst mit Tests gebaut.
+Abweichungen vom ursprünglichen Plan, jeweils mit Grund:
+
+- **Kein `data/`-Ordner.** Die geplante Cache-Schicht ist nicht gebaut; was
+  von ihr gebraucht wurde (Abos, Zustand pro Space), liegt in
+  `nostr/space-store.ts`.
+- **Andere Dateinamen in `domain/`.** Statt `revision-graph.ts` und `tree.ts`
+  gibt es `pages.ts` (Head-Auflösung, Baum, gemeinsamer Vorfahre) und
+  `revision.ts` (Event → Revision). Dazu kamen `diff.ts`, `search.ts`,
+  `comment.ts` und `toc.ts`.
+- **`session/` und `theme/` als eigene Ordner**, weil beides
+  React-Kontext ist und weder Domäne noch Nostr-Schicht.
+
+Unverändert gilt: alles in `domain/` ist netzwerkfrei und getestet — das ist
+der Kern der Anwendung.

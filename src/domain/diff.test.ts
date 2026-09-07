@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { collapseContext, countChanges, diffTexts, diffWordsInLine } from './diff'
+import {
+  collapseContext,
+  countChanges,
+  diffTexts,
+  diffWordsInLine,
+  wordDiffsForPairs,
+} from './diff'
 
 describe('diffTexts', () => {
   it('zählt Zeilennummern für beide Seiten getrennt', () => {
@@ -47,5 +53,30 @@ describe('diffWordsInLine', () => {
     expect(parts.find((part) => part.kind === 'removed')?.text).toContain('Bob')
     expect(parts.find((part) => part.kind === 'added')?.text).toContain('Alice')
     expect(parts.filter((part) => part.kind === 'same').length).toBeGreaterThan(0)
+  })
+})
+
+describe('wordDiffsForPairs', () => {
+  it('markiert bei einer ersetzten Zeile nur das geänderte Wort', () => {
+    const lines = diffTexts('Bitte bei Bob fragen.', 'Bitte bei Alice fragen.')
+    const pairs = wordDiffsForPairs(lines)
+    const entfernt = pairs.get(0)?.filter((part) => part.kind === 'removed')
+    const hinzu = pairs.get(1)?.filter((part) => part.kind === 'added')
+    expect(entfernt?.map((part) => part.text)).toEqual(['Bob'])
+    expect(hinzu?.map((part) => part.text)).toEqual(['Alice'])
+    // die entfernte Zeile zeigt keine hinzugefügten Teile und umgekehrt
+    expect(pairs.get(0)?.some((part) => part.kind === 'added')).toBe(false)
+    expect(pairs.get(1)?.some((part) => part.kind === 'removed')).toBe(false)
+  })
+
+  it('lässt reine Hinzufügungen unangetastet', () => {
+    const lines = diffTexts('a', 'a\nb')
+    expect(wordDiffsForPairs(lines).size).toBe(0)
+  })
+
+  it('paart mehrere ersetzte Zeilen der Reihe nach', () => {
+    const lines = diffTexts('eins\nzwei', 'EINS\nZWEI')
+    const pairs = wordDiffsForPairs(lines)
+    expect(pairs.size).toBe(4)
   })
 })

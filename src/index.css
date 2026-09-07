@@ -29,6 +29,8 @@
 
   --diff-add-bg: #dcfff1;
   --diff-del-bg: #ffeceb;
+  --diff-word-add-bg: #a6ecc7;
+  --diff-word-del-bg: #ffcfcb;
   --code-bg: #f1f2f4;
   --code-line: #dcdfe4;
 }
@@ -58,6 +60,8 @@
 
   --diff-add-bg: #1c3329;
   --diff-del-bg: #42221f;
+  --diff-word-add-bg: #2f5f47;
+  --diff-word-del-bg: #6b3733;
   --code-bg: #1d2125;
   --code-line: #38414a;
 }
@@ -87,6 +91,8 @@
 
   --color-diff-add: var(--diff-add-bg);
   --color-diff-del: var(--diff-del-bg);
+  --color-diff-word-add: var(--diff-word-add-bg);
+  --color-diff-word-del: var(--diff-word-del-bg);
   --color-code-bg: var(--code-bg);
   --color-code-line: var(--code-line);
 
