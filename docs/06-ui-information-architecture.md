@@ -4,7 +4,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│ Logo   Search…                    [+ Create]   Theme   Account   │  top bar 48px
+│ Logo        Search…  [+ Create]              Theme   Account     │  top bar 48px
 ├──────────────┬────────────────────────────────────┬───────────────┤
 │ Space header │ Breadcrumb: Handbook / Onboarding  │ On this page  │
 │ Engineering  │                                    │               │
@@ -34,8 +34,20 @@ Four zones, top to bottom:
    **Open:** dedicated entries for "all pages", "recently changed" and "space
    settings".
 3. **Page tree** — projected from `page-parent`
-   ([02](02-data-model-events.md)). The active page is highlighted; forked pages
-   are marked with a dot.
+   ([02](02-data-model-events.md)). Every row carries a page icon; the active
+   row is highlighted.
+
+   A branch with children folds away behind a triangle, a leaf shows a dot in
+   that same slot. Both occupy it, so titles stay on one vertical line instead
+   of stepping in and out depending on whether a sibling happens to have
+   children. A forked page keeps its own marker, but amber and *after* the
+   title — otherwise it would read as the leaf dot.
+
+   Which branches are folded is kept in `localStorage`. Deliberately the
+   *folded* ones rather than the open ones, otherwise a page created later would
+   stay hidden until somebody expanded its parent. The branch leading to the
+   page being read is always drawn open, so a fold can never hide the very page
+   you are on.
 4. **Footer** — "+ new page" and the relay status (connected / AUTH / offline) —
    important, because nothing can be published without a relay.
 
@@ -50,12 +62,34 @@ example is not a heading.
 
 ## Top bar
 
+Three columns, not a row: the two outer ones share the remaining width equally,
+so **search and "+ create" sit on the centre line of the window** whatever the
+logo or the account chip happen to be doing. In a plain flex row they would
+drift off centre the moment one side grew — and a display name is exactly the
+kind of thing that grows. The two belong next to each other because one finds a
+page and the other makes the one that was not found.
+
 Logo, search, "+ create", the **theme switch (system/light/dark,
 [12](12-theming.md))** and, when signed out, a **sign-in button that calls the
 extension directly** — there is no sign-in page. Signed in it becomes the
-account chip: display name, then the picture at the very edge. The whole chip is one link to `/settings/profile`. Signing out is
+account chip: the picture alone at the very edge, with name and npub in the
+tooltip. The whole chip is one link to `/settings/profile`. Signing out is
 **not** in the bar but at the bottom of that page — the outermost corner of the
 layout should not put a destructive action right next to a navigation target.
+
+## The reading surface
+
+A page is a document, not a dialogue box, and is sized like one: 16px body text
+in `--text-primary` (not the muted grey the surrounding UI uses), a heading
+scale that steps down visibly, and a line length capped at 70 characters.
+The cap matters because the content column is far wider than that — without it
+a line runs to about 100 characters and the eye loses the start of the next one.
+Tables and code blocks are exempt: they may exceed the measure and scroll
+instead of squeezing.
+
+The same renderer serves comments, but at a second density: a comment sits
+inside somebody else's page and stays at the 14px of the surrounding UI rather
+than competing with the page it hangs under.
 
 ## Page states
 
@@ -90,16 +124,27 @@ local cache that has not been built yet.
 
 ## How identity is displayed
 
-Everywhere a **foreign** person appears — bylines, history, comments, blame,
-the member list: avatar + display name + shortened npub (`npub1qz…7k4f`,
-monospace). Display names are freely chosen and not unique, so a name alone
-could be somebody impersonating somebody else. The npub is the identity and the
-UI shows it rather than hiding it.
+The dividing line is **verification, not presence**.
 
-**One exception: one's own account chip in the top bar.** There the argument
-does not hold — nobody is impersonating themselves to themselves — and the chip
-is the narrowest spot in the layout. The npub stays in the tooltip and appears
-in full under `/settings/profile`.
+Where somebody is checking who did what — **history, blame, the member list** —
+the row carries avatar + display name + shortened npub (`npub1qz…7k4f`,
+monospace). Display names are freely chosen and not unique, so a name alone
+could be somebody impersonating somebody else, and these are exactly the screens
+somebody opens to decide whether to trust a change or a member.
+
+Everywhere else the name stands alone, because the key would be noise:
+
+- **One's own account chip in the top bar.** Nobody has to tell themselves
+  apart from an impostor, and the bar is the narrowest strip in the layout.
+- **The byline of a page** ("last edited by …"). It says who touched the page,
+  not who signed which revision; the history is one click away and answers that.
+- **Comments.** A comment is somebody speaking, not a claim about authorship of
+  the page. Whoever wants the key hovers the name or opens the history.
+
+In both the npub stays in the tooltip and appears in full under
+`/settings/profile`. And where a key has no `kind 0` at all, the shortened npub
+is shown regardless — there is no name to fall back to, and an unattributed
+byline would be worse than a key.
 
 ## Profile
 

@@ -8,7 +8,7 @@ const SEEDED = `${LOCAL_HOST}'engineering`
 export function SpaceChooser() {
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-medium text-fg">Spaces</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">Spaces</h1>
       <p className="text-sm text-fg-muted">
         A space is a NIP-29 group on a relay. The one below is the space that{' '}
         <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">

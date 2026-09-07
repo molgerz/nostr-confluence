@@ -105,7 +105,7 @@ export function ProfileSettings() {
   if (session.status !== 'signed-in') {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-medium text-fg">Profile</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-fg">Profile</h1>
         <p className="text-sm text-fg-muted">
           A profile belongs to an npub, so it can only be edited while signed in.
         </p>
@@ -119,7 +119,7 @@ export function ProfileSettings() {
   return (
     <div className="max-w-2xl space-y-5">
       <div className="space-y-1">
-        <h1 className="text-2xl font-medium text-fg">Profile</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-fg">Profile</h1>
         <p className="text-sm text-fg-muted">
           Your <code className="font-mono text-xs">kind 0</code> event — the name and picture
           other people see in bylines here and in every other Nostr client.

@@ -10,14 +10,15 @@ function relativeTime(seconds: number): string {
 }
 
 /**
- * Shows authorship. The npub is the identity — it is always shown, even once a
- * display name is available.
+ * Who last touched the page. Only the name here, not the key: this line is a
+ * byline, and the place to check who actually signed which revision is the
+ * history, where every entry carries its npub.
  */
 export function Byline({ revision }: { revision: Revision }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
       <span>last edited</span>
-      <Author pubkey={revision.author} avatar />
+      <Author pubkey={revision.author} avatar showNpub={false} />
       <span>· {relativeTime(revision.createdAt)}</span>
       {revision.summary ? <span>· {revision.summary}</span> : null}
     </div>

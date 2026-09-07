@@ -27,7 +27,7 @@ export function BlameView() {
   return (
     <div className="space-y-4">
       <div className="text-xs text-fg-subtle">Zeilenherkunft</div>
-      <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
       <div className="flex gap-3 text-xs">
         <Link to={`${base}/${page.slug}`} className="text-accent-fg underline">
           back to the page

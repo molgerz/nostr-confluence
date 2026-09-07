@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useParams } from 'react-router-dom'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
 import type { RelaySnapshot } from '../../nostr/client'
 import type { RelayInfo } from '../../nostr/relay-status'
 import type { SpaceSnapshot } from '../../nostr/space-store'
-import { flattenTree } from '../../domain/pages'
+import type { PageNode } from '../../domain/pages'
 
 type Props = {
   group: GroupAddress | null
@@ -29,6 +29,7 @@ function itemClass({ isActive }: { isActive: boolean }): string {
  * docs/06-ui-information-architecture.md
  */
 const COLLAPSE_KEY = 'nc-sidebar-collapsed'
+const BRANCH_KEY = 'nc-sidebar-collapsed-branches'
 
 function readCollapsed(): boolean {
   try {
@@ -38,11 +39,66 @@ function readCollapsed(): boolean {
   }
 }
 
+/**
+ * Which branches are folded away. Storing the *collapsed* ones rather than the
+ * open ones means a page created later shows up instead of hiding until
+ * somebody expands its parent.
+ */
+function readCollapsedBranches(): Set<string> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(BRANCH_KEY) ?? '[]')
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+/**
+ * The chain of parents above `slug`. The branch leading to the page you are
+ * reading is always drawn open — otherwise a fold could hide the very page you
+ * are on, and the highlighted row would be nowhere to be seen.
+ */
+function pathToActive(nodes: PageNode[], slug: string | undefined): Set<string> {
+  const path = new Set<string>()
+  if (!slug) return path
+  const parents = new Map<string, string | null>()
+  const walk = (list: PageNode[]) => {
+    for (const node of list) {
+      for (const child of node.children) parents.set(child.slug, node.slug)
+      walk(node.children)
+    }
+  }
+  walk(nodes)
+  let cursor = parents.get(slug) ?? null
+  while (cursor && !path.has(cursor)) {
+    path.add(cursor)
+    cursor = parents.get(cursor) ?? null
+  }
+  return path
+}
+
 export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
-  const nodes = flattenTree(space.tree)
+  const nodes = space.tree
+  const { slug } = useParams<{ slug?: string }>()
   const [collapsedPreference, setCollapsed] = useState(readCollapsed)
+  const [collapsedBranches, setCollapsedBranches] = useState(readCollapsedBranches)
   const collapsed = alwaysExpanded ? false : collapsedPreference
+  const forcedOpen = pathToActive(nodes, slug)
+
+  const toggleBranch = (branchSlug: string) => {
+    setCollapsedBranches((current) => {
+      const next = new Set(current)
+      if (next.has(branchSlug)) next.delete(branchSlug)
+      else next.add(branchSlug)
+      try {
+        localStorage.setItem(BRANCH_KEY, JSON.stringify([...next]))
+      } catch {
+        /* then it only applies to this session */
+      }
+      return next
+    })
+  }
 
   const toggle = () => {
     setCollapsed((value) => {
@@ -122,17 +178,13 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
               {space.loading ? 'loading pages…' : 'no pages yet'}
             </div>
           ) : (
-            nodes.map((node) => (
-              <NavLink
-                key={node.slug}
-                to={`${base}/${node.slug}`}
-                className={itemClass}
-                style={{ paddingLeft: `${8 + node.depth * 12}px` }}
-              >
-                <span className="truncate">{node.title}</span>
-                {node.leaves.length > 1 ? <span className="text-warning"> ●</span> : null}
-              </NavLink>
-            ))
+            <TreeBranch
+              nodes={nodes}
+              base={base}
+              collapsedBranches={collapsedBranches}
+              forcedOpen={forcedOpen}
+              onToggle={toggleBranch}
+            />
           )}
 
           <div className="flex-1" />
@@ -149,5 +201,109 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
 
       <RelayStatusBadge snapshot={snapshot} info={info} />
     </nav>
+  )
+}
+
+function treeItemClass({ isActive }: { isActive: boolean }): string {
+  const shared = 'flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-sm'
+  return isActive
+    ? `${shared} bg-accent-bg font-medium text-accent-fg`
+    : `${shared} text-fg-muted hover:bg-surface-2`
+}
+
+/**
+ * Marks every row as a page. Decorative — the title already says which one, so
+ * it is hidden from assistive technology. It inherits the row's colour instead
+ * of fixing its own, so on the active row it follows into the accent colour
+ * rather than sitting there grey.
+ */
+function PageIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className="size-3.5 shrink-0 opacity-70"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+    >
+      <rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2.5" />
+      <path d="M5.75 6.5h4.5M5.75 9.5h3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/**
+ * One level of the page tree. A branch gets a triangle to fold it, a leaf a dot
+ * in the same slot — so titles stay on one vertical line instead of stepping in
+ * and out depending on whether a sibling has children.
+ */
+function TreeBranch({
+  nodes,
+  base,
+  collapsedBranches,
+  forcedOpen,
+  onToggle,
+}: {
+  nodes: PageNode[]
+  base: string
+  collapsedBranches: Set<string>
+  forcedOpen: Set<string>
+  onToggle: (slug: string) => void
+}) {
+  return (
+    <>
+      {nodes.map((node) => {
+        const hasChildren = node.children.length > 0
+        const open = hasChildren && (forcedOpen.has(node.slug) || !collapsedBranches.has(node.slug))
+
+        return (
+          <div key={node.slug}>
+            <div
+              className="flex items-center"
+              style={{ paddingLeft: `${node.depth * 12}px` }}
+            >
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={() => onToggle(node.slug)}
+                  aria-expanded={open}
+                  aria-label={`${open ? 'Collapse' : 'Expand'} ${node.title}`}
+                  title={`${open ? 'Collapse' : 'Expand'} ${node.title}`}
+                  className="w-4 shrink-0 rounded text-xs text-fg-subtle hover:text-fg"
+                >
+                  {open ? '▾' : '▸'}
+                </button>
+              ) : (
+                <span className="flex w-4 shrink-0 justify-center" aria-hidden="true">
+                  <span className="size-1 rounded-full bg-fg-subtle" />
+                </span>
+              )}
+              <NavLink to={`${base}/${node.slug}`} className={treeItemClass}>
+                <PageIcon />
+                <span className="truncate">{node.title}</span>
+                {/* A forked page has more than one current version. Amber and
+                    after the title, so it cannot be read as the leaf dot. */}
+                {node.leaves.length > 1 ? (
+                  <span className="text-warning" title="several open versions">
+                    ●
+                  </span>
+                ) : null}
+              </NavLink>
+            </div>
+
+            {open ? (
+              <TreeBranch
+                nodes={node.children}
+                base={base}
+                collapsedBranches={collapsedBranches}
+                forcedOpen={forcedOpen}
+                onToggle={onToggle}
+              />
+            ) : null}
+          </div>
+        )
+      })}
+    </>
   )
 }

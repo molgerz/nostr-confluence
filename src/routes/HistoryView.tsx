@@ -109,7 +109,7 @@ export function HistoryView() {
     <div className="space-y-5">
       <div>
         <div className="text-xs text-fg-subtle">History</div>
-        <h1 className="mt-1 text-2xl font-medium text-fg">{page.title}</h1>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
         <div className="mt-1 flex gap-3 text-xs">
           <Link to={`${base}/${page.slug}`} className="text-accent-fg underline">
             back to the page

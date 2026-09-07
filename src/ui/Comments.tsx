@@ -6,7 +6,6 @@ import { publishComment } from '../nostr/publish-comment'
 import { deleteGroupEvent } from '../nostr/moderation'
 import { forgetEvent } from '../nostr/space-store'
 import { useSession } from '../session/session'
-import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from './SignInButton'
 import { Author } from './Author'
 import { Markdown } from './Markdown'
@@ -107,11 +106,11 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
     <li key={node.id} style={{ marginLeft: `${node.depth * 16}px` }} className="space-y-1">
       <div className="rounded-xl border border-line bg-surface-1 p-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
-          <Author pubkey={node.author} avatar />
+          <Author pubkey={node.author} avatar showNpub={false} />
           <span>· {timeLabel(node.createdAt)}</span>
         </div>
         <div className="mt-1">
-          <Markdown>{node.content}</Markdown>
+          <Markdown density="compact">{node.content}</Markdown>
         </div>
         {session.status === 'signed-in' ? (
           <div className="mt-2 flex gap-2">
@@ -157,8 +156,8 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
         <div className="space-y-2">
           {replyTo ? (
             <div className="flex items-center gap-2 text-xs text-fg-subtle">
-              <span>
-                Replying to <span className="font-mono">{shortNpub(toNpub(replyTo.author))}</span>
+              <span className="inline-flex items-center gap-1.5">
+                Replying to <Author pubkey={replyTo.author} showNpub={false} />
               </span>
               <button
                 type="button"
