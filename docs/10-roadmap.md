@@ -176,6 +176,8 @@ Erledigt:
 | Einklappbare Sidebar, Zustand bleibt erhalten | `src/ui/layout/Sidebar.tsx` |
 | Kommentare mit Threads (Kind 1111) | `src/domain/comment.ts`, `src/ui/Comments.tsx` |
 | Moderation: Mitglieder aufnehmen und entfernen, Events löschen | `src/nostr/moderation.ts`, `src/ui/MemberAdmin.tsx` |
+| Mobiles Layout: Sidebar als Overlay, kompakte Topbar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
+| Inhaltsverzeichnis "Auf dieser Seite" mit Sprungmarken | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
 
 Offen: Anhänge
 (Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),

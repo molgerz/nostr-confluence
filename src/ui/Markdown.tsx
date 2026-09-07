@@ -1,6 +1,18 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
+import type { ReactNode } from 'react'
+import { normalizeSlug } from '../nostr/kinds'
+
+/**
+ * Anker-ID aus dem Überschriftentext — dieselbe Ableitung wie in
+ * `extractHeadings`, damit die Sprungmarken im Inhaltsverzeichnis passen.
+ */
+function headingId(children: ReactNode): string | undefined {
+  const text = String(children ?? '').replace(/[*_`]/g, '')
+  const id = normalizeSlug(text)
+  return id.length > 0 ? id : undefined
+}
 
 /**
  * Markdown fremder npubs rendern. Sanitizing ist Pflicht, nicht Option:
@@ -14,9 +26,21 @@ export function Markdown({ children }: { children: string }) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}
         components={{
-          h1: (props) => <h1 className="mt-6 text-xl font-medium text-fg" {...props} />,
-          h2: (props) => <h2 className="mt-5 text-lg font-medium text-fg" {...props} />,
-          h3: (props) => <h3 className="mt-4 text-base font-medium text-fg" {...props} />,
+          h1: ({ children, ...props }) => (
+            <h1 id={headingId(children)} className="mt-6 text-xl font-medium text-fg" {...props}>
+              {children}
+            </h1>
+          ),
+          h2: ({ children, ...props }) => (
+            <h2 id={headingId(children)} className="mt-5 text-lg font-medium text-fg" {...props}>
+              {children}
+            </h2>
+          ),
+          h3: ({ children, ...props }) => (
+            <h3 id={headingId(children)} className="mt-4 text-base font-medium text-fg" {...props}>
+              {children}
+            </h3>
+          ),
           p: (props) => <p className="text-sm leading-relaxed text-fg-muted" {...props} />,
           ul: (props) => <ul className="list-disc space-y-1 pl-5 text-sm text-fg-muted" {...props} />,
           ol: (props) => <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-muted" {...props} />,

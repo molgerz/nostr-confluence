@@ -3,14 +3,30 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '../ThemeToggle'
 import { UserChip } from '../UserChip'
 
-export function Topbar({ groupBase }: { groupBase: string | null }) {
+export function Topbar({
+  groupBase,
+  onToggleMenu,
+}: {
+  groupBase: string | null
+  onToggleMenu: () => void
+}) {
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-surface-1 px-4">
-      <Link to="/" className="text-sm font-medium text-fg">
-        nostr confluence
+      <button
+        type="button"
+        onClick={onToggleMenu}
+        aria-label="Seitenleiste anzeigen"
+        className="rounded-md px-2 py-1 text-sm text-fg-muted hover:bg-surface-2 md:hidden"
+      >
+        ☰
+      </button>
+
+      <Link to="/" className="shrink-0 text-sm font-medium text-fg">
+        <span className="hidden sm:inline">nostr confluence</span>
+        <span className="sm:hidden">nc</span>
       </Link>
 
       <form
@@ -35,20 +51,23 @@ export function Topbar({ groupBase }: { groupBase: string | null }) {
       {groupBase ? (
         <Link
           to={`${groupBase}/new`}
-          className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
+          className="shrink-0 rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
         >
-          + Erstellen
+          <span className="hidden sm:inline">+ Erstellen</span>
+          <span className="sm:hidden">+</span>
         </Link>
       ) : (
         <span
           title="Erst einen Space öffnen"
-          className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg opacity-60"
+          className="hidden shrink-0 rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg opacity-60 sm:inline"
         >
           + Erstellen
         </span>
       )}
 
-      <ThemeToggle />
+      <div className="hidden sm:block">
+        <ThemeToggle />
+      </div>
       <UserChip />
     </header>
   )

@@ -12,6 +12,8 @@ type Props = {
   space: SpaceSnapshot
   snapshot: RelaySnapshot
   info: RelayInfo | null
+  /** im Handy-Overlay ist Einklappen sinnlos — dort immer ausgeklappt */
+  alwaysExpanded?: boolean
 }
 
 function itemClass({ isActive }: { isActive: boolean }): string {
@@ -36,10 +38,11 @@ function readCollapsed(): boolean {
   }
 }
 
-export function Sidebar({ group, space, snapshot, info }: Props) {
+export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = flattenTree(space.tree)
-  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [collapsedPreference, setCollapsed] = useState(readCollapsed)
+  const collapsed = alwaysExpanded ? false : collapsedPreference
 
   const toggle = () => {
     setCollapsed((value) => {
@@ -90,15 +93,17 @@ export function Sidebar({ group, space, snapshot, info }: Props) {
             <div className="text-sm text-fg-subtle">kein Space gewählt</div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label="Seitenleiste einklappen"
-          title="Seitenleiste einklappen"
-          className="rounded-md px-1.5 py-0.5 text-sm text-fg-subtle hover:bg-surface-2"
-        >
-          «
-        </button>
+        {alwaysExpanded ? null : (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Seitenleiste einklappen"
+            title="Seitenleiste einklappen"
+            className="rounded-md px-1.5 py-0.5 text-sm text-fg-subtle hover:bg-surface-2"
+          >
+            «
+          </button>
+        )}
       </div>
 
       {base ? (

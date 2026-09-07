@@ -5,17 +5,21 @@ import { Byline } from '../ui/Byline'
 import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { Comments } from '../ui/Comments'
+import { useTocSource } from '../ui/layout/toc-context'
 
 export function PageView() {
   const { group, space, base, slug } = useSpaceRoute()
   const { session } = useSession()
   const navigate = useNavigate()
 
+  // Hooks müssen vor jedem vorzeitigen Return stehen, sonst ändert sich ihre
+  // Reihenfolge zwischen Renderdurchläufen.
+  const page = slug ? space.pages.find((entry) => entry.slug === slug) : undefined
+  useTocSource(page?.head.content ?? '')
+
   if (!group || !base || !slug) {
     return <p className="text-sm text-danger">Ungültige Adresse.</p>
   }
-
-  const page = space.pages.find((entry) => entry.slug === slug)
 
   if (!page) {
     return (

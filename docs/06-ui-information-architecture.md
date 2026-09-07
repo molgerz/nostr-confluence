@@ -38,7 +38,14 @@ Vier Zonen, von oben:
 4. **Fußzeile** — "+ Seite erstellen", Relay-Statusanzeige (verbunden /
    AUTH nötig / offline) — wichtig, weil ohne Relay nichts publizierbar ist.
 
-Verhalten: einklappbar auf 48px (Icon-Leiste), Zustand in `localStorage`.
+Verhalten: einklappbar auf 40px, Zustand in `localStorage`. Unter 768px
+Breite verschwindet die Leiste ganz und wird über ein Menü in der Topbar als
+Overlay eingeblendet; nach einem Sprung schliesst sie sich wieder.
+
+Die rechte Leiste ("Auf dieser Seite") entsteht aus den Überschriften des
+angezeigten Markdown-Textes und erscheint ab 1280px Breite, sobald es
+mindestens zwei Überschriften gibt. Überschriften in Codeblöcken zählen nicht
+mit — ein `# Kommentar` in einem Shell-Beispiel ist keine Überschrift.
 
 ## Topbar
 
