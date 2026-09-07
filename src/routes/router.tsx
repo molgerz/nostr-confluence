@@ -4,6 +4,7 @@ import { SpaceChooser } from './SpaceChooser'
 import { SpaceOverview } from './SpaceOverview'
 import { PageView } from './PageView'
 import { EditorView } from './EditorView'
+import { NewPageView } from './NewPageView'
 import { HistoryView } from './HistoryView'
 import { Login } from './Login'
 import { NotFound } from './NotFound'
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <SpaceChooser /> },
       { path: '/login', element: <Login /> },
       { path: '/s/:group', element: <SpaceOverview /> },
+      { path: '/s/:group/new', element: <NewPageView /> },
       { path: '/s/:group/:slug', element: <PageView /> },
       { path: '/s/:group/:slug/edit', element: <EditorView /> },
       { path: '/s/:group/:slug/history', element: <HistoryView /> },

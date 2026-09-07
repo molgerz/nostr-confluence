@@ -1,21 +1,80 @@
-import { Link, useParams } from 'react-router-dom'
-import { PhaseNote } from '../ui/Phase'
+import { Link, useNavigate } from 'react-router-dom'
+import { useSpaceRoute } from './space-route'
+import { Markdown } from '../ui/Markdown'
+import { Byline } from '../ui/Byline'
 import { useSession } from '../session/session'
+import { shortNpub, toNpub } from '../nostr/profile'
 
 export function PageView() {
-  const { group, slug } = useParams<{ group: string; slug: string }>()
+  const { group, space, base, slug } = useSpaceRoute()
   const { session } = useSession()
-  const base = `/s/${encodeURIComponent(group ?? '')}/${slug ?? ''}`
-  const signedIn = session.status === 'signed-in'
+  const navigate = useNavigate()
+
+  if (!group || !base || !slug) {
+    return <p className="text-sm text-danger">Ungültige Adresse.</p>
+  }
+
+  const page = space.pages.find((entry) => entry.slug === slug)
+
+  if (!page) {
+    return (
+      <div className="space-y-4">
+        <div className="text-xs text-fg-subtle">{space.loading ? 'lade…' : 'nicht gefunden'}</div>
+        <h1 className="text-2xl font-medium text-fg">{slug}</h1>
+        {space.loading ? null : (
+          <div className="space-y-3">
+            <p className="text-sm text-fg-muted">
+              Für diesen Slug gibt es in diesem Space noch keine Revision.
+            </p>
+            <Link
+              to={`${base}/new?slug=${encodeURIComponent(slug)}`}
+              className="inline-block rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
+            >
+              Seite anlegen
+            </Link>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const parent = page.parentSlug
+    ? space.pages.find((entry) => entry.slug === page.parentSlug)
+    : undefined
+  const forked = page.leaves.length > 1
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">Slug: {slug}</div>
-      <h1 className="text-2xl font-medium text-fg">{slug}</h1>
-      <div className="flex gap-2">
-        {signedIn ? (
+      <div className="text-xs text-fg-subtle">
+        {parent ? (
+          <>
+            <Link to={`${base}/${parent.slug}`} className="hover:underline">
+              {parent.title}
+            </Link>
+            {' / '}
+          </>
+        ) : null}
+        {page.title}
+      </div>
+
+      <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
+      <Byline revision={page.head} />
+
+      {forked ? (
+        <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs">
+          <div className="font-medium text-fg">Diese Seite hat {page.leaves.length} offene Fassungen</div>
+          <p className="mt-1 text-fg-muted">
+            Mehrere Personen haben gleichzeitig gespeichert. Angezeigt wird die jüngste (
+            {shortNpub(toNpub(page.head.author))}). Das Zusammenführen kommt in Phase 4; bis dahin
+            sind alle Fassungen in der Historie sichtbar.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        {session.status === 'signed-in' ? (
           <Link
-            to={`${base}/edit`}
+            to={`${base}/${page.slug}/edit`}
             className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
           >
             Bearbeiten
@@ -30,15 +89,23 @@ export function PageView() {
           </Link>
         )}
         <Link
-          to={`${base}/history`}
+          to={`${base}/${page.slug}/history`}
           className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
         >
-          Historie
+          Historie ({page.revisions.length})
         </Link>
+        <button
+          type="button"
+          onClick={() => navigate(`${base}/new?parent=${encodeURIComponent(page.slug)}`)}
+          className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
+        >
+          Unterseite anlegen
+        </button>
       </div>
-      <PhaseNote phase="Phase 3">
-        Head der Revisionskette laden, Markdown mit Sanitizing rendern, Byline mit npub.
-      </PhaseNote>
+
+      <article className="border-t border-line pt-4">
+        <Markdown>{page.head.content}</Markdown>
+      </article>
     </div>
   )
 }

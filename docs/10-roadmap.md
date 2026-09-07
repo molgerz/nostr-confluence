@@ -64,18 +64,46 @@ Drei Funde, die ohne Test nicht aufgefallen wären:
   Events ist das zu früh — dort braucht es `pool.subscribe` und ein manuelles
   Schliessen.
 
-## Phase 2 — Space & Sidebar (Anforderung 2)
+## Phase 2 — Space & Sidebar (Anforderung 2) ✅ (2026-09-07)
 - Gruppen laden (`39000`–`39002`), Space-Kopf, Mitgliederliste
-- Linke Leiste mit fixen Einträgen, einklappbar
-- Seitenbaum (noch leer), Routing komplett
+- Linke Leiste mit fixen Einträgen
+- Seitenbaum, Routing komplett
 - **Fertig, wenn:** ein per Seed-Skript erzeugter Space vollständig navigierbar ist
 
-## Phase 3 — Seiten lesen & anlegen (Anforderung 3)
+Umgesetzt in `src/nostr/space-store.ts` (ein Store pro Space, hält die
+Relay-Events und leitet Seiten und Baum ab) und `src/domain/group-state.ts`.
+Die Übersicht zeigt Name, Beschreibung, die Flags aus `39000`, Mitglieder aus
+`39002` und Rollen aus `39001`, dazu ein Badge "du bist Admin/Mitglied".
+
+## Phase 3 — Seiten lesen & anlegen (Anforderung 3) ✅ (2026-09-07)
 - `1818`-Revision publishen (erste Revision = Seite erstellen)
 - Head-Auflösung, Markdown-Rendering mit Sanitizing
 - Seitenbaum aus Revisionen, Slug-Normalisierung
-- Editor (CodeMirror + Vorschau), `summary`-Feld
+- Editor mit Vorschau, `summary`-Feld
 - **Fertig, wenn:** zwei Browser-Profile sehen die Seite des jeweils anderen
+
+| Baustein | Ort |
+|---|---|
+| Revisionen aus Events lesen, h-Tag prüfen | `src/domain/revision.ts` |
+| Head-Auflösung über `parent-rev`, Blätter, Seitenbaum | `src/domain/pages.ts` |
+| Revision signieren und publishen (mit `content-hash`) | `src/nostr/publish-page.ts` |
+| Markdown rendern mit `rehype-sanitize` | `src/ui/Markdown.tsx` |
+| Editor für neue und bestehende Seiten | `src/ui/PageEditor.tsx` |
+| Seite, Historie, Übersicht, Sidebar-Baum | `src/routes/`, `src/ui/layout/Sidebar.tsx` |
+
+Gegen das laufende NIP-29-Relay geprüft: Seite "Deployment" als Unterseite von
+"Handbuch" angelegt, danach bearbeitet — die zweite Revision zeigt per
+`parent-rev` auf die erste, die Historie listet beide mit npub und Notiz, und
+der Sidebar-Baum hängt die Seite unter ihre Elternseite.
+
+**Abweichung vom Konzept:** Der Editor ist vorerst ein Textfeld mit
+umschaltbarer Vorschau statt CodeMirror 6. Für das Schreiben von Markdown
+reicht das; CodeMirror bringt Syntaxhervorhebung und eine bessere
+Selektions-API für Inline-Kommentare und kommt deshalb zusammen mit Phase 6.
+
+Die Verzweigungserkennung aus Phase 4 ist als Anzeige schon da: hat eine Seite
+mehr als ein Blatt, zeigen Seite und Sidebar das an. Das Zusammenführen fehlt
+noch.
 
 ## Phase 4 — Gemeinsam bearbeiten (Anforderungen 4 & 6)
 - Beitritt: Auto-Join in `open`-Gruppen nutzen, `9021`-Fallback für strengere Relays

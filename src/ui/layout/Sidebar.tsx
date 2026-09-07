@@ -1,11 +1,14 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
 import type { RelaySnapshot } from '../../nostr/client'
 import type { RelayInfo } from '../../nostr/relay-status'
+import type { SpaceSnapshot } from '../../nostr/space-store'
+import { flattenTree } from '../../domain/pages'
 
 type Props = {
   group: GroupAddress | null
+  space: SpaceSnapshot
   snapshot: RelaySnapshot
   info: RelayInfo | null
 }
@@ -17,18 +20,20 @@ function itemClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
- * Linke Leiste wie in Confluence, vier Zonen von oben: Space-Kopf, feste
- * Einträge, Seitenbaum, Fußzeile mit Relay- und AUTH-Status.
+ * Linke Leiste wie in Confluence: Space-Kopf, feste Einträge, Seitenbaum,
+ * Fußzeile mit Relay- und AUTH-Status. Der Baum ist eine Projektion der
+ * Revisions-Events, kein eigenes Index-Event.
  * docs/06-ui-information-architecture.md
  */
-export function Sidebar({ group, snapshot, info }: Props) {
+export function Sidebar({ group, space, snapshot, info }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
+  const nodes = flattenTree(space.tree)
 
   return (
-    <nav className="flex w-56 shrink-0 flex-col gap-1 border-r border-line bg-surface-1 p-2">
+    <nav className="flex w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-surface-1 p-2">
       {group ? (
         <div className="px-2 pt-1 pb-3">
-          <div className="text-sm font-medium text-fg">{group.id}</div>
+          <div className="text-sm font-medium text-fg">{space.metadata?.name ?? group.id}</div>
           <div className="truncate font-mono text-xs text-fg-subtle" title={group.host}>
             {group.host}
           </div>
@@ -42,22 +47,39 @@ export function Sidebar({ group, snapshot, info }: Props) {
           <NavLink to={base} end className={itemClass}>
             Übersicht
           </NavLink>
-          <NavLink to={`${base}/handbuch`} className={itemClass}>
-            Alle Seiten
-          </NavLink>
-          <span className="block px-2 py-1.5 text-sm text-fg-subtle" title="Phase 2">
-            Mitglieder
-          </span>
 
           <div className="my-2 border-t border-line" />
 
-          <div className="px-2 text-xs text-fg-subtle">
-            Seitenbaum entsteht in Phase 3 aus den Revisions-Events
-          </div>
-        </>
-      ) : null}
+          {nodes.length === 0 ? (
+            <div className="px-2 text-xs text-fg-subtle">
+              {space.loading ? 'lade Seiten…' : 'noch keine Seiten'}
+            </div>
+          ) : (
+            nodes.map((node) => (
+              <NavLink
+                key={node.slug}
+                to={`${base}/${node.slug}`}
+                className={itemClass}
+                style={{ paddingLeft: `${8 + node.depth * 12}px` }}
+              >
+                <span className="truncate">{node.title}</span>
+                {node.leaves.length > 1 ? <span className="text-warning"> ●</span> : null}
+              </NavLink>
+            ))
+          )}
 
-      <div className="flex-1" />
+          <div className="flex-1" />
+          <Link
+            to={`${base}/new`}
+            className="block rounded-md px-2 py-1.5 text-xs font-medium text-accent-fg hover:bg-surface-2"
+          >
+            + Seite erstellen
+          </Link>
+        </>
+      ) : (
+        <div className="flex-1" />
+      )}
+
       <RelayStatusBadge snapshot={snapshot} info={info} />
     </nav>
   )

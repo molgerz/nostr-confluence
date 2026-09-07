@@ -44,6 +44,12 @@ class NostrClient {
   private listeners = new Set<() => void>()
   private retryTimers = new Map<string, number>()
   private wanted = new Set<string>()
+  /** wird bei jedem Signer-Wechsel erhöht; Abos müssen dann neu aufgebaut werden */
+  private generation = 0
+  /** Relays, die wir absichtlich schliessen — deren onclose darf keinen
+   *  Wiederverbindungszähler auslösen, sonst zeigt die UI "offline", obwohl
+   *  gerade nur der Signer gewechselt hat. */
+  private reopening = new Set<string>()
 
   constructor() {
     this.pool.automaticallyAuth = (url) => this.signAuth(url)
@@ -108,12 +114,15 @@ class NostrClient {
 
   private async open(url: string): Promise<void> {
     if (!this.wanted.has(url)) return
+    window.clearTimeout(this.retryTimers.get(url))
+    this.retryTimers.delete(url)
     this.patch(url, { connection: 'connecting' })
     try {
       const relay = await this.pool.ensureRelay(url, { connectionTimeout: 5000 })
       if (!this.wanted.has(url)) return
       this.patch(url, { connection: 'online', attempts: 0 })
       relay.onclose = () => {
+        if (this.reopening.delete(url)) return
         this.patch(url, { connection: 'offline', auth: 'none', authMessage: undefined })
         this.scheduleRetry(url)
       }
@@ -172,9 +181,15 @@ class NostrClient {
    * Nach einem Signer-Wechsel wird die Verbindung neu aufgebaut: AUTH gilt pro
    * Verbindung, und eine neue Challenge kommt nur mit einer neuen Verbindung.
    */
+  getGeneration(): number {
+    return this.generation
+  }
+
   setSigner(signer: Signer | null): void {
     this.signer = signer
+    this.generation += 1
     for (const url of this.wanted) {
+      this.reopening.add(url)
       this.pool.close([url])
       this.patch(url, { auth: 'none', authMessage: undefined, attempts: 0 })
       void this.open(url)
@@ -232,6 +247,26 @@ class NostrClient {
       }
       if (settled) closer?.close()
     })
+  }
+
+  /**
+   * Dauerhaftes Abo. Liefert eine Abmeldefunktion. Signaturen prüft der Pool
+   * (`SimplePool` setzt `verifyEvent`), AUTH läuft über denselben Haken wie
+   * beim Lesen.
+   */
+  subscribe(
+    url: string,
+    filter: Filter,
+    onEvent: (event: Event) => void,
+    onEose?: () => void,
+  ): () => void {
+    const onauth = this.signAuth(url) ?? undefined
+    const closer = this.pool.subscribe([url], filter, {
+      onauth,
+      onevent: onEvent,
+      oneose: onEose,
+    })
+    return () => closer.close()
   }
 
   /**

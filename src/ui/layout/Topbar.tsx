@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { ThemeToggle } from '../ThemeToggle'
 import { UserChip } from '../UserChip'
 
-export function Topbar() {
+export function Topbar({ groupBase }: { groupBase: string | null }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line bg-surface-1 px-4">
       <Link to="/" className="text-sm font-medium text-fg">
@@ -18,14 +18,21 @@ export function Topbar() {
         Seiten durchsuchen
       </span>
 
-      <button
-        type="button"
-        disabled
-        title="Seiten anlegen kommt in Phase 3"
-        className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg opacity-60"
-      >
-        + Erstellen
-      </button>
+      {groupBase ? (
+        <Link
+          to={`${groupBase}/new`}
+          className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
+        >
+          + Erstellen
+        </Link>
+      ) : (
+        <span
+          title="Erst einen Space öffnen"
+          className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg opacity-60"
+        >
+          + Erstellen
+        </span>
+      )}
 
       <ThemeToggle />
       <UserChip />

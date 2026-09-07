@@ -62,7 +62,9 @@ Der letzte Zustand ist Pflicht, nicht Kür: bei einem verteilten Speicher darf
 
 ## Editor
 
-- **MVP**: Markdown-Quelltext (CodeMirror 6) mit Live-Vorschau, Toolbar für
+- **Umgesetzt (Phase 3)**: Textfeld mit umschaltbarer Vorschau, Feld für die
+  Änderungsnotiz, automatisch abgeleiteter Slug, Elternseite wählbar.
+- **Geplant**: Markdown-Quelltext (CodeMirror 6) mit Live-Vorschau, Toolbar für
   Überschriften/Listen/Links/Codeblock, Bild per Drag & Drop (Phase 6, braucht
   Blossom/NIP-96-Upload).
 - **Später**: WYSIWYG (TipTap), das Markdown erzeugt. Bewusst nicht zuerst, weil

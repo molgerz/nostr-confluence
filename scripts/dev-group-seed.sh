@@ -106,6 +106,21 @@ OUT=$(run 25 nak group put-user "${NAK_AUTH[@]}" --pubkey "$BOB_PK" "$ADDRESS") 
 grep -q '"kind":9000' <<<"$OUT" || { echo "   FEHLER: $(tail -1 <<<"$OUT")"; exit 1; }
 echo "   aufgenommen"
 
+# Kopf der Revisionskette eines Slugs holen, damit ein zweiter Lauf des
+# Skripts die Kette fortsetzt statt eine zweite Wurzel anzulegen (was in der
+# App zu Recht als Verzweigung angezeigt wuerde).
+head_of() {
+  run 15 nak req --fpa --sec "$ALICE_SEC" -k 1818 -t "d=$1" -t "h=$GROUP_ID" --limit 50 "$RELAY" \
+    | grep '^{' | python3 -c '
+import json, sys
+revs = [json.loads(l) for l in sys.stdin if l.strip().startswith("{")]
+parents = {t[1] for r in revs for t in r["tags"] if t[0] == "parent-rev" and len(t) > 1}
+leaves = [r for r in revs if r["id"] not in parents]
+leaves.sort(key=lambda r: (r["created_at"], r["id"]), reverse=True)
+print(leaves[0]["id"] if leaves else "")
+'
+}
+
 echo "4) Beispielseiten (Inhalt, keine Gruppenverwaltung)"
 page() { # page <sec> <slug> <titel> <elternslug> <notiz> <parent-rev> <text>
   local sec="$1" slug="$2" title="$3" parent="$4" note="$5" prev="$6" body="$7"
@@ -121,10 +136,10 @@ page() { # page <sec> <slug> <titel> <elternslug> <notiz> <parent-rev> <text>
   echo "   $slug ${LAST_ID:0:8}"
 }
 
-page "$ALICE_SEC" handbuch Handbuch "" "" "" '# Handbuch
+page "$ALICE_SEC" handbuch Handbuch "" "" "$(head_of handbuch)" '# Handbuch
 
 Elternseite fuer die Sidebar.'
-page "$ALICE_SEC" onboarding Onboarding handbuch "" "" '# Onboarding
+page "$ALICE_SEC" onboarding Onboarding handbuch "" "$(head_of onboarding)" '# Onboarding
 
 Erste Revision.'
 FIRST="$LAST_ID"

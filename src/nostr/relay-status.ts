@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { client } from './client'
 import type { RelaySnapshot } from './client'
 
@@ -40,10 +40,9 @@ async function fetchRelayInfo(relayUrl: string, signal: AbortSignal): Promise<Re
 
 /** Verbindung offenhalten und Zustand plus NIP-11-Dokument liefern. */
 export function useRelay(relayUrl: string): { snapshot: RelaySnapshot; info: RelayInfo | null } {
-  const snapshot = useSyncExternalStore(
-    (listener) => client.subscribeState(listener),
-    () => client.getSnapshot(relayUrl),
-  )
+  const subscribe = useCallback((listener: () => void) => client.subscribeState(listener), [])
+  const getSnapshot = useCallback(() => client.getSnapshot(relayUrl), [relayUrl])
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot)
   const [info, setInfo] = useState<RelayInfo | null>(null)
 
   useEffect(() => client.want(relayUrl), [relayUrl])

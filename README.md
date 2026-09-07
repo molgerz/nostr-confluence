@@ -5,8 +5,9 @@ Spaces als NIP-29-Gruppen, Seiten als Markdown-Events, Versionshistorie als
 signierte, hash-verkettete Revisionen — jede Änderung kryptografisch an einen
 npub gebunden.
 
-**Status: Phase 0 und 1 stehen** (Grundgerüst, Theming, Relay-Status, Routing,
-NIP-07-Login mit NIP-42-AUTH).
+**Status: Phase 0 bis 3 stehen.** Anmelden mit NIP-07, Space mit Mitgliedern
+und Seitenbaum, Seiten anlegen, bearbeiten und ihre Versionshistorie ansehen —
+alles gegen ein echtes NIP-29-Relay.
 Konzeption unter [`docs/`](docs/), Phasenplan in
 [`docs/10-roadmap.md`](docs/10-roadmap.md).
 
