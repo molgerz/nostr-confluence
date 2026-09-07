@@ -26,7 +26,7 @@ export function PageView() {
     return (
       <div className="space-y-4">
         <div className="text-xs text-fg-subtle">{space.loading ? 'loading…' : 'not found'}</div>
-        <h1 className="text-2xl font-medium text-fg">{slug}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-fg">{slug}</h1>
         {space.loading ? null : (
           <div className="space-y-3">
             <p className="text-sm text-fg-muted">
@@ -63,7 +63,7 @@ export function PageView() {
         {page.title}
       </div>
 
-      <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
       <Byline revision={page.head} />
 
       {forked ? (

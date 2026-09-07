@@ -68,7 +68,7 @@ export function EditorView() {
   return (
     <div className="space-y-4">
       <div className="text-xs text-fg-subtle">{mergeMode ? 'merging' : 'editing'}</div>
-      <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
       {mergeMode ? null : (
         <p className="text-xs text-fg-subtle">
           Saving creates a new revision with predecessor {page.head.id.slice(0, 8)} — nothing

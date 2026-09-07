@@ -31,7 +31,7 @@ export function SearchView() {
   return (
     <div className="space-y-4">
       <div className="text-xs text-fg-subtle">Search in {group.id}</div>
-      <h1 className="text-2xl font-medium text-fg">
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">
         {query.trim().length === 0 ? 'Search' : `“${query}”`}
       </h1>
 

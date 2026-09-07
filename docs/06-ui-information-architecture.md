@@ -57,6 +57,18 @@ account chip: display name, then the picture at the very edge. The whole chip is
 **not** in the bar but at the bottom of that page — the outermost corner of the
 layout should not put a destructive action right next to a navigation target.
 
+## The reading surface
+
+A page is a document, not a dialogue box, and is sized like one: 16px body text
+in `--text-primary` (not the muted grey the surrounding UI uses), a heading
+scale that steps down visibly, and a line length capped at 70 characters.
+The cap matters because the content column is far wider than that — without it
+a line runs to about 100 characters and the eye loses the start of the next one.
+
+The same renderer serves comments, but at a second density: a comment sits
+inside somebody else's page and stays at the 14px of the surrounding UI rather
+than competing with the page it hangs under.
+
 ## Page states
 
 | State | What is shown |

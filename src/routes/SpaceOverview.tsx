@@ -26,7 +26,7 @@ export function SpaceOverview() {
         <div className="font-mono text-xs text-fg-subtle">
           {group.host}&#39;{group.id}
         </div>
-        <h1 className="mt-1 text-2xl font-medium text-fg">{meta?.name ?? group.id}</h1>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-fg">{meta?.name ?? group.id}</h1>
         {meta?.about ? <p className="mt-1 text-sm text-fg-muted">{meta.about}</p> : null}
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
           {meta ? (

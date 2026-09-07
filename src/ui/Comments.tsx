@@ -111,7 +111,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
           <span>· {timeLabel(node.createdAt)}</span>
         </div>
         <div className="mt-1">
-          <Markdown>{node.content}</Markdown>
+          <Markdown density="compact">{node.content}</Markdown>
         </div>
         {session.status === 'signed-in' ? (
           <div className="mt-2 flex gap-2">

@@ -180,6 +180,7 @@ Done:
 | CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
 | Attachments via Blossom, upload by button and drag & drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 | Editing one's own profile (kind 0, NIP-01 fields), foreign fields preserved | `src/nostr/publish-profile.ts`, `src/routes/ProfileSettings.tsx` |
+| Reading typography: 16px body, heading scale, 70-character measure, second density for comments | `src/ui/Markdown.tsx` |
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
 Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT

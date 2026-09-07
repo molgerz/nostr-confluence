@@ -12,7 +12,7 @@ export function NewPageView() {
   return (
     <div className="space-y-4">
       <div className="text-xs text-fg-subtle">new page in {group.id}</div>
-      <h1 className="text-2xl font-medium text-fg">Create a page</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-fg">Create a page</h1>
       <PageEditor
         relayUrl={group.relayUrl}
         groupId={group.id}
