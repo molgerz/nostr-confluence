@@ -19,6 +19,14 @@ group-info:
     nak group info --sec "$ALICE_SEC" --auth "$ADDR"
     nak group members --sec "$ALICE_SEC" --auth "$ADDR"
 
+# Blossom-Server fuer Anhaenge (nur Entwicklung)
+blossom:
+    node scripts/dev-blossom.mjs
+
+# Relay fuer Profile (Kind 0) — ein NIP-29-Relay nimmt die nicht an
+profile-relay:
+    nak serve --port 10577
+
 dev:
     npm run dev
 

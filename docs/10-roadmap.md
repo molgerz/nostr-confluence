@@ -178,10 +178,10 @@ Erledigt:
 | Inhaltsverzeichnis "Auf dieser Seite" mit Sprungmarken | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
 | Anzeigenamen und Avatare aus Kind 0, gebündelt geladen | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
 | CodeMirror-6-Editor mit Markdown-Hervorhebung | `src/ui/MarkdownEditor.tsx` |
+| Anhänge über Blossom, Upload per Knopf und Drag & Drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 
-Offen: Anhänge
-(Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
-Echtzeit-CRDT, NIP-46-Login, Editor-Toolbar.
+Offen: `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`), Echtzeit-CRDT
+(gleichzeitiges Tippen), NIP-46-Login, Editor-Toolbar.
 
 ## Reihenfolge-Begründung
 

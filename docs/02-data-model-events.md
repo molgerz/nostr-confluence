@@ -29,6 +29,18 @@
 | `1111` | Nutzer | Kommentar (NIP-22) auf eine Seite |
 | `5` / `9005` | Nutzer / Admin | Löschanfrage bzw. Moderations-Löschung |
 
+## Anhänge
+
+Nostr speichert keine Dateien. Ein Anhang wird auf einen **Blossom**-Server
+geladen (BUD-01/02), liegt dort unter seinem sha256 und erscheint im Markdown
+nur als URL — im Event steht also nie die Datei selbst. Der Upload wird mit
+einem Event vom Kind `24242` autorisiert: der Server prüft eine Signatur,
+kein Passwort. Konfiguration über `VITE_BLOSSOM_SERVER`; ohne sie ist der
+Anhang-Knopf deaktiviert statt ins Leere zu laufen.
+
+Für die lokale Entwicklung liegt ein winziger Server bei:
+`node scripts/dev-blossom.mjs`.
+
 Vor dem ersten Publish prüft die App den Tag `supported_kinds` in `39000`:
 listet die Gruppe Kinds auf und `1818` fehlt, wird gewarnt statt blind
 publiziert ([04](04-permissions-nip29.md)).

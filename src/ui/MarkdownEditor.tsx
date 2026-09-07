@@ -43,17 +43,28 @@ function editorTheme(dark: boolean) {
   )
 }
 
+export type EditorHandle = {
+  /** Text an der Cursorposition einfügen */
+  insert: (text: string) => void
+}
+
 type Props = {
   value: string
   onChange: (value: string) => void
   ariaLabel: string
+  /** wird mit einer kleinen API befüllt, damit Anhänge am Cursor landen */
+  handleRef?: { current: EditorHandle | null }
+  /** Dateien, die in den Editor gezogen wurden */
+  onDropFiles?: (files: File[]) => void
 }
 
-export function MarkdownEditor({ value, onChange, ariaLabel }: Props) {
+export function MarkdownEditor({ value, onChange, ariaLabel, handleRef, onDropFiles }: Props) {
   const host = useRef<HTMLDivElement | null>(null)
   const view = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onDropRef = useRef(onDropFiles)
+  onDropRef.current = onDropFiles
   const { resolved } = useTheme()
 
   useEffect(() => {
@@ -74,14 +85,38 @@ export function MarkdownEditor({ value, onChange, ariaLabel }: Props) {
         EditorView.updateListener.of((update) => {
           if (update.docChanged) onChangeRef.current(update.state.doc.toString())
         }),
+        EditorView.domEventHandlers({
+          drop: (event) => {
+            const files = [...(event.dataTransfer?.files ?? [])]
+            if (files.length === 0 || !onDropRef.current) return false
+            event.preventDefault()
+            onDropRef.current(files)
+            return true
+          },
+        }),
       ],
     })
 
     const instance = new EditorView({ state, parent: host.current })
     view.current = instance
+
+    if (handleRef) {
+      handleRef.current = {
+        insert: (text: string) => {
+          const range = instance.state.selection.main
+          instance.dispatch({
+            changes: { from: range.from, to: range.to, insert: text },
+            selection: { anchor: range.from + text.length },
+          })
+          instance.focus()
+        },
+      }
+    }
+
     return () => {
       instance.destroy()
       view.current = null
+      if (handleRef) handleRef.current = null
     }
     // Absichtlich nur einmal aufbauen: der Inhalt wird unten synchronisiert.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -36,7 +36,7 @@
 | Risiko | Maßnahme |
 |---|---|
 | XSS über Markdown fremder npubs | `rehype-sanitize` mit strikter Allowlist, kein `dangerouslySetInnerHTML`, kein rohes HTML, keine `javascript:`-Links |
-| Bild-/Iframe-Einbettung als Tracker | Externe Bilder nur über Proxy oder mit Klick-zum-Laden; keine Iframes |
+| Bild-/Iframe-Einbettung als Tracker | **Umgesetzt:** Bilder von fremden Herkünften werden erst auf Klick geladen ("Bild von example.com laden"), Anhänge vom eigenen Blossom-Server direkt. Keine Iframes |
 | Gefälschte `h`-Tags (Event aus fremder Gruppe eingeschmuggelt) | Nach dem Laden prüfen: `h` muss dem geöffneten Space entsprechen, sonst verwerfen |
 | Signaturprüfung vergessen | Verifikation in der Datenschicht erzwingen, nicht optional pro Aufruf |
 | Impersonation über Anzeigenamen | npub immer mitanzeigen; Mitglieds-Badge nur bei Eintrag in `39002` |

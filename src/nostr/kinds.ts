@@ -11,6 +11,8 @@ export const KINDS = {
   DELETION_REQUEST: 5,
   /** NIP-42: Relay-AUTH */
   CLIENT_AUTH: 22242,
+  /** Blossom BUD-01: autorisiert einen Datei-Upload, kein Relay-Event */
+  BLOSSOM_AUTH: 24242,
 
   /** NIP-22: Kommentar auf eine Seite (Phase 6) */
   COMMENT: 1111,

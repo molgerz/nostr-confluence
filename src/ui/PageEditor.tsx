@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
@@ -6,6 +6,8 @@ import { publishRevision } from '../nostr/publish-page'
 import { useSession } from '../session/session'
 import { Markdown } from './Markdown'
 import { MarkdownEditor } from './MarkdownEditor'
+import type { EditorHandle } from './MarkdownEditor'
+import { attachmentMarkdown, attachmentsEnabled, uploadAttachment } from '../nostr/blossom'
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import type { Page } from '../domain/pages'
@@ -54,6 +56,10 @@ export function PageEditor({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
+  const editorHandle = useRef<EditorHandle | null>(null)
+  const fileInput = useRef<HTMLInputElement | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadNote, setUploadNote] = useState<string | null>(null)
 
   if (session.status !== 'signed-in') {
     return (
@@ -75,6 +81,34 @@ export function PageEditor({
   const slug = page?.slug ?? normalizeSlug(title)
   const existing = page ?? (slug.length > 0 ? pages.find((entry) => entry.slug === slug) : undefined)
   const collision = !page && existing !== undefined
+
+  /**
+   * Anhang hochladen und an der Cursorposition einfügen. Bilder als
+   * ![…](url), alles andere als Link — die Datei liegt danach auf dem
+   * Blossom-Server, im Nostr-Event steht nur die URL.
+   */
+  const upload = async (files: File[]) => {
+    if (session.status !== 'signed-in' || files.length === 0) return
+    setUploadNote(null)
+    setUploading(true)
+    try {
+      for (const file of files) {
+        const result = await uploadAttachment(session.signer, file)
+        if (!result.ok) {
+          setUploadNote(`${file.name}: ${result.reason}`)
+          return
+        }
+        const snippet = attachmentMarkdown(result, file.name)
+        if (editorHandle.current) editorHandle.current.insert(`\n${snippet}\n`)
+        else setContent((current) => `${current}\n${snippet}\n`)
+        setUploadNote(`${file.name} hochgeladen (${Math.round(result.size / 1024)} kB)`)
+      }
+    } catch (err) {
+      setUploadNote(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const save = async () => {
     setError(null)
@@ -199,20 +233,41 @@ export function PageEditor({
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-fg-subtle">Inhalt (Markdown)</span>
-          <button
-            type="button"
-            onClick={() => setShowPreview((value) => !value)}
-            className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
-          >
-            {showPreview ? 'Quelltext' : 'Vorschau'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!attachmentsEnabled() || uploading}
+              title={
+                attachmentsEnabled()
+                  ? 'Bild oder Datei anhängen — landet auf dem Blossom-Server, nicht im Event'
+                  : 'Kein Blossom-Server konfiguriert (VITE_BLOSSOM_SERVER)'
+              }
+              onClick={() => fileInput.current?.click()}
+              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted disabled:opacity-60"
+            >
+              {uploading ? 'lädt hoch…' : 'Anhang'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPreview((value) => !value)}
+              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
+            >
+              {showPreview ? 'Quelltext' : 'Vorschau'}
+            </button>
+          </div>
         </div>
         {showPreview ? (
           <div className="min-h-64 rounded-md border border-line bg-surface-2 p-3">
             <Markdown>{content || '_noch leer_'}</Markdown>
           </div>
         ) : (
-          <MarkdownEditor value={content} onChange={setContent} ariaLabel="Inhalt in Markdown" />
+          <MarkdownEditor
+            value={content}
+            onChange={setContent}
+            ariaLabel="Inhalt in Markdown"
+            handleRef={editorHandle}
+            onDropFiles={(files) => void upload(files)}
+          />
         )}
       </div>
 
@@ -228,6 +283,19 @@ export function PageEditor({
           className="w-full rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
         />
       </div>
+
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          const files = [...(event.target.files ?? [])]
+          event.target.value = ''
+          void upload(files)
+        }}
+      />
+      {uploadNote ? <p className="text-xs text-fg-subtle">{uploadNote}</p> : null}
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 

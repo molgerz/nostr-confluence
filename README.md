@@ -9,8 +9,8 @@ npub gebunden.
 und Seitenbaum, Seiten anlegen und bearbeiten, 3-Wege-Merge bei gleichzeitigem
 Speichern, Versionshistorie mit Diff, Zeilenherkunft und Wiederherstellen —
 alles gegen ein echtes NIP-29-Relay. Dazu Suche, Kommentare, Moderation,
-Anzeigenamen, mobiles Layout und ein CodeMirror-Editor. Offen sind noch
-Anhänge, Echtzeit-Bearbeitung und NIP-46-Login.
+Anzeigenamen, mobiles Layout, CodeMirror-Editor und Anhänge über Blossom.
+Offen sind noch Echtzeit-Bearbeitung und NIP-46-Login.
 Konzeption unter [`docs/`](docs/), Phasenplan in
 [`docs/10-roadmap.md`](docs/10-roadmap.md).
 
@@ -22,6 +22,13 @@ Drei Terminals, oder `just` benutzen:
 ./scripts/dev-relay-up.sh     # echtes NIP-29-Relay auf ws://localhost:8080
 ./scripts/dev-group-seed.sh   # Space, Mitglieder, Beispielseiten via nak group
 npm install && npm run dev    # App auf http://localhost:5273
+```
+
+Optional, für Anhänge und Anzeigenamen (siehe [`.env.example`](.env.example)):
+
+```bash
+node scripts/dev-blossom.mjs  # Anhänge auf http://localhost:3355
+nak serve --port 10577        # Profile (Kind 0), die ein NIP-29-Relay nicht annimmt
 ```
 
 Gruppen werden ausschließlich über `nak group` verwaltet, nie über selbst

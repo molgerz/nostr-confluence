@@ -1,8 +1,52 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { normalizeSlug } from '../nostr/kinds'
+import { isOwnAttachment } from '../nostr/blossom'
+
+/**
+ * Bilder aus fremden Quellen werden erst auf Klick geladen: ein eingebettetes
+ * Bild verrät sonst jedem fremden Server, wer wann welche Seite liest.
+ * Anhänge vom eigenen Blossom-Server laden direkt.
+ * docs/09-security-privacy.md
+ */
+function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: string }) {
+  const [allowed, setAllowed] = useState(false)
+  if (!src) return null
+
+  const trusted = isOwnAttachment(src) || src.startsWith('/') || src.startsWith('data:image/')
+  if (trusted || allowed) {
+    return (
+      <img
+        src={src}
+        alt={alt ?? ''}
+        title={title}
+        loading="lazy"
+        className="my-2 max-w-full rounded-lg border border-line"
+      />
+    )
+  }
+
+  let host = 'einer fremden Quelle'
+  try {
+    host = new URL(src).host
+  } catch {
+    /* relative oder kaputte URL */
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setAllowed(true)}
+      className="my-2 block rounded-lg border border-dashed border-line px-3 py-2 text-left text-xs text-fg-muted hover:border-line-strong"
+    >
+      Bild von {host} laden
+      {alt ? <span className="block text-fg-subtle">{alt}</span> : null}
+    </button>
+  )
+}
 
 /**
  * Anker-ID aus dem Überschriftentext — dieselbe Ableitung wie in
@@ -58,6 +102,9 @@ export function Markdown({ children }: { children: string }) {
           ),
           blockquote: (props) => (
             <blockquote className="border-l-2 border-line-strong pl-3 text-sm text-fg-subtle" {...props} />
+          ),
+          img: ({ src, alt, title }) => (
+            <SafeImage src={typeof src === 'string' ? src : undefined} alt={alt} title={title} />
           ),
           table: (props) => <table className="w-full border-collapse text-sm" {...props} />,
           th: (props) => (
