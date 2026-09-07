@@ -57,3 +57,10 @@ the specs — is documented in [NOSTR.md](NOSTR.md).
 ## Reading the design docs
 
 Start here: [docs/README.md](docs/README.md)
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). The development relay this project uses,
+[`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay), is AGPL
+licensed, but its source is only cloned into the gitignored `.local/` directory
+at runtime and is not part of this repository.
