@@ -51,8 +51,9 @@ example is not a heading.
 ## Top bar
 
 Logo, search, "+ create", the **theme switch (system/light/dark,
-[12](12-theming.md))** and the account chip: display name, then the picture at
-the very edge. The whole chip is one link to `/settings/profile`. Signing out is
+[12](12-theming.md))** and, when signed out, a **sign-in button that calls the
+extension directly** — there is no sign-in page. Signed in it becomes the
+account chip: display name, then the picture at the very edge. The whole chip is one link to `/settings/profile`. Signing out is
 **not** in the bar but at the bottom of that page — the outermost corner of the
 layout should not put a destructive action right next to a navigation target.
 
@@ -63,7 +64,8 @@ layout should not put a destructive action right next to a navigation target.
 | Reading | Rendered Markdown, table of contents on the right, byline, action bar |
 | Editing | Editor with a preview toggle, save/cancel, a "what did you change?" field → `summary` |
 | Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
-| Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works |
+| Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works. The button signs in **where it stands** — you never leave the page |
+| Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also says which extensions are common and that the app stores no key. Only after an attempt, never unprompted |
 | Publish failed | Error message in the editor with the **literal relay reason**, classified by cause (AUTH needed, permissions, other). The text stays in the editor, nothing is lost |
 
 The last state is mandatory, not a nicety: with distributed storage, "saved"
@@ -115,15 +117,25 @@ in full under `/settings/profile`.
 - **Several relays mean "saved" is not one boolean.** Every relay is listed with
   the reason it gave, literally — the same rule as for publishing a page.
 
-Signing out sits at the bottom of the same page, with what it does spelled out:
-it only forgets which npub is signed in here. The key stays in the extension,
-published events stay on the relay.
+The page also carries what used to be the sign-in page: **Connection** (signer,
+space relay, NIP-42 state, profile relays) — the things that matter when a save
+fails — and **sign out** at the bottom, with what it does spelled out: it only
+forgets which npub is signed in here. The key stays in the extension, published
+events stay on the relay.
+
+### Why there is no `/login`
+
+Signing in is one dialog in the extension. A page for it meant leaving whatever
+you were reading, and then a `?next=` mechanism to get back. Both are gone:
+`SignInButton` calls `login()` wherever it sits, and `SessionNotice` shows the
+one thing the page was genuinely needed for — the reason it did not work. A
+click that visibly does nothing, for somebody without an extension, is the worst
+of the possible states.
 
 ## Routing
 
 ```
 /                          space selection
-/login                     NIP-07 sign-in
 /s/:group                  space overview (metadata, members, page list)
 /s/:group/new              create a page  (?parent=<slug> for a subpage)
 /s/:group/search           search         (?q=…)

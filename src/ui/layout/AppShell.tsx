@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useParams } from 'react-router-dom'
 import { Topbar } from './Topbar'
+import { SessionNotice } from '../SessionNotice'
 import { Sidebar } from './Sidebar'
 import { TableOfContents } from './TableOfContents'
 import { TocProvider, useTocMarkdown } from './toc-context'
@@ -34,6 +35,7 @@ function Shell() {
   return (
     <div className="flex h-full flex-col bg-surface-0">
       <Topbar groupBase={base} onToggleMenu={() => setMenuOpen((open) => !open)} />
+      <SessionNotice />
 
       <div className="relative flex min-h-0 flex-1">
         <div className="hidden md:flex">

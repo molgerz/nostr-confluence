@@ -45,7 +45,7 @@ Completed and verified:
 | Signer interface, `window.nostr` detection with polling | `src/nostr/signer.ts` |
 | Relay layer with NIP-42: sign the challenge automatically, retry publish after `auth-required`, backoff reconnect | `src/nostr/client.ts` |
 | Session, profile from kind 0, detecting an account switch before writing | `src/session/session.tsx` |
-| Sign-in view with real states, account chip, write probe | `src/routes/Login.tsx`, `src/ui/UserChip.tsx`, `src/ui/WriteCheck.tsx` |
+| Sign-in button, account chip, failure strip, write probe | `src/ui/SignInButton.tsx`, `src/ui/UserChip.tsx`, `src/ui/SessionNotice.tsx`, `src/ui/WriteCheck.tsx` |
 | Throwaway signer for automated tests without an extension (DEV only, only with `?devsigner`) | `src/dev/fake-nip07.ts` |
 
 Library decision from the spike: **nostr-tools**, not NDK — see
@@ -180,6 +180,7 @@ Done:
 | CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
 | Attachments via Blossom, upload by button and drag & drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 | Editing one's own profile (kind 0, NIP-01 fields), foreign fields preserved | `src/nostr/publish-profile.ts`, `src/routes/ProfileSettings.tsx` |
+| `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
 Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT
 (simultaneous typing), NIP-46 sign-in, an editor toolbar.

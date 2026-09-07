@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session/session'
+import { SignInButton } from '../ui/SignInButton'
+import { DEFAULT_RELAY_URL, useRelay } from '../nostr/relay-status'
 import { classifyRejection } from '../nostr/client'
 import { parseProfile, parseProfileContent } from '../nostr/profile'
 import {
@@ -24,6 +26,7 @@ type Saved = { relays: RelayOutcome[]; ok: boolean }
 export function ProfileSettings() {
   const { session, ensureSamePubkey, applyProfile, logout } = useSession()
   const navigate = useNavigate()
+  const { snapshot, info } = useRelay(DEFAULT_RELAY_URL)
   const pubkey = session.status === 'signed-in' ? session.pubkey : null
 
   const [existing, setExisting] = useState<string | null>(null)
@@ -106,12 +109,7 @@ export function ProfileSettings() {
         <p className="text-sm text-fg-muted">
           A profile belongs to an npub, so it can only be edited while signed in.
         </p>
-        <Link
-          to="/login"
-          className="inline-block rounded-md bg-accent-bg px-4 py-2 text-sm font-medium text-accent-fg"
-        >
-          Sign in with Nostr
-        </Link>
+        <SignInButton>Sign in with Nostr</SignInButton>
       </div>
     )
   }
@@ -221,6 +219,31 @@ export function ProfileSettings() {
       ) : null}
 
       {saved ? <PublishReport saved={saved} /> : null}
+
+      <div className="space-y-2 border-t border-line pt-5">
+        <div className="text-sm font-medium text-fg">Connection</div>
+        <p className="text-sm text-fg-muted">
+          What this session is actually talking to. Relevant when a save fails: without a relay
+          nothing can be published, and without AUTH a relay may answer with nothing at all.
+        </p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          <dt className="text-fg-subtle">Signer</dt>
+          <dd className="text-fg-muted">{session.signer.kind}</dd>
+          <dt className="text-fg-subtle">Space relay</dt>
+          <dd className="text-fg-muted">
+            {info?.name ?? snapshot.url} — {snapshot.connection}
+          </dd>
+          <dt className="text-fg-subtle">NIP-42</dt>
+          <dd className="text-fg-muted">
+            {snapshot.auth}
+            {snapshot.authMessage ? ` (${snapshot.authMessage})` : ''}
+          </dd>
+          <dt className="text-fg-subtle">Profile relays</dt>
+          <dd className="font-mono text-fg-muted">
+            {writeRelays.length > 0 ? writeRelays.join(', ') : 'none configured'}
+          </dd>
+        </dl>
+      </div>
 
       <div className="space-y-2 border-t border-line pt-5">
         <div className="text-sm font-medium text-fg">Sign out</div>

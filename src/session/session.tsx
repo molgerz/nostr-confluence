@@ -24,6 +24,8 @@ type SessionContextValue = {
   error: string | null
   login: () => Promise<void>
   logout: () => void
+  /** dismiss the sign-in error shown by SessionNotice */
+  clearError: () => void
   /**
    * Call before every write. If somebody switches accounts in the extension,
    * we must not keep signing in the name of the old identity.
@@ -160,6 +162,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [session, loadProfile])
 
+  const clearError = useCallback(() => setError(null), [])
+
   const applyProfile = useCallback(
     (profile: Profile) => {
       if (session.status !== 'signed-in') return
@@ -179,10 +183,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       error,
       login,
       logout,
+      clearError,
       ensureSamePubkey,
       applyProfile,
     }),
-    [session, extension, error, login, logout, ensureSamePubkey, applyProfile],
+    [session, extension, error, login, logout, clearError, ensureSamePubkey, applyProfile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

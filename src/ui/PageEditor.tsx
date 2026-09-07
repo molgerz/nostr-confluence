@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
@@ -10,6 +9,7 @@ import type { EditorHandle } from './MarkdownEditor'
 import { attachmentMarkdown, attachmentsEnabled, uploadAttachment } from '../nostr/blossom'
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { SignInButton } from './SignInButton'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -68,12 +68,7 @@ export function PageEditor({
           Editing requires signing in, reading does not. The revision is signed with your key,
           so it cannot be done anonymously.
         </p>
-        <Link
-          to="/login"
-          className="inline-block rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
-        >
-          Sign in with Nostr
-        </Link>
+        <SignInButton>Sign in with Nostr</SignInButton>
       </div>
     )
   }

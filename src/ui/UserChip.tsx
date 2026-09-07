@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSession } from '../session/session'
+import { SignInButton } from './SignInButton'
 import { displayName } from '../nostr/profile'
 
 /**
@@ -17,14 +18,7 @@ export function UserChip() {
   const { session } = useSession()
 
   if (session.status !== 'signed-in') {
-    return (
-      <Link
-        to="/login"
-        className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
-      >
-        {session.status === 'signing-in' ? 'signing in…' : 'Sign in'}
-      </Link>
-    )
+    return <SignInButton variant="quiet">Sign in</SignInButton>
   }
 
   const name = displayName(session.profile, session.npub)

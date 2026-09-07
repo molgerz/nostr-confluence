@@ -8,7 +8,6 @@ import { NewPageView } from './NewPageView'
 import { SearchView } from './SearchView'
 import { HistoryView } from './HistoryView'
 import { BlameView } from './BlameView'
-import { Login } from './Login'
 import { ProfileSettings } from './ProfileSettings'
 import { NotFound } from './NotFound'
 
@@ -22,7 +21,6 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { path: '/', element: <SpaceChooser /> },
-      { path: '/login', element: <Login /> },
       { path: '/settings/profile', element: <ProfileSettings /> },
       { path: '/s/:group', element: <SpaceOverview /> },
       { path: '/s/:group/new', element: <NewPageView /> },

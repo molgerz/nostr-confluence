@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { buildCommentTree, countComments } from '../domain/comment'
 import type { Comment, CommentNode } from '../domain/comment'
 import { classifyRejection } from '../nostr/client'
@@ -8,6 +7,7 @@ import { deleteGroupEvent } from '../nostr/moderation'
 import { forgetEvent } from '../nostr/space-store'
 import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { SignInButton } from './SignInButton'
 import { Author } from './Author'
 import { Markdown } from './Markdown'
 
@@ -189,10 +189,8 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
         </div>
       ) : (
         <p className="text-xs text-fg-subtle">
-          <Link to="/login" className="text-accent-fg underline">
-            Sign in
-          </Link>{' '}
-          to comment — reading works without.
+          <SignInButton variant="inline">Sign in</SignInButton> to comment — reading works
+          without.
         </p>
       )}
     </section>
