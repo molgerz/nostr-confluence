@@ -1,5 +1,7 @@
 # nostr confluence
 
+[![CI](https://github.com/molgerz/nostr-confluence/actions/workflows/ci.yml/badge.svg)](https://github.com/molgerz/nostr-confluence/actions/workflows/ci.yml)
+
 A Confluence-like wiki that runs entirely on Nostr: sign in with NIP-07, spaces
 are NIP-29 groups, pages are Markdown events, and the version history is a chain
 of signed, hash-linked revisions — every change cryptographically bound to an
