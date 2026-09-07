@@ -178,11 +178,11 @@ Erledigt:
 | Moderation: Mitglieder aufnehmen und entfernen, Events löschen | `src/nostr/moderation.ts`, `src/ui/MemberAdmin.tsx` |
 | Mobiles Layout: Sidebar als Overlay, kompakte Topbar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
 | Inhaltsverzeichnis "Auf dieser Seite" mit Sprungmarken | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
+| Anzeigenamen und Avatare aus Kind 0, gebündelt geladen | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
 
 Offen: Anhänge
 (Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
-Echtzeit-CRDT, NIP-46-Login, mobiles Layout, CodeMirror-Editor,
-Anzeigenamen über `VITE_PROFILE_RELAYS`.
+Echtzeit-CRDT, NIP-46-Login, CodeMirror-Editor.
 
 ## Reihenfolge-Begründung
 

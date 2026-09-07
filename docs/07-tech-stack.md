@@ -17,6 +17,14 @@
 | Suche | MiniSearch über den Cache | Volltextsuche ohne Relay-Unterstützung (NIP-50 ist nicht überall vorhanden) |
 | Tests | Vitest + Playwright | Kettenlogik (Head, Merge, Blame) ist reine Funktionslogik → gut unit-testbar |
 
+## Konfiguration
+
+`.env.example` zeigt die beiden Schalter: `VITE_RELAY_URL` für das
+Gruppen-Relay und `VITE_PROFILE_RELAYS` für die Relays, von denen Profile
+(Kind 0) geholt werden. Zweiteres ist nötig, weil ein NIP-29-Relay Kind 0 gar
+nicht annimmt — dort braucht jedes Event einen `h`-Tag. Ohne Konfiguration
+zeigt die App npubs statt Namen, und das ist ehrlicher als ein erfundener Name.
+
 ## Struktur des Codes (geplant)
 
 ```

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { DiffView } from '../ui/DiffView'
+import { Author } from '../ui/Author'
 import { useSession } from '../session/session'
 import { publishRevision } from '../nostr/publish-page'
 import { classifyRejection } from '../nostr/client'
@@ -172,9 +173,7 @@ export function HistoryView() {
           return (
             <li key={revision.id} className="rounded-xl border border-line bg-surface-1 p-3 text-xs">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-fg-muted" title={npub}>
-                  {shortNpub(npub)}
-                </span>
+                <Author pubkey={revision.author} />
                 <span className="text-fg-subtle">
                   {new Date(revision.createdAt * 1000).toLocaleString('de-DE')}
                 </span>

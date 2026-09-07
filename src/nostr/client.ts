@@ -263,6 +263,26 @@ class NostrClient {
     })
   }
 
+  /** Wie `subscribe`, aber über mehrere Relays hinweg (z. B. für Profile). */
+  subscribeAcross(
+    urls: string[],
+    filter: Filter,
+    onEvent: (event: Event) => void,
+    onEose?: () => void,
+  ): () => void {
+    if (urls.length === 0) {
+      onEose?.()
+      return () => {}
+    }
+    const onauth = this.signAuth() ?? undefined
+    const closer = this.pool.subscribe(urls, filter, {
+      onauth,
+      onevent: onEvent,
+      oneose: onEose,
+    })
+    return () => closer.close()
+  }
+
   /**
    * Dauerhaftes Abo. Liefert eine Abmeldefunktion. Signaturen prüft der Pool
    * (`SimplePool` setzt `verifyEvent`), AUTH läuft über denselben Haken wie

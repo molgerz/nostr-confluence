@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { addMember, removeMember } from '../nostr/moderation'
 import { classifyRejection } from '../nostr/client'
-import { parsePubkeyInput, shortNpub, toNpub } from '../nostr/profile'
+import { parsePubkeyInput } from '../nostr/profile'
+import { Author } from './Author'
 import { useSession } from '../session/session'
 import type { Admin } from '../domain/group-state'
 
@@ -64,13 +65,10 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
 
       <ul className="space-y-1 text-xs">
         {members.map((pubkey) => {
-          const npub = toNpub(pubkey)
           const roles = admins.find((admin) => admin.pubkey === pubkey)?.roles ?? []
           return (
             <li key={pubkey} className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-fg-muted" title={npub}>
-                {shortNpub(npub)}
-              </span>
+              <Author pubkey={pubkey} avatar />
               {roles.length > 0 ? (
                 <span className="rounded bg-surface-1 px-1.5 py-0.5 text-fg-subtle">
                   {roles.join(', ')}

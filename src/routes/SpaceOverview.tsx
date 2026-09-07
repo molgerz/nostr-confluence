@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
-import { shortNpub, toNpub } from '../nostr/profile'
+import { Author } from '../ui/Author'
 import { WriteCheck } from '../ui/WriteCheck'
 import { MemberAdmin } from '../ui/MemberAdmin'
 import { useSession } from '../session/session'
@@ -88,7 +88,7 @@ export function SpaceOverview() {
                 </Link>
                 <div className="mt-0.5 text-xs text-fg-subtle">
                   {page.revisions.length} Revision{page.revisions.length === 1 ? '' : 'en'} ·{' '}
-                  <span className="font-mono">{shortNpub(toNpub(page.head.author))}</span>
+                  <Author pubkey={page.head.author} />
                   {page.leaves.length > 1 ? ' · verzweigt' : ''}
                 </div>
               </li>

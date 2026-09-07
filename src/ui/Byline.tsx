@@ -1,4 +1,4 @@
-import { shortNpub, toNpub } from '../nostr/profile'
+import { Author } from './Author'
 import type { Revision } from '../domain/revision'
 
 function relativeTime(seconds: number): string {
@@ -14,13 +14,10 @@ function relativeTime(seconds: number): string {
  * auch wenn später ein Anzeigename dazukommt.
  */
 export function Byline({ revision }: { revision: Revision }) {
-  const npub = toNpub(revision.author)
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
       <span>zuletzt geändert</span>
-      <span className="font-mono" title={npub}>
-        {shortNpub(npub)}
-      </span>
+      <Author pubkey={revision.author} avatar />
       <span>· {relativeTime(revision.createdAt)}</span>
       {revision.summary ? <span>· {revision.summary}</span> : null}
     </div>

@@ -8,6 +8,7 @@ import { deleteGroupEvent } from '../nostr/moderation'
 import { forgetEvent } from '../nostr/space-store'
 import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { Author } from './Author'
 import { Markdown } from './Markdown'
 
 type Props = {
@@ -106,9 +107,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
     <li key={node.id} style={{ marginLeft: `${node.depth * 16}px` }} className="space-y-1">
       <div className="rounded-xl border border-line bg-surface-1 p-3">
         <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
-          <span className="font-mono" title={toNpub(node.author)}>
-            {shortNpub(toNpub(node.author))}
-          </span>
+          <Author pubkey={node.author} avatar />
           <span>· {timeLabel(node.createdAt)}</span>
         </div>
         <div className="mt-1">
