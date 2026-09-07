@@ -15,6 +15,12 @@ export const KINDS = {
   /** NIP-22: Kommentar auf eine Seite (Phase 6) */
   COMMENT: 1111,
 
+  /**
+   * Ephemer (20000-29999), wird von Relays nicht gespeichert. Dient nur der
+   * Diagnose "darf ich hier schreiben?", ohne Spuren zu hinterlassen.
+   */
+  DIAGNOSTIC_PING: 20817,
+
   /** Eigener Kind: unveränderliche Seiten-Revision. Der eigentliche Inhalt. */
   PAGE_REVISION: 1818,
   /** NIP-54: Wiki-Artikel, bei uns nur Interop-Spiegel (nie die Wahrheit) */

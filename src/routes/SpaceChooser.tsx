@@ -12,9 +12,10 @@ export function SpaceChooser() {
       <p className="text-sm text-fg-muted">
         Ein Space ist eine NIP-29-Gruppe auf einem Relay. Der Space unten ist der, den{' '}
         <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">
-          scripts/dev-relay-seed.sh
+          scripts/dev-group-seed.sh
         </code>{' '}
-        auf dem lokalen Testrelay anlegt.
+        per <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">nak group</code> auf
+        dem lokalen NIP-29-Relay anlegt.
       </p>
       <Link
         to={`/s/${encodeURIComponent(SEEDED)}`}

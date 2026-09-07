@@ -4,8 +4,8 @@
 |---|---|---|
 | Build | Vite + TypeScript | Statisches Bundle, kein Server nötig; deploybar auf jedem Static Host |
 | UI | React | Größtes Ökosystem für Editor/Diff-Komponenten |
-| Nostr | **NDK** (`@nostr-dev-kit/ndk`) | Bringt NIP-07-Signer, NIP-42-AUTH-Handling, Relay-Pools und Caching mit — genau die Teile, die sonst Handarbeit sind |
-| Fallback | `nostr-tools` | Falls NDK zu viel Magie mitbringt: `SimplePool` + eigener AUTH-Handler. Entscheidung nach Spike in Phase 1 |
+| Nostr | **`nostr-tools`** (entschieden in Phase 1) | `pool.automaticallyAuth` signiert NIP-42-Challenges automatisch, `pool.publish` wiederholt nach `auth-required` — genau die Haken, die [03](03-auth-nip07-nip42.md) verlangt. Dazu `nip19` für npub und `verifyEvent` |
+| Verworfen | NDK (`@nostr-dev-kit/ndk`) | Cache- und Event-Abstraktionen stehen unserem eigenen Revisions-DAG im Weg; die AUTH-Haken sind bei nostr-tools direkter zugänglich |
 | Cache | IndexedDB (`idb` oder NDK-Dexie-Adapter) | Sofort-Rendern, Offline-Lesen, lokale Suche |
 | State | Zustand | Klein, kein Boilerplate; Domänenobjekte statt Events im Store |
 | Markdown rendern | `react-markdown` + `remark-gfm` + **`rehype-sanitize`** | Inhalte kommen von beliebigen npubs → Sanitizing ist Pflicht, nicht Option |

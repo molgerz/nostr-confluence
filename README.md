@@ -5,7 +5,8 @@ Spaces als NIP-29-Gruppen, Seiten als Markdown-Events, Versionshistorie als
 signierte, hash-verkettete Revisionen — jede Änderung kryptografisch an einen
 npub gebunden.
 
-**Status: Phase 0 steht** (Grundgerüst, Theming, Relay-Status, Routing).
+**Status: Phase 0 und 1 stehen** (Grundgerüst, Theming, Relay-Status, Routing,
+NIP-07-Login mit NIP-42-AUTH).
 Konzeption unter [`docs/`](docs/), Phasenplan in
 [`docs/10-roadmap.md`](docs/10-roadmap.md).
 
@@ -14,14 +15,15 @@ Konzeption unter [`docs/`](docs/), Phasenplan in
 Drei Terminals, oder `just` benutzen:
 
 ```bash
-nak serve --port 10577        # dummes Testrelay (in-memory)
-./scripts/dev-relay-seed.sh   # Gruppen-Metadaten + Beispielseiten hineinschreiben
+./scripts/dev-relay-up.sh     # echtes NIP-29-Relay auf ws://localhost:8080
+./scripts/dev-group-seed.sh   # Space, Mitglieder, Beispielseiten via nak group
 npm install && npm run dev    # App auf http://localhost:5273
 ```
 
-Port 10577 statt des nak-Defaults 10547, weil dort oft schon ein Relay-Container
-lauscht; Port 5273 statt 5173 aus dem gleichen Grund. Warum das Seed-Skript
-nötig ist und was es simuliert: [`docs/08-relay-setup.md`](docs/08-relay-setup.md).
+Gruppen werden ausschließlich über `nak group` verwaltet, nie über selbst
+signierte `39000`-Events — Begründung in [`AGENTS.md`](AGENTS.md), Details zum
+Relay in [`docs/08-relay-setup.md`](docs/08-relay-setup.md). Port 5273 statt
+5173, weil 5173 auf diesem Rechner von einem Container belegt ist.
 
 ## Leitidee in vier Sätzen
 

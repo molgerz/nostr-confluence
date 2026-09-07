@@ -1,0 +1,7 @@
+# Overlay fuer verse-pbc/groups_relay: benutzt den Produktions-Dockerfile.
+# Der mitgelieferte Dockerfile.dev bricht an `cargo build --features console`
+# ab (Feature ist laut Kommentar im Produktions-Dockerfile bewusst deaktiviert).
+services:
+  groups_relay:
+    build:
+      dockerfile: Dockerfile

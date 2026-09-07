@@ -49,6 +49,21 @@ sowie `parent`/`child` für verschachtelte Gruppen.
 | `hidden` | Gruppe nicht in Relay-Listen sichtbar | Gruppe auffindbar |
 | `supported_kinds` | Liste der akzeptierten Kinds | Unspezifiziert |
 
+Am laufenden `groups_relay` am 2026-09-07 nachgemessen:
+
+- Eine neu angelegte Gruppe ist **`private` + `closed`** — nicht offen. Das
+  Öffnen ist ein eigener Schritt.
+- `apply_tags` im Relay ist **additiv**: ein Flag ändert sich nur, wenn der
+  entsprechende Tag im `9002` vorhanden ist. `public` und `open` müssen also
+  ausdrücklich gesendet werden, sonst bleibt die Gruppe privat.
+- Solange eine Gruppe `private` ist, liefert das Relay ihre Metadaten an
+  unauthentifizierte Leser **gar nicht** aus (Log: "User is not authenticated,
+  cannot see event … kind 39000") — ohne Fehlermeldung, einfach leer.
+- Ist sie `public`, gilt im Relay-Code "Public groups are always visible":
+  Lesen ohne Anmeldung funktioniert. Damit hält die Zusage aus
+  [06](06-ui-information-architecture.md), dass Lesen keinen Login braucht —
+  aber nur für öffentliche Spaces.
+
 Für uns wichtig: **weglassen** ist die offene Variante. Für Anforderung 4 setzen
 wir also weder `restricted` noch `closed` noch `private`. Und `supported_kinds`
 sollte `1818` enthalten — die App liest den Tag und warnt sonst.

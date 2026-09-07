@@ -1,26 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-
-/**
- * Verbindungszustand eines Relays plus dessen NIP-11-Dokument.
- *
- * Phase 0 nutzt absichtlich keine Nostr-Bibliothek: die Entscheidung zwischen
- * NDK und nostr-tools ist laut docs/07-tech-stack.md ein Spike in Phase 1.
- * Für "verbunden ja/nein" reicht ein WebSocket, und die Wahl bleibt offen.
- */
-export type RelayState = 'connecting' | 'online' | 'offline'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { client } from './client'
+import type { RelaySnapshot } from './client'
 
 export type RelayInfo = {
   name: string
   software: string | null
   supportedNips: number[]
-  /** Kann das Relay Gruppen selbst durchsetzen, oder simulieren wir nur? */
+  /** Setzt das Relay Gruppen selbst durch, oder simulieren wir sie nur? */
   supportsNip29: boolean
-}
-
-export type RelayStatus = {
-  state: RelayState
-  info: RelayInfo | null
-  attempts: number
 }
 
 function httpUrl(relayUrl: string): string {
@@ -36,13 +23,13 @@ async function fetchRelayInfo(relayUrl: string, signal: AbortSignal): Promise<Re
     if (!res.ok) return null
     const doc: unknown = await res.json()
     if (typeof doc !== 'object' || doc === null) return null
-    const d = doc as Record<string, unknown>
-    const nips = Array.isArray(d.supported_nips)
-      ? d.supported_nips.filter((n): n is number => typeof n === 'number')
+    const data = doc as Record<string, unknown>
+    const nips = Array.isArray(data.supported_nips)
+      ? data.supported_nips.filter((nip): nip is number => typeof nip === 'number')
       : []
     return {
-      name: typeof d.name === 'string' ? d.name : new URL(httpUrl(relayUrl)).host,
-      software: typeof d.software === 'string' ? d.software : null,
+      name: typeof data.name === 'string' ? data.name : new URL(httpUrl(relayUrl)).host,
+      software: typeof data.software === 'string' ? data.software : null,
       supportedNips: nips,
       supportsNip29: nips.includes(29),
     }
@@ -51,72 +38,42 @@ async function fetchRelayInfo(relayUrl: string, signal: AbortSignal): Promise<Re
   }
 }
 
-export function useRelayStatus(relayUrl: string): RelayStatus {
-  const [state, setState] = useState<RelayState>('connecting')
+/** Verbindung offenhalten und Zustand plus NIP-11-Dokument liefern. */
+export function useRelay(relayUrl: string): { snapshot: RelaySnapshot; info: RelayInfo | null } {
+  const snapshot = useSyncExternalStore(
+    (listener) => client.subscribeState(listener),
+    () => client.getSnapshot(relayUrl),
+  )
   const [info, setInfo] = useState<RelayInfo | null>(null)
-  const [attempts, setAttempts] = useState(0)
-  const timer = useRef<number | undefined>(undefined)
+
+  useEffect(() => client.want(relayUrl), [relayUrl])
 
   useEffect(() => {
-    let cancelled = false
-    let socket: WebSocket | null = null
-    let tries = 0
     const abort = new AbortController()
-
-    setState('connecting')
     setInfo(null)
-    setAttempts(0)
-
     void fetchRelayInfo(relayUrl, abort.signal).then((result) => {
-      if (!cancelled && result) setInfo(result)
+      if (result) setInfo(result)
     })
-
-    const connect = () => {
-      if (cancelled) return
-      try {
-        socket = new WebSocket(relayUrl)
-      } catch {
-        scheduleRetry()
-        return
-      }
-      socket.onopen = () => {
-        if (cancelled) return
-        tries = 0
-        setAttempts(0)
-        setState('online')
-      }
-      socket.onerror = () => socket?.close()
-      socket.onclose = () => {
-        if (cancelled) return
-        setState('offline')
-        scheduleRetry()
-      }
-    }
-
-    const scheduleRetry = () => {
-      tries += 1
-      setAttempts(tries)
-      const delay = Math.min(1000 * 2 ** (tries - 1), 15000)
-      timer.current = window.setTimeout(connect, delay)
-    }
-
-    connect()
-
-    return () => {
-      cancelled = true
-      abort.abort()
-      window.clearTimeout(timer.current)
-      if (socket) {
-        socket.onclose = null
-        socket.onerror = null
-        socket.close()
-      }
-    }
+    return () => abort.abort()
   }, [relayUrl])
 
-  return { state, info, attempts }
+  return { snapshot, info }
 }
 
-/** Relay aus der Umgebung, Default ist das lokale nak-Testrelay. */
-export const DEFAULT_RELAY_URL: string =
-  import.meta.env.VITE_RELAY_URL ?? 'ws://localhost:10577'
+/**
+ * Relay aus der Umgebung. Default ist das lokale NIP-29-Relay aus
+ * scripts/dev-relay-up.sh — nicht ein dummes Testrelay, damit lokal dieselbe
+ * Rechtelogik gilt wie produktiv. docs/08-relay-setup.md
+ */
+export const DEFAULT_RELAY_URL: string = import.meta.env.VITE_RELAY_URL ?? 'ws://localhost:8080'
+
+/**
+ * Relays für Kind-0-Profile. Leer per Default: im lokalen Betrieb liegen die
+ * Profile der Testschlüssel auf dem Testrelay, und ungefragte Verbindungen zu
+ * öffentlichen Relays soll die App nicht aufbauen.
+ * Beispiel: VITE_PROFILE_RELAYS="wss://purplepag.es,wss://relay.damus.io"
+ */
+export const PROFILE_RELAYS: string[] = (import.meta.env.VITE_PROFILE_RELAYS ?? '')
+  .split(',')
+  .map((url: string) => url.trim())
+  .filter((url: string) => url.length > 0)

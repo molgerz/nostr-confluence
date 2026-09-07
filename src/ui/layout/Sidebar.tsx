@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
-import type { RelayStatus } from '../../nostr/relay-status'
+import type { RelaySnapshot } from '../../nostr/client'
+import type { RelayInfo } from '../../nostr/relay-status'
 
 type Props = {
   group: GroupAddress | null
-  status: RelayStatus
-  relayUrl: string
+  snapshot: RelaySnapshot
+  info: RelayInfo | null
 }
 
 function itemClass({ isActive }: { isActive: boolean }): string {
@@ -17,10 +18,10 @@ function itemClass({ isActive }: { isActive: boolean }): string {
 
 /**
  * Linke Leiste wie in Confluence, vier Zonen von oben: Space-Kopf, feste
- * Einträge, Seitenbaum, Fußzeile mit Relay-Status.
+ * Einträge, Seitenbaum, Fußzeile mit Relay- und AUTH-Status.
  * docs/06-ui-information-architecture.md
  */
-export function Sidebar({ group, status, relayUrl }: Props) {
+export function Sidebar({ group, snapshot, info }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
 
   return (
@@ -57,7 +58,7 @@ export function Sidebar({ group, status, relayUrl }: Props) {
       ) : null}
 
       <div className="flex-1" />
-      <RelayStatusBadge status={status} relayUrl={relayUrl} />
+      <RelayStatusBadge snapshot={snapshot} info={info} />
     </nav>
   )
 }

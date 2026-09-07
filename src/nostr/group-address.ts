@@ -4,7 +4,7 @@
  * docs/04-permissions-nip29.md
  */
 export type GroupAddress = {
-  /** z. B. localhost:10577 */
+  /** z. B. localhost:8080 */
   host: string
   /** z. B. engineering */
   id: string

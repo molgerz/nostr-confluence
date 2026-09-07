@@ -12,3 +12,6 @@ db/
 
 # macOS
 .DS_Store
+
+# lokal geklonte Fremd-Repos (Relay-Quelle)
+.local/

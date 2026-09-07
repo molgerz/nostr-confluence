@@ -2,21 +2,22 @@
 default:
     @just --list
 
-# dummes Testrelay (Phase 0-3). Port 10577, weil 10547 oft belegt ist.
+# echtes NIP-29-Relay (verse-pbc/groups_relay) auf ws://localhost:8080
 relay:
-    nak serve --port 10577
+    ./scripts/dev-relay-up.sh
 
-# dasselbe, aber mit erzwungenem NIP-42 zum Testen des Login-Flows
-relay-auth:
-    nak serve --port 10577 --auth
-
-# Gruppen-Metadaten und Beispielseiten in das laufende Testrelay schreiben
+# Space, Mitglieder und Beispielseiten anlegen — ausschliesslich via nak group
 seed:
-    ./scripts/dev-relay-seed.sh
+    ./scripts/dev-group-seed.sh
 
-# echtes NIP-29-Relay ab Phase 4 (siehe docs/08-relay-setup.md)
-relay-nip29:
-    @echo "git clone https://github.com/verse-pbc/groups_relay && cd groups_relay && docker compose up --build"
+# Gruppenzustand nachsehen
+group-info:
+    #!/usr/bin/env bash
+    source scripts/.dev-keys
+    PK=$(nak relay ws://localhost:8080 | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("self") or d.get("pubkey"))')
+    ADDR=$(nak encode naddr -d engineering -k 39000 -a "$PK" -r ws://localhost:8080)
+    nak group info --sec "$ALICE_SEC" --auth "$ADDR"
+    nak group members --sec "$ALICE_SEC" --auth "$ADDR"
 
 dev:
     npm run dev

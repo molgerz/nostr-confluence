@@ -31,11 +31,38 @@ Verifiziert im Browser: Umschaltung hell/dunkel in allen Ansichten, Persistenz
 "verbunden" mit Namen `nak serve` und Hinweis "NIP-29: nein, Gruppen simuliert",
 sowie der Ausfall-Zustand mit Wiederverbindungszähler nach Stoppen des Relays.
 
-## Phase 1 — Login (Anforderung 1)
+## Phase 1 — Login (Anforderung 1) ✅ (2026-09-07)
 - NIP-07-Erkennung, `getPublicKey`, Profil (`kind 0`), Session
 - NIP-42-AUTH inkl. automatischem Retry bei Reconnect
 - Signer-Interface (für NIP-46 später)
 - **Fertig, wenn:** Login mit Alby funktioniert, Publish nach Reconnect nicht still fehlschlägt
+
+Erledigt und geprüft:
+
+| Baustein | Ort |
+|---|---|
+| Signer-Interface, `window.nostr`-Erkennung mit Polling | `src/nostr/signer.ts` |
+| Relay-Schicht mit NIP-42: Challenge automatisch signieren, Publish-Retry nach `auth-required`, Backoff-Reconnect | `src/nostr/client.ts` |
+| Sitzung, Profil aus Kind 0, Erkennung eines Account-Wechsels vor dem Schreiben | `src/session/session.tsx` |
+| Login-Ansicht mit echten Zuständen, Nutzer-Chip, Schreibprobe | `src/routes/Login.tsx`, `src/ui/UserChip.tsx`, `src/ui/WriteCheck.tsx` |
+| Wegwerf-Signer für automatisierte Tests ohne Extension (nur DEV, nur mit `?devsigner`) | `src/dev/fake-nip07.ts` |
+
+Bibliotheksentscheidung aus dem Spike: **nostr-tools**, nicht NDK — siehe
+[07](07-tech-stack.md).
+
+Gegengeprüft am echten NIP-29-Relay (`groups_relay`, ws://localhost:8080):
+Anmeldung, Sitzung über den Reload, und eine Schreibprobe, die vom Relay mit
+"akzeptiert" bestätigt und über das eigene Abo zurückgeliefert wurde.
+
+Drei Funde, die ohne Test nicht aufgefallen wären:
+- `pool.get` nimmt keinen `onauth`-Haken. Auf einem Relay mit erzwungenem
+  NIP-42 liefert es deshalb stillschweigend leere Ergebnisse. Lesen läuft
+  daher über `subscribeEose` mit `onauth`.
+- Ephemere Events brauchen einen Abonnenten, sonst lehnt das Relay sie ab. Die
+  Schreibprobe abonniert deshalb zuerst und wartet auf das eigene Event.
+- `subscribeEose` schliesst das Abo bei EOSE. Für den Rückweg eines ephemeren
+  Events ist das zu früh — dort braucht es `pool.subscribe` und ein manuelles
+  Schliessen.
 
 ## Phase 2 — Space & Sidebar (Anforderung 2)
 - Gruppen laden (`39000`–`39002`), Space-Kopf, Mitgliederliste
@@ -51,7 +78,6 @@ sowie der Ausfall-Zustand mit Wiederverbindungszähler nach Stoppen des Relays.
 - **Fertig, wenn:** zwei Browser-Profile sehen die Seite des jeweils anderen
 
 ## Phase 4 — Gemeinsam bearbeiten (Anforderungen 4 & 6)
-- Wechsel auf `groups_relay` (echte NIP-29-Rechte) — ab hier reicht `nak serve` nicht mehr
 - Beitritt: Auto-Join in `open`-Gruppen nutzen, `9021`-Fallback für strengere Relays
 - Optimistische Sperre: Head-Prüfung vor Publish
 - 3-Wege-Merge-Dialog, Verzweigungs-Banner, Merge-Revision
