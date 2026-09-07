@@ -124,20 +124,22 @@ local cache that has not been built yet.
 
 ## How identity is displayed
 
-Wherever the **subject of the row is attribution** — history, blame, comments,
-the member list: avatar + display name + shortened npub (`npub1qz…7k4f`,
-monospace). Display names are freely chosen and not unique, so a name alone
-could be somebody impersonating somebody else. Those are the places where
-somebody is deciding whether to trust a change, and there the key is shown
-rather than hidden.
+The dividing line is **verification, not presence**.
 
-Two places show the name alone:
+Where somebody is checking who did what — **history, blame, the member list** —
+the row carries avatar + display name + shortened npub (`npub1qz…7k4f`,
+monospace). Display names are freely chosen and not unique, so a name alone
+could be somebody impersonating somebody else, and these are exactly the screens
+somebody opens to decide whether to trust a change or a member.
+
+Everywhere else the name stands alone, because the key would be noise:
 
 - **One's own account chip in the top bar.** Nobody has to tell themselves
   apart from an impostor, and the bar is the narrowest strip in the layout.
 - **The byline of a page** ("last edited by …"). It says who touched the page,
-  not who signed which revision; the history one click away answers that, with
-  the npub on every entry.
+  not who signed which revision; the history is one click away and answers that.
+- **Comments.** A comment is somebody speaking, not a claim about authorship of
+  the page. Whoever wants the key hovers the name or opens the history.
 
 In both the npub stays in the tooltip and appears in full under
 `/settings/profile`. And where a key has no `kind 0` at all, the shortened npub

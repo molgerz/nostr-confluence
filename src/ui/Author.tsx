@@ -3,8 +3,8 @@ import { shortNpub, toNpub } from '../nostr/profile'
 
 /**
  * Shows authorship: display name **and** npub. Display names are freely chosen
- * and not unique — which is why the npub sits next to it wherever the point of
- * the row is attribution: history, blame, comments, the member list.
+ * and not unique — which is why the npub sits next to it wherever somebody is
+ * weighing whether to trust a change: history, blame, the member list.
  * docs/06-ui-information-architecture.md
  *
  * `showNpub={false}` drops it where the name is a byline rather than a claim
