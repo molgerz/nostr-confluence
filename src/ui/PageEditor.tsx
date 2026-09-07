@@ -5,7 +5,10 @@ import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
 import { useSession } from '../session/session'
 import { Markdown } from './Markdown'
+import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
+import { shortNpub, toNpub } from '../nostr/profile'
 import type { Page } from '../domain/pages'
+import type { Revision } from '../domain/revision'
 
 type Props = {
   relayUrl: string
@@ -16,6 +19,12 @@ type Props = {
   defaultParentSlug?: string | null
   /** vorhandene Seiten des Spaces, für Slug-Kollisionen */
   pages: Page[]
+  /** vorbelegter Inhalt, z. B. das Ergebnis eines Merges */
+  initialContent?: string
+  /** Hinweis über dem Editor, z. B. "zwei Fassungen zusammengeführt" */
+  initialNotice?: string
+  /** Vorgänger-Revisionen überschreiben (Merge mehrerer Blätter) */
+  overrideParents?: string[]
   onSaved: (slug: string) => void
   onCancel: () => void
 }
@@ -26,12 +35,19 @@ export function PageEditor({
   page,
   defaultParentSlug = null,
   pages,
+  initialContent,
+  initialNotice,
+  overrideParents,
   onSaved,
   onCancel,
 }: Props) {
   const { session } = useSession()
   const [title, setTitle] = useState(page?.title ?? '')
-  const [content, setContent] = useState(page?.head.content ?? '')
+  const [content, setContent] = useState(initialContent ?? page?.head.content ?? '')
+  // Fassung, auf der dieser Editor geöffnet wurde. Bewegt sich der Kopf der
+  // Kette in der Zwischenzeit, wird zusammengeführt statt überschrieben.
+  const [baseRevision, setBaseRevision] = useState<Revision | null>(page?.head ?? null)
+  const [notice, setNotice] = useState<string | null>(initialNotice ?? null)
   const [summary, setSummary] = useState('')
   const [parentSlug, setParentSlug] = useState(page?.parentSlug ?? defaultParentSlug ?? '')
   const [busy, setBusy] = useState(false)
@@ -69,6 +85,37 @@ export function PageEditor({
       setError('Aus diesem Titel lässt sich kein Slug bilden — bitte Buchstaben oder Zahlen verwenden.')
       return
     }
+    if (hasConflictMarkers(content)) {
+      setError('Im Text stehen noch Konfliktmarker. Bitte auflösen und die Marker entfernen.')
+      return
+    }
+
+    // Optimistische Sperre: hat jemand anderes seit dem Öffnen gespeichert,
+    // wird zusammengeführt und erst nach Prüfung durch den Menschen
+    // veröffentlicht. docs/05-versioning-history.md
+    const live = existing
+    if (baseRevision && live && live.head.id !== baseRevision.id && !overrideParents) {
+      const theirs = live.head
+      const merged = mergeThreeWay(baseRevision.content, content, theirs.content, {
+        mine: 'deine Fassung',
+        theirs: `Fassung von ${shortNpub(toNpub(theirs.author))}`,
+      })
+      setBaseRevision(theirs)
+      setContent(merged.content)
+      setNotice(
+        merged.status === 'conflict'
+          ? `${shortNpub(toNpub(theirs.author))} hat diese Seite in der Zwischenzeit geändert. ` +
+              `${merged.conflicts} Stelle(n) überschneiden sich — bitte im Text auflösen, ` +
+              'die Marker entfernen und erneut speichern.'
+          : merged.status === 'identical'
+            ? `${shortNpub(toNpub(theirs.author))} hat inzwischen gespeichert, mit demselben ` +
+                'Ergebnis. Nichts zu tun.'
+            : `${shortNpub(toNpub(theirs.author))} hat diese Seite in der Zwischenzeit geändert. ` +
+                'Beide Änderungen wurden zusammengeführt — bitte prüfen und erneut speichern.',
+      )
+      return
+    }
+
     setBusy(true)
     try {
       const result = await publishRevision(session.signer, {
@@ -81,11 +128,9 @@ export function PageEditor({
         parentSlug: parentSlug.trim() || existing?.parentSlug || null,
         summary: summary.trim() || null,
         content,
-        // Neue Seite: keine Vorgänger. Bearbeiten oder gleicher Slug wie eine
-        // vorhandene Seite: an deren Kettenkopf anhängen. Ohne das entstünde
-        // eine zweite Wurzel — die App zeigte die Seite dann zu Recht als
-        // verzweigt an, obwohl niemand parallel gearbeitet hat.
-        parentRevs: existing ? [existing.head.id] : [],
+        // Neue Seite: keine Vorgänger. Merge: alle Blätter. Sonst der aktuelle
+        // Kopf der Kette.
+        parentRevs: overrideParents ?? (existing ? [existing.head.id] : []),
       })
       if (result.ok) {
         onSaved(slug)
@@ -108,6 +153,12 @@ export function PageEditor({
 
   return (
     <div className="space-y-4">
+      {notice ? (
+        <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs text-fg-muted">
+          {notice}
+        </div>
+      ) : null}
+
       <div className="space-y-1">
         <label htmlFor="title" className="text-xs font-medium text-fg-subtle">
           Titel

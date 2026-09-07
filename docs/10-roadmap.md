@@ -105,11 +105,37 @@ Die Verzweigungserkennung aus Phase 4 ist als Anzeige schon da: hat eine Seite
 mehr als ein Blatt, zeigen Seite und Sidebar das an. Das Zusammenführen fehlt
 noch.
 
-## Phase 4 — Gemeinsam bearbeiten (Anforderungen 4 & 6)
+## Phase 4 — Gemeinsam bearbeiten (Anforderungen 4 & 6) ✅ (2026-09-07)
 - Beitritt: Auto-Join in `open`-Gruppen nutzen, `9021`-Fallback für strengere Relays
 - Optimistische Sperre: Head-Prüfung vor Publish
-- 3-Wege-Merge-Dialog, Verzweigungs-Banner, Merge-Revision
+- 3-Wege-Merge, Verzweigungs-Banner, Merge-Revision
 - **Fertig, wenn:** gleichzeitiges Bearbeiten keinen Text verliert und der Konflikt sichtbar ist
+
+| Baustein | Ort |
+|---|---|
+| Zeilenweiser 3-Wege-Merge mit Konfliktmarkern | `src/domain/merge.ts` |
+| Jüngster gemeinsamer Vorfahre zweier Revisionen | `findCommonAncestor` in `src/domain/pages.ts` |
+| Optimistische Sperre und Merge im Editor | `src/ui/PageEditor.tsx` |
+| Verzweigte Seite zusammenführen | `src/routes/EditorView.tsx` mit `?merge=1` |
+
+Ablauf beim Speichern: hat sich der Kopf der Kette seit dem Öffnen bewegt,
+wird nicht publiziert, sondern zusammengeführt und der Mensch gefragt.
+Überschneiden sich die Änderungen, stehen Konfliktmarker im Text und Speichern
+bleibt gesperrt, bis sie weg sind. Das Ergebnis einer Zusammenführung ist eine
+Revision mit zwei `parent-rev`-Tags.
+
+Am laufenden Relay durchgespielt: zwei konkurrierende Revisionen über `nak`
+erzeugt, in der App zusammengeführt (Merge-Revision `bc523a4b` mit beiden
+Vorgängern), danach mit offenem Editor eine fremde Revision publiziert — beim
+Speichern wurde zusammengeführt statt überschrieben, der Konflikt markiert und
+das Speichern verweigert, bis die Marker entfernt waren.
+
+Zwei Fehler dabei gefunden: Zeilennummern aus Unified-Diff-Hunks sind für reine
+Einfügungen mehrdeutig (ein eingefügter Abschnitt landete eine Zeile zu weit
+hinten) — die Änderungserkennung läuft jetzt über `diffArrays` auf Zeilen-Arrays.
+Und der Merge startete, sobald zwei Blätter geladen waren, während die
+gemeinsame Basis noch unterwegs war; der Editor wartet jetzt auf das
+vollständige Laden.
 
 ## Phase 5 — Historie (Anforderung 5)
 - Zeitachse pro Seite mit npub, Zeit, `summary`

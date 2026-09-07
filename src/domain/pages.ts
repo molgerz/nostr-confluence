@@ -91,3 +91,40 @@ export function buildTree(pages: Page[]): PageNode[] {
 export function flattenTree(nodes: PageNode[]): PageNode[] {
   return nodes.flatMap((node) => [node, ...flattenTree(node.children)])
 }
+
+/**
+ * Gemeinsamen Vorfahren zweier Revisionen suchen — die Basis für einen
+ * 3-Wege-Merge. Gibt es keinen (zwei unabhängige Wurzeln), ist das Ergebnis
+ * null; der Merge läuft dann gegen eine leere Basis und meldet ehrlich einen
+ * Konflikt, statt eine Seite stillschweigend zu bevorzugen.
+ */
+export function findCommonAncestor(
+  revisions: Revision[],
+  a: Revision,
+  b: Revision,
+): Revision | null {
+  const byId = new Map(revisions.map((revision) => [revision.id, revision]))
+
+  const ancestorsOfA = new Set<string>()
+  const queue = [a.id]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    if (ancestorsOfA.has(id)) continue
+    ancestorsOfA.add(id)
+    const revision = byId.get(id)
+    if (revision) queue.push(...revision.parentRevs)
+  }
+
+  const seen = new Set<string>()
+  const search = [b.id]
+  while (search.length > 0) {
+    const id = search.shift()!
+    if (seen.has(id)) continue
+    seen.add(id)
+    if (ancestorsOfA.has(id) && id !== b.id) return byId.get(id) ?? null
+    if (ancestorsOfA.has(id) && id === b.id && id !== a.id) return byId.get(id) ?? null
+    const revision = byId.get(id)
+    if (revision) search.push(...revision.parentRevs)
+  }
+  return null
+}

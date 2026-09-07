@@ -65,9 +65,16 @@ export function PageView() {
           <div className="font-medium text-fg">Diese Seite hat {page.leaves.length} offene Fassungen</div>
           <p className="mt-1 text-fg-muted">
             Mehrere Personen haben gleichzeitig gespeichert. Angezeigt wird die jüngste (
-            {shortNpub(toNpub(page.head.author))}). Das Zusammenführen kommt in Phase 4; bis dahin
-            sind alle Fassungen in der Historie sichtbar.
+            {shortNpub(toNpub(page.head.author))}), alle Fassungen stehen in der Historie.
           </p>
+          {session.status === 'signed-in' ? (
+            <Link
+              to={`${base}/${page.slug}/edit?merge=1`}
+              className="mt-2 inline-block rounded-md border border-warning px-2 py-1 font-medium text-fg-muted"
+            >
+              Fassungen zusammenführen
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
