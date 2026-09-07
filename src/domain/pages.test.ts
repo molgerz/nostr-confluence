@@ -7,8 +7,8 @@ function rev(partial: Partial<Revision> & { id: string }): Revision {
     author: 'alice',
     createdAt: 1000,
     group: 'engineering',
-    slug: 'seite',
-    title: 'Seite',
+    slug: 'page',
+    title: 'Page',
     parentSlug: null,
     parentRevs: [],
     summary: null,
@@ -17,8 +17,8 @@ function rev(partial: Partial<Revision> & { id: string }): Revision {
   }
 }
 
-describe('buildPages — Head-Auflösung', () => {
-  it('nimmt bei einer linearen Kette die Spitze als Head', () => {
+describe('buildPages — head resolution', () => {
+  it('takes the tip of a linear chain as the head', () => {
     const pages = buildPages([
       rev({ id: 'r1', createdAt: 100 }),
       rev({ id: 'r2', createdAt: 200, parentRevs: ['r1'] }),
@@ -30,18 +30,18 @@ describe('buildPages — Head-Auflösung', () => {
     expect(pages[0].revisions).toHaveLength(3)
   })
 
-  it('erkennt eine Verzweigung und behält beide Blätter', () => {
+  it('detects a fork and keeps both leaves', () => {
     const pages = buildPages([
       rev({ id: 'r1', createdAt: 100 }),
       rev({ id: 'mine', createdAt: 200, parentRevs: ['r1'] }),
       rev({ id: 'theirs', createdAt: 250, parentRevs: ['r1'] }),
     ])
     expect(pages[0].leaves.map((leaf) => leaf.id).sort()).toEqual(['mine', 'theirs'])
-    // angezeigt wird das jüngste Blatt, verschwiegen wird die Gabelung nicht
+    // the newest leaf is displayed, but the fork is not hidden
     expect(pages[0].head.id).toBe('theirs')
   })
 
-  it('löst gleiche Zeitstempel deterministisch über die id auf', () => {
+  it('breaks timestamp ties deterministically by id', () => {
     const a = buildPages([
       rev({ id: 'bbb', createdAt: 100 }),
       rev({ id: 'aaa', createdAt: 100 }),
@@ -54,7 +54,7 @@ describe('buildPages — Head-Auflösung', () => {
     expect(a[0].head.id).toBe('aaa')
   })
 
-  it('führt eine Merge-Revision mit zwei Eltern wieder zu einem Blatt zusammen', () => {
+  it('brings a merge revision with two parents back to a single leaf', () => {
     const pages = buildPages([
       rev({ id: 'r1', createdAt: 100 }),
       rev({ id: 'mine', createdAt: 200, parentRevs: ['r1'] }),
@@ -65,7 +65,7 @@ describe('buildPages — Head-Auflösung', () => {
     expect(pages[0].head.id).toBe('merge')
   })
 
-  it('trennt Seiten nach Slug und nimmt Titel und Elternseite vom Head', () => {
+  it('separates pages by slug and takes title and parent from the head', () => {
     const pages = buildPages([
       rev({ id: 'h1', slug: 'handbuch', title: 'Handbuch' }),
       rev({ id: 'o1', slug: 'onboarding', title: 'Alt', parentSlug: null, createdAt: 100 }),
@@ -86,7 +86,7 @@ describe('buildPages — Head-Auflösung', () => {
 })
 
 describe('buildTree', () => {
-  it('hängt Kinder unter ihre Elternseite und zählt die Tiefe', () => {
+  it('nests children under their parent page and counts the depth', () => {
     const pages = buildPages([
       rev({ id: 'h', slug: 'handbuch', title: 'Handbuch' }),
       rev({ id: 'o', slug: 'onboarding', title: 'Onboarding', parentSlug: 'handbuch' }),
@@ -102,12 +102,12 @@ describe('buildTree', () => {
     ])
   })
 
-  it('hängt Seiten mit unbekannter Elternseite oben an statt sie zu verstecken', () => {
+  it('puts pages with an unknown parent at the top instead of hiding them', () => {
     const pages = buildPages([rev({ id: 'x', slug: 'waise', parentSlug: 'gibtsnicht' })])
     expect(buildTree(pages).map((node) => node.slug)).toEqual(['waise'])
   })
 
-  it('überlebt eine Seite, die sich selbst als Elternseite nennt', () => {
+  it('survives a page that names itself as its parent', () => {
     const pages = buildPages([rev({ id: 'x', slug: 'selbst', parentSlug: 'selbst' })])
     const tree = buildTree(pages)
     expect(tree.map((node) => node.slug)).toEqual(['selbst'])
@@ -116,14 +116,14 @@ describe('buildTree', () => {
 })
 
 describe('findCommonAncestor', () => {
-  it('findet die Wurzel zweier Zweige', () => {
+  it('finds the root of two branches', () => {
     const r1 = rev({ id: 'r1' })
     const mine = rev({ id: 'mine', parentRevs: ['r1'] })
     const theirs = rev({ id: 'theirs', parentRevs: ['r1'] })
     expect(findCommonAncestor([r1, mine, theirs], mine, theirs)?.id).toBe('r1')
   })
 
-  it('findet den jüngsten gemeinsamen Vorfahren, nicht die Wurzel', () => {
+  it('finds the most recent common ancestor, not the root', () => {
     const r1 = rev({ id: 'r1' })
     const r2 = rev({ id: 'r2', parentRevs: ['r1'] })
     const mine = rev({ id: 'mine', parentRevs: ['r2'] })
@@ -131,13 +131,13 @@ describe('findCommonAncestor', () => {
     expect(findCommonAncestor([r1, r2, mine, theirs], mine, theirs)?.id).toBe('r2')
   })
 
-  it('gibt null zurück, wenn es zwei unabhängige Wurzeln gibt', () => {
+  it('returns null when there are two independent roots', () => {
     const a = rev({ id: 'a' })
     const b = rev({ id: 'b' })
     expect(findCommonAncestor([a, b], a, b)).toBeNull()
   })
 
-  it('erkennt eine Revision, die selbst Vorfahre der anderen ist', () => {
+  it('recognises a revision that is itself an ancestor of the other', () => {
     const r1 = rev({ id: 'r1' })
     const r2 = rev({ id: 'r2', parentRevs: ['r1'] })
     expect(findCommonAncestor([r1, r2], r2, r1)?.id).toBe('r1')

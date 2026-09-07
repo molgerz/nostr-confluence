@@ -7,7 +7,7 @@ import { router } from './routes/router'
 import './index.css'
 
 async function bootstrap(): Promise<void> {
-  // Wegwerf-Signer für die Entwicklung, siehe src/dev/fake-nip07.ts
+  // Throwaway signer for development, see src/dev/fake-nip07.ts
   if (import.meta.env.DEV) {
     const param = new URLSearchParams(window.location.search).get('devsigner')
     if (param !== null) {
@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   }
 
   const root = document.getElementById('root')
-  if (!root) throw new Error('#root fehlt in index.html')
+  if (!root) throw new Error('#root is missing from index.html')
 
   createRoot(root).render(
     <StrictMode>

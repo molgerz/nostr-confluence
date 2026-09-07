@@ -7,12 +7,12 @@ export function NewPageView() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
-  if (!group || !base) return <p className="text-sm text-danger">Ungültige Adresse.</p>
+  if (!group || !base) return <p className="text-sm text-danger">Invalid address.</p>
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">neue Seite in {group.id}</div>
-      <h1 className="text-2xl font-medium text-fg">Seite anlegen</h1>
+      <div className="text-xs text-fg-subtle">new page in {group.id}</div>
+      <h1 className="text-2xl font-medium text-fg">Create a page</h1>
       <PageEditor
         relayUrl={group.relayUrl}
         groupId={group.id}

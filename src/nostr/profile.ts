@@ -1,7 +1,7 @@
 import { nip19 } from 'nostr-tools'
 import type { Event } from 'nostr-tools'
 
-/** Kind-0-Inhalt, so weit wir ihn anzeigen. Alles optional — fremde Daten. */
+/** Kind 0 content, as far as we display it. All optional — foreign data. */
 export type Profile = {
   name?: string
   displayName?: string
@@ -35,9 +35,8 @@ export function toNpub(pubkeyHex: string): string {
 }
 
 /**
- * Eingabe eines Schlüssels entgegennehmen: npub oder 64 Hex-Zeichen. Gibt den
- * Hex-Pubkey zurück oder null — damit ein Tippfehler nicht als gültiger
- * Schlüssel im Moderations-Event landet.
+ * Accepts a key as input: npub or 64 hex characters. Returns the hex pubkey or
+ * null — so that a typo does not end up in a moderation event as a valid key.
  */
 export function parsePubkeyInput(input: string): string | null {
   const value = input.trim()
@@ -53,14 +52,14 @@ export function parsePubkeyInput(input: string): string | null {
   return null
 }
 
-/** npub1abcd…wxyz — kurz genug für die Byline, lang genug zum Vergleichen. */
+/** npub1abcd…wxyz — short enough for a byline, long enough to compare. */
 export function shortNpub(npub: string): string {
   return npub.length > 20 ? `${npub.slice(0, 10)}…${npub.slice(-6)}` : npub
 }
 
 /**
- * Anzeigenamen sind frei wählbar und nicht eindeutig. Die UI zeigt sie nur
- * zusammen mit dem npub — nie allein. docs/06-ui-information-architecture.md
+ * Display names are freely chosen and not unique. The UI only ever shows them
+ * together with the npub — never alone. docs/06-ui-information-architecture.md
  */
 export function displayName(profile: Profile | null, npub: string): string {
   return profile?.displayName ?? profile?.name ?? shortNpub(npub)

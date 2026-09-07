@@ -12,30 +12,30 @@ export function PageView() {
   const { session } = useSession()
   const navigate = useNavigate()
 
-  // Hooks müssen vor jedem vorzeitigen Return stehen, sonst ändert sich ihre
-  // Reihenfolge zwischen Renderdurchläufen.
+  // Hooks have to run before any early return, otherwise their order changes
+  // between renders.
   const page = slug ? space.pages.find((entry) => entry.slug === slug) : undefined
   useTocSource(page?.head.content ?? '')
 
   if (!group || !base || !slug) {
-    return <p className="text-sm text-danger">Ungültige Adresse.</p>
+    return <p className="text-sm text-danger">Invalid address.</p>
   }
 
   if (!page) {
     return (
       <div className="space-y-4">
-        <div className="text-xs text-fg-subtle">{space.loading ? 'lade…' : 'nicht gefunden'}</div>
+        <div className="text-xs text-fg-subtle">{space.loading ? 'loading…' : 'not found'}</div>
         <h1 className="text-2xl font-medium text-fg">{slug}</h1>
         {space.loading ? null : (
           <div className="space-y-3">
             <p className="text-sm text-fg-muted">
-              Für diesen Slug gibt es in diesem Space noch keine Revision.
+              There is no revision for this slug in this space yet.
             </p>
             <Link
               to={`${base}/new?slug=${encodeURIComponent(slug)}`}
               className="inline-block rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
             >
-              Seite anlegen
+              Create this page
             </Link>
           </div>
         )}
@@ -67,17 +67,19 @@ export function PageView() {
 
       {forked ? (
         <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs">
-          <div className="font-medium text-fg">Diese Seite hat {page.leaves.length} offene Fassungen</div>
+          <div className="font-medium text-fg">
+            This page has {page.leaves.length} open versions
+          </div>
           <p className="mt-1 text-fg-muted">
-            Mehrere Personen haben gleichzeitig gespeichert. Angezeigt wird die jüngste (
-            {shortNpub(toNpub(page.head.author))}), alle Fassungen stehen in der Historie.
+            Several people saved at the same time. The newest one is shown (
+            {shortNpub(toNpub(page.head.author))}); all versions are in the history.
           </p>
           {session.status === 'signed-in' ? (
             <Link
               to={`${base}/${page.slug}/edit?merge=1`}
               className="mt-2 inline-block rounded-md border border-warning px-2 py-1 font-medium text-fg-muted"
             >
-              Fassungen zusammenführen
+              Merge versions
             </Link>
           ) : null}
         </div>
@@ -89,35 +91,35 @@ export function PageView() {
             to={`${base}/${page.slug}/edit`}
             className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
           >
-            Bearbeiten
+            Edit
           </Link>
         ) : (
           <Link
             to="/login"
             className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
-            title="Lesen geht ohne Anmeldung, Bearbeiten nicht"
+            title="Reading works without signing in, editing does not"
           >
-            Anmelden zum Bearbeiten
+            Sign in to edit
           </Link>
         )}
         <Link
           to={`${base}/${page.slug}/history`}
           className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
         >
-          Historie ({page.revisions.length})
+          History ({page.revisions.length})
         </Link>
         <Link
           to={`${base}/${page.slug}/blame`}
           className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
         >
-          Zeilenherkunft
+          Line origin
         </Link>
         <button
           type="button"
           onClick={() => navigate(`${base}/new?parent=${encodeURIComponent(page.slug)}`)}
           className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
         >
-          Unterseite anlegen
+          New subpage
         </button>
       </div>
 

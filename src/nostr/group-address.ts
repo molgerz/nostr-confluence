@@ -1,14 +1,14 @@
 /**
- * Eine NIP-29-Gruppe wird als `<relay-host>'<group-id>` identifiziert — das
- * Relay ist Teil der Identität. In URLs steht diese Form url-kodiert.
+ * A NIP-29 group is identified as `<relay-host>'<group-id>` — the relay is
+ * part of the identity. In URLs this form is URL-encoded.
  * docs/04-permissions-nip29.md
  */
 export type GroupAddress = {
-  /** z. B. localhost:8080 */
+  /** e.g. localhost:8080 */
   host: string
-  /** z. B. engineering */
+  /** e.g. engineering */
   id: string
-  /** ws:// bzw. wss:// URL des Relays */
+  /** the relay's ws:// or wss:// URL */
   relayUrl: string
 }
 

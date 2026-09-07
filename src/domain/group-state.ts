@@ -2,19 +2,19 @@ import { KINDS } from '../nostr/kinds'
 import type { Event } from 'nostr-tools'
 
 /**
- * Vom Relay erzeugter Gruppenzustand (39000/39001/39002). Diese Events sind
- * vom Relay signiert, nicht von Nutzern — Anzeigegrundlage, kein Beweis.
+ * Group state produced by the relay (39000/39001/39002). These events are
+ * signed by the relay, not by users — a basis for display, not proof.
  * docs/04-permissions-nip29.md
  */
 export type GroupMetadata = {
   name: string
   about: string | null
   picture: string | null
-  /** ohne private-Tag ist der Inhalt öffentlich lesbar */
+  /** without a private tag the content is publicly readable */
   isPublic: boolean
-  /** ohne closed-Tag darf jede/r beitreten */
+  /** without a closed tag anyone may join */
   isOpen: boolean
-  /** Kinds, die die Gruppe laut Relay annimmt. Leer = unspezifiziert */
+  /** kinds the group accepts according to the relay. Empty = unspecified */
   supportedKinds: number[]
 }
 

@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 /**
- * Kleiner Umweg, damit das Inhaltsverzeichnis in der rechten Leiste stehen
- * kann, obwohl nur die Seitenansicht weiss, welcher Text gerade angezeigt
- * wird. Die Route meldet ihren Markdown-Text an, die Hülle rendert daraus.
+ * A small detour that lets the table of contents live in the right-hand rail
+ * even though only the page view knows which text is being displayed. The route
+ * registers its Markdown, the shell renders from it.
  */
 type TocValue = { markdown: string; setMarkdown: (markdown: string) => void }
 
@@ -16,7 +16,7 @@ export function TocProvider({ children }: { children: ReactNode }) {
   return <TocContext.Provider value={value}>{children}</TocContext.Provider>
 }
 
-/** Von der Route aufzurufen: meldet den aktuellen Text an und räumt wieder auf. */
+/** Called by a route: registers the current text and cleans up afterwards. */
 export function useTocSource(markdown: string): void {
   const ctx = useContext(TocContext)
   const setMarkdown = ctx?.setMarkdown

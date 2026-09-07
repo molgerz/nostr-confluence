@@ -16,22 +16,22 @@ type Props = {
   groupId: string
   slug: string
   comments: Comment[]
-  /** Admins dürfen fremde Kommentare vom Relay entfernen (Kind 9005) */
+  /** admins may remove other people's comments from the relay (kind 9005) */
   isAdmin?: boolean
 }
 
 function timeLabel(seconds: number): string {
   const diff = Math.floor(Date.now() / 1000) - seconds
-  if (diff < 60) return 'gerade eben'
-  if (diff < 3600) return `vor ${Math.floor(diff / 60)} min`
-  if (diff < 86400) return `vor ${Math.floor(diff / 3600)} h`
-  return new Date(seconds * 1000).toLocaleDateString('de-DE')
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`
+  return new Date(seconds * 1000).toLocaleDateString()
 }
 
 /**
- * Kommentare zu einer Seite, wie die Diskussion unter einer Confluence-Seite.
- * Verankert an (Gruppe, Slug), nicht an einer einzelnen Revision — sonst wäre
- * der Faden nach der nächsten Bearbeitung verwaist.
+ * Comments on a page, like the discussion below a Confluence page. Anchored to
+ * (group, slug), not to a single revision — otherwise the thread would be
+ * orphaned after the next edit.
  */
 export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }: Props) {
   const { session, ensureSamePubkey } = useSession()
@@ -46,7 +46,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
   const send = async () => {
     if (session.status !== 'signed-in') return
     if (text.trim().length === 0) {
-      setError('Schreib etwas, bevor du absendest.')
+      setError('Write something before sending.')
       return
     }
     setError(null)
@@ -73,11 +73,11 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
       const kind = classifyRejection(result.reason)
       setError(
         kind === 'permission'
-          ? `Das Relay erlaubt dir das Kommentieren hier nicht: ${result.reason}`
-          : `Nicht gespeichert: ${result.reason}`,
+          ? `The relay does not allow you to comment here: ${result.reason}`
+          : `Not saved: ${result.reason}`,
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+      setError(err instanceof Error ? err.message : 'signing was cancelled')
     } finally {
       setBusy(false)
     }
@@ -85,7 +85,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
 
   const remove = async (comment: Comment) => {
     if (session.status !== 'signed-in') return
-    if (!window.confirm('Diesen Kommentar auf dem Relay löschen?')) return
+    if (!window.confirm('Delete this comment on the relay?')) return
     setError(null)
     setBusy(true)
     try {
@@ -95,9 +95,9 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
         eventId: comment.id,
       })
       if (result.ok) forgetEvent(relayUrl, groupId, comment.id)
-      else setError(`Nicht gelöscht: ${result.reason}`)
+      else setError(`Not deleted: ${result.reason}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+      setError(err instanceof Error ? err.message : 'signing was cancelled')
     } finally {
       setBusy(false)
     }
@@ -120,7 +120,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
               onClick={() => setReplyTo(node)}
               className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
             >
-              Antworten
+              Reply
             </button>
             {isAdmin ? (
               <button
@@ -129,7 +129,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
                 onClick={() => void remove(node)}
                 className="rounded-md border border-danger px-2 py-1 text-xs text-danger disabled:opacity-60"
               >
-                Löschen (Admin)
+                Delete (admin)
               </button>
             ) : null}
           </div>
@@ -144,11 +144,11 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
   return (
     <section className="space-y-3 border-t border-line pt-5">
       <h2 className="text-sm font-medium text-fg">
-        Kommentare{total > 0 ? ` (${total})` : ''}
+        Comments{total > 0 ? ` (${total})` : ''}
       </h2>
 
       {tree.length === 0 ? (
-        <p className="text-xs text-fg-subtle">Noch keine Kommentare.</p>
+        <p className="text-xs text-fg-subtle">No comments yet.</p>
       ) : (
         <ul className="space-y-2">{tree.map(renderNode)}</ul>
       )}
@@ -173,8 +173,8 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
             value={text}
             onChange={(event) => setText(event.target.value)}
             rows={3}
-            aria-label="Kommentar schreiben"
-            placeholder="Kommentar schreiben — Markdown erlaubt"
+            aria-label="Write a comment"
+            placeholder="Write a comment — Markdown allowed"
             className="w-full rounded-md border border-line bg-surface-2 p-2 text-sm text-fg"
           />
           {error ? <p className="text-xs text-danger">{error}</p> : null}
@@ -184,7 +184,7 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
             disabled={busy}
             className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-60"
           >
-            {busy ? 'sende…' : replyTo ? 'Antwort absenden' : 'Kommentar absenden'}
+            {busy ? 'sending…' : replyTo ? 'Send reply' : 'Send comment'}
           </button>
         </div>
       ) : (

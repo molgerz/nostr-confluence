@@ -1,17 +1,17 @@
 import type { Event, EventTemplate } from 'nostr-tools'
 
 /**
- * Signer-Abstraktion. NIP-07 ist die einzige Implementierung in Phase 1;
- * NIP-46 (Bunker) kommt später als zweite Implementierung hinter demselben
- * Interface, damit daraus kein Umbau wird. docs/03-auth-nip07-nip42.md
+ * Signer abstraction. NIP-07 is the only implementation in phase 1; NIP-46
+ * (bunker) will arrive later as a second implementation behind the same
+ * interface, so that it is not a rewrite. docs/03-auth-nip07-nip42.md
  */
 export type SignerKind = 'nip07' | 'nip46' | 'dev'
 
 export interface Signer {
   readonly kind: SignerKind
   getPublicKey(): Promise<string>
-  /** Gibt ein fertiges Event mit id und sig zurück. Der private Schlüssel
-   *  verlässt die Extension nie. Verifiziert wird in der Datenschicht. */
+  /** Returns a finished event with id and sig. The private key never leaves
+   *  the extension. Verification happens in the data layer. */
   signEvent(template: EventTemplate): Promise<Event>
 }
 
@@ -32,8 +32,8 @@ export function getNip07Provider(): Nip07Provider | null {
 }
 
 /**
- * Extensions injizieren window.nostr asynchron — direkt beim Mount ist es
- * häufig noch nicht da. Deshalb kurz pollen statt einmal prüfen.
+ * Extensions inject window.nostr asynchronously — right after mounting it is
+ * often not there yet. So poll briefly instead of checking once.
  */
 export async function waitForNip07(timeoutMs = 1500, intervalMs = 100): Promise<Nip07Provider | null> {
   const deadline = Date.now() + timeoutMs

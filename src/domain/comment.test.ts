@@ -14,7 +14,7 @@ function event(partial: Partial<Event>): Event {
       ['h', 'engineering'],
       ['d', 'onboarding'],
     ],
-    content: 'Guter Punkt.',
+    content: 'Good point.',
     sig: 'sig',
     ...partial,
   } as Event
@@ -25,26 +25,26 @@ function comment(id: string, parentId: string | null, createdAt = 1000): Comment
 }
 
 describe('parseComment', () => {
-  it('liest Gruppe, Slug und Antwortbezug', () => {
+  it('reads group, slug and the reply reference', () => {
     const parsed = parseComment(
       event({ tags: [['h', 'engineering'], ['d', 'onboarding'], ['e', 'c0']] }),
       'engineering',
     )
-    expect(parsed).toMatchObject({ slug: 'onboarding', parentId: 'c0', content: 'Guter Punkt.' })
+    expect(parsed).toMatchObject({ slug: 'onboarding', parentId: 'c0', content: 'Good point.' })
   })
 
-  it('verwirft fremde Gruppen und falsche Kinds', () => {
+  it('discards foreign groups and wrong kinds', () => {
     expect(parseComment(event({}), 'andere')).toBeNull()
     expect(parseComment(event({ kind: 1 }), 'engineering')).toBeNull()
   })
 
-  it('verwirft leere Kommentare', () => {
+  it('discards empty comments', () => {
     expect(parseComment(event({ content: '   ' }), 'engineering')).toBeNull()
   })
 })
 
 describe('buildCommentTree', () => {
-  it('hängt Antworten unter ihren Kommentar und sortiert nach Zeit', () => {
+  it('nests replies under their comment and sorts by time', () => {
     const tree = buildCommentTree([
       comment('b', null, 2000),
       comment('a', null, 1000),
@@ -55,12 +55,12 @@ describe('buildCommentTree', () => {
     expect(tree[0].replies[0].depth).toBe(1)
   })
 
-  it('hängt Antworten auf Unbekanntes oben an', () => {
+  it('puts replies to unknown comments at the top', () => {
     const tree = buildCommentTree([comment('x', 'fehlt')])
     expect(tree.map((node) => node.id)).toEqual(['x'])
   })
 
-  it('deckelt die Einrückung bei tiefen Threads', () => {
+  it('caps the indentation in deep threads', () => {
     const chain = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, index, all) =>
       comment(id, index === 0 ? null : all[index - 1], 1000 + index),
     )
@@ -75,7 +75,7 @@ describe('buildCommentTree', () => {
     expect(countComments(tree)).toBe(6)
   })
 
-  it('überlebt einen Kommentar, der sich selbst als Antwortziel nennt', () => {
+  it('survives a comment that names itself as its parent', () => {
     const tree = buildCommentTree([comment('a', 'a')])
     expect(tree).toHaveLength(1)
     expect(countComments(tree)).toBe(1)

@@ -6,10 +6,10 @@ import type { Signer } from './signer'
 export type ConnectionState = 'connecting' | 'online' | 'offline'
 
 /**
- * 'none'  = Relay hat (noch) keine AUTH-Challenge geschickt
- * 'pending' = Challenge signiert, Antwort steht aus
- * 'ok'    = Relay hat die Signatur akzeptiert
- * 'failed'= Relay hat abgelehnt oder der Signer hat abgebrochen
+ * 'none'    = the relay has not sent an AUTH challenge (yet)
+ * 'pending' = challenge signed, answer outstanding
+ * 'ok'      = the relay accepted the signature
+ * 'failed'  = the relay rejected it, or the signer cancelled
  */
 export type AuthState = 'none' | 'pending' | 'ok' | 'failed'
 
@@ -20,8 +20,8 @@ export type RelaySnapshot = {
   auth: AuthState
   authMessage?: string
   /**
-   * Zählt erfolgreiche Verbindungsaufbauten. Abos sterben mit ihrer
-   * Verbindung — wer welche hält, muss sie beim Hochzählen neu aufsetzen.
+   * Counts successful connections. Subscriptions die with their connection —
+   * whoever holds one has to set it up again when this counter increases.
    */
   epoch: number
 }
@@ -37,10 +37,9 @@ function describeError(error: unknown): string {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
- * Einzige Stelle, die mit Relays spricht. Kapselt NIP-42: die Challenge wird
- * automatisch signiert, und ein Publish, das mit "auth-required" abgelehnt
- * wird, läuft nach dem AUTH erneut. Genau die beiden Fallen aus
- * docs/03-auth-nip07-nip42.md.
+ * The only place that talks to relays. Encapsulates NIP-42: the challenge is
+ * signed automatically, and a publish rejected with "auth-required" runs again
+ * after AUTH. Exactly the two pitfalls from docs/03-auth-nip07-nip42.md.
  */
 class NostrClient {
   private pool = new SimplePool({ enableReconnect: false })
@@ -49,11 +48,11 @@ class NostrClient {
   private listeners = new Set<() => void>()
   private retryTimers = new Map<string, number>()
   private wanted = new Set<string>()
-  /** wird bei jedem Signer-Wechsel erhöht; Abos müssen dann neu aufgebaut werden */
+  /** increased on every signer change; subscriptions must be rebuilt then */
   private generation = 0
-  /** Relays, die wir absichtlich schliessen — deren onclose darf keinen
-   *  Wiederverbindungszähler auslösen, sonst zeigt die UI "offline", obwohl
-   *  gerade nur der Signer gewechselt hat. */
+  /** Relays we close on purpose — their onclose must not trigger the
+   *  reconnect counter, otherwise the UI shows "offline" when in fact only the
+   *  signer changed. */
   private reopening = new Set<string>()
 
   constructor() {
@@ -61,9 +60,9 @@ class NostrClient {
   }
 
   /**
-   * Signierfunktion für NIP-42. Der Relay-URL steckt laut NIP-42 als
-   * relay-Tag im AUTH-Template, deshalb funktioniert eine Funktion für alle
-   * Relays — der urlHint dient nur der Zustandsanzeige.
+   * Signing function for NIP-42. Per NIP-42 the relay URL sits in the AUTH
+   * template as a relay tag, so one function works for every relay — the
+   * urlHint only drives the status display.
    */
   private signAuth(urlHint?: string): ((template: EventTemplate) => Promise<VerifiedEvent>) | null {
     const signer = this.signer
@@ -73,22 +72,22 @@ class NostrClient {
       if (url) this.patch(url, { auth: 'pending', authMessage: undefined })
       const event = await signer.signEvent(template)
       if (!verifyEvent(event)) {
-        if (url) this.patch(url, { auth: 'failed', authMessage: 'Signatur ungültig' })
-        throw new Error('Signatur des AUTH-Events ist ungültig')
+        if (url) this.patch(url, { auth: 'failed', authMessage: 'invalid signature' })
+        throw new Error('the AUTH event signature is invalid')
       }
       return event
     }
   }
 
-  // --- Zustand -------------------------------------------------------------
+  // --- state ---------------------------------------------------------------
 
   subscribeState(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
   }
 
-  /** Muss bei unveränderten Daten dieselbe Referenz liefern —
-   *  useSyncExternalStore vergleicht per Identität. */
+  /** Has to return the same reference while the data is unchanged —
+   *  useSyncExternalStore compares by identity. */
   getSnapshot(url: string): RelaySnapshot {
     let snapshot = this.snapshots.get(url)
     if (!snapshot) {
@@ -104,9 +103,9 @@ class NostrClient {
     for (const listener of this.listeners) listener()
   }
 
-  // --- Verbindung ----------------------------------------------------------
+  // --- connection ----------------------------------------------------------
 
-  /** Verbindung offenhalten und bei Abbruch mit Backoff neu aufbauen. */
+  /** Keep the connection open and rebuild it with backoff when it drops. */
   want(url: string): () => void {
     this.wanted.add(url)
     void this.open(url)
@@ -130,9 +129,9 @@ class NostrClient {
         attempts: 0,
         epoch: this.getSnapshot(url).epoch + 1,
       })
-      // Der Pool setzt selbst ein onclose, um die tote Verbindung aus seiner
-      // Registry zu werfen. Nicht überschreiben, sondern anhängen — sonst
-      // liefert ensureRelay beim nächsten Versuch dasselbe tote Objekt zurück.
+      // The pool installs its own onclose to drop the dead connection from its
+      // registry. Do not overwrite it, chain onto it — otherwise the next
+      // ensureRelay hands back the same dead object.
       const poolOnClose = relay.onclose
       relay.onclose = () => {
         poolOnClose?.()
@@ -160,10 +159,10 @@ class NostrClient {
   }
 
   /**
-   * Fragt den AUTH-Zustand beim Relay ab. relay.auth() gibt eine bereits
-   * laufende oder abgeschlossene AUTH zurück, deshalb ist der Aufruf auch
-   * nachträglich aussagekräftig. Ohne empfangene Challenge wirft es — das
-   * bedeutet: dieses Relay verlangt (noch) kein AUTH.
+   * Asks the relay for the AUTH state. relay.auth() returns an AUTH that is
+   * already running or finished, so calling it after the fact is still
+   * meaningful. Without a received challenge it throws — which means this relay
+   * does not (yet) require AUTH.
    */
   private async refreshAuth(url: string): Promise<void> {
     const sign = this.signAuth(url)
@@ -189,11 +188,11 @@ class NostrClient {
     }
   }
 
-  // --- Signer --------------------------------------------------------------
+  // --- signer --------------------------------------------------------------
 
   /**
-   * Nach einem Signer-Wechsel wird die Verbindung neu aufgebaut: AUTH gilt pro
-   * Verbindung, und eine neue Challenge kommt nur mit einer neuen Verbindung.
+   * After a signer change the connection is rebuilt: AUTH is per connection,
+   * and a new challenge only arrives with a new connection.
    */
   getGeneration(): number {
     return this.generation
@@ -210,7 +209,7 @@ class NostrClient {
     }
   }
 
-  // --- Lesen und Schreiben -------------------------------------------------
+  // --- reading and writing ---------------------------------------------------
 
   async publish(url: string, event: Event): Promise<PublishResult> {
     const onauth = this.signAuth(url) ?? undefined
@@ -226,10 +225,10 @@ class NostrClient {
   }
 
   /**
-   * Ein Event holen; null, wenn keins existiert. Bewusst über subscribeEose
-   * statt pool.get: nur diese Variante nimmt einen onauth-Haken und wiederholt
-   * die Anfrage nach einer auth-required-Ablehnung. Ohne das liefert ein Relay
-   * mit erzwungenem NIP-42 stillschweigend leere Ergebnisse.
+   * Fetch one event; null when none exists. Deliberately via subscribeEose
+   * instead of pool.get: only that variant takes an onauth hook and repeats the
+   * request after an auth-required rejection. Without it, a relay with enforced
+   * NIP-42 returns empty results silently.
    */
   async getOne(urls: string[], filter: Filter): Promise<Event | null> {
     if (urls.length === 0) return null
@@ -243,7 +242,7 @@ class NostrClient {
         settled = true
         window.clearTimeout(timeout)
         closer?.close()
-        // Das Lesen kann ein AUTH ausgelöst haben — Anzeige danach nachziehen.
+        // Reading may have triggered an AUTH — update the display afterwards.
         for (const url of urls) void this.refreshAuth(url)
         resolve(event)
       }
@@ -263,7 +262,7 @@ class NostrClient {
     })
   }
 
-  /** Wie `subscribe`, aber über mehrere Relays hinweg (z. B. für Profile). */
+  /** Like `subscribe`, but across several relays (e.g. for profiles). */
   subscribeAcross(
     urls: string[],
     filter: Filter,
@@ -284,9 +283,9 @@ class NostrClient {
   }
 
   /**
-   * Dauerhaftes Abo. Liefert eine Abmeldefunktion. Signaturen prüft der Pool
-   * (`SimplePool` setzt `verifyEvent`), AUTH läuft über denselben Haken wie
-   * beim Lesen.
+   * A persistent subscription. Returns an unsubscribe function. Signatures are
+   * verified by the pool (`SimplePool` sets `verifyEvent`); AUTH runs through
+   * the same hook as reading.
    */
   subscribe(
     url: string,
@@ -304,11 +303,11 @@ class NostrClient {
   }
 
   /**
-   * Schreibprobe mit Rückweg: erst abonnieren, dann publishen, dann auf das
-   * eigene Event warten. Deckt Lese-AUTH, Schreib-AUTH und Auslieferung ab.
-   * Ephemere Events werden nicht gespeichert, hinterlassen also keine Spuren —
-   * brauchen aber einen Abonnenten, sonst lehnen manche Relays sie mit
-   * "mute: no one was listening for this" ab.
+   * Write probe with an echo: subscribe first, then publish, then wait for our
+   * own event. Covers read AUTH, write AUTH and delivery. Ephemeral events are
+   * not stored and therefore leave no traces — but they need a subscriber,
+   * otherwise some relays reject them with
+   * "mute: no one was listening for this".
    */
   async writeProbe(
     url: string,
@@ -322,9 +321,9 @@ class NostrClient {
       markDone = resolve
     })
 
-    // pool.subscribe, nicht subscribeEose: letzteres schliesst bei EOSE, und
-    // bei einem ephemeren Event gibt es nichts Gespeichertes — das Abo waere
-    // also schon zu, bevor publiziert wird.
+    // pool.subscribe, not subscribeEose: the latter closes on EOSE, and an
+    // ephemeral event has nothing stored — so the subscription would already be
+    // closed before we publish.
     const closer = this.pool.subscribe(
       [url],
       { kinds: [event.kind], authors: [event.pubkey] },
@@ -341,7 +340,7 @@ class NostrClient {
     )
 
     try {
-      // dem Abo einen Moment geben, damit das ephemere Event Zuhörer hat
+      // give the subscription a moment so the ephemeral event has listeners
       await delay(400)
       const published = await this.publish(url, event)
       if (published.ok) await Promise.race([done, delay(timeoutMs)])
@@ -355,10 +354,9 @@ class NostrClient {
 export const client = new NostrClient()
 
 /**
- * Ablehnungsgründe eines Relays einordnen. Die Präfixe sind in NIP-01
- * standardisiert; "mute" ist nak-spezifisch für ephemere Events ohne
- * Abonnenten. Wird ab Phase 3 auch der Editor brauchen, um zwischen
- * "darf nicht" und "hat nicht geklappt" zu unterscheiden.
+ * Classifies a relay's rejection reason. The prefixes are standardised in
+ * NIP-01; "mute" is nak-specific for ephemeral events without subscribers. The
+ * editor uses this to tell "not allowed" apart from "did not work".
  */
 export type RejectionKind = 'auth' | 'permission' | 'not-stored' | 'duplicate' | 'other'
 

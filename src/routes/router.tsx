@@ -13,7 +13,7 @@ import { NotFound } from './NotFound'
 
 /**
  * Routen nach docs/06-ui-information-architecture.md. Der :group-Parameter
- * enthält die vollständige NIP-29-Adresse (host'gruppe), url-kodiert, damit
+ * carries the full NIP-29 address (host'group), URL-encoded, so that a link
  * ein Link ohne Zusatzwissen funktioniert.
  */
 export const router = createBrowserRouter([

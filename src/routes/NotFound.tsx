@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 export function NotFound() {
   return (
     <div className="space-y-3">
-      <h1 className="text-2xl font-medium text-fg">Nicht gefunden</h1>
+      <h1 className="text-2xl font-medium text-fg">Not found</h1>
       <Link to="/" className="text-sm text-accent-fg underline">
-        zurück zur Space-Auswahl
+        back to the space list
       </Link>
     </div>
   )

@@ -2,9 +2,9 @@ import { useProfile } from '../nostr/profile-store'
 import { shortNpub, toNpub } from '../nostr/profile'
 
 /**
- * Autorschaft anzeigen: Anzeigename **und** npub. Anzeigenamen sind frei
- * wählbar und nicht eindeutig — der npub steht deshalb immer daneben, nie
- * nur der Name. docs/06-ui-information-architecture.md
+ * Shows authorship: display name **and** npub. Display names are freely chosen
+ * and not unique — which is why the npub always sits next to it, never the name
+ * alone. docs/06-ui-information-architecture.md
  */
 export function Author({ pubkey, avatar = false }: { pubkey: string; avatar?: boolean }) {
   const profile = useProfile(pubkey)

@@ -1,21 +1,21 @@
 import { diffArrays } from 'diff'
 
 /**
- * Zeilenweiser 3-Wege-Merge, wie ihn Confluence bei gleichzeitigem Speichern
- * bräuchte: gemeinsame Basis, meine Fassung, ihre Fassung.
+ * Line-based three-way merge, the kind Confluence would need for concurrent
+ * saves: common base, my version, their version.
  *
- * Grundsatz aus docs/05-versioning-history.md: kein stilles Überschreiben.
- * Berühren beide Seiten dieselben Zeilen, entsteht ein Konflikt mit Markern,
- * den ein Mensch auflösen muss — nicht ein Automat.
+ * The principle from docs/05-versioning-history.md: no silent overwriting. If
+ * both sides touch the same lines, a conflict with markers is produced that a
+ * human has to resolve — not a machine.
  */
 
 export type MergeStatus = 'identical' | 'clean' | 'conflict'
 
 export type MergeResult = {
   status: MergeStatus
-  /** zusammengeführter Text, bei Konflikten mit Markern */
+  /** the merged text, with markers when there are conflicts */
   content: string
-  /** Anzahl der Konfliktstellen */
+  /** number of conflicting spots */
   conflicts: number
 }
 
@@ -26,12 +26,12 @@ export type MergeLabels = {
 }
 
 const DEFAULT_LABELS: MergeLabels = {
-  mine: 'deine Fassung',
-  theirs: 'ihre Fassung',
-  base: 'gemeinsame Basis',
+  mine: 'your version',
+  theirs: 'their version',
+  base: 'common base',
 }
 
-/** Ein Änderungsblock: Basiszeilen [start, end) werden durch `lines` ersetzt. */
+/** One change block: base lines [start, end) are replaced by `lines`. */
 type Change = { start: number; end: number; lines: string[] }
 
 function splitLines(text: string): string[] {
@@ -39,10 +39,10 @@ function splitLines(text: string): string[] {
 }
 
 /**
- * Änderungen als Bereiche über den Basiszeilen. Bewusst über `diffArrays` auf
- * Zeilen-Arrays statt über Patch-Hunks: die Zeilennummern in einem Unified
- * Diff sind für reine Einfügungen mehrdeutig, und eine um eins verschobene
- * Einfügung landet im Merge an der falschen Stelle.
+ * Changes as ranges over the base lines. Deliberately built with `diffArrays`
+ * over line arrays rather than patch hunks: line numbers in a unified diff are
+ * ambiguous for pure insertions, and an insertion off by one lands in the wrong
+ * place in the merge.
  */
 function toChanges(baseLines: string[], otherLines: string[]): Change[] {
   const parts = diffArrays(baseLines, otherLines)
@@ -71,13 +71,13 @@ function toChanges(baseLines: string[], otherLines: string[]): Change[] {
 }
 
 function overlaps(a: Change, b: Change): boolean {
-  // Zwei Einfügungen an derselben Stelle gelten als Überlappung: beide wollen
-  // dieselbe Lücke füllen.
+  // Two insertions at the same position count as an overlap: both want to fill
+  // the same gap.
   if (a.start === a.end && b.start === b.end) return a.start === b.start
   return a.start < b.end && b.start < a.end
 }
 
-/** Basiszeilen eines Bereichs mit den Änderungen einer Seite anwenden. */
+/** Applies one side's changes to the base lines of a range. */
 function applyToRegion(
   baseLines: string[],
   start: number,
@@ -123,7 +123,7 @@ export function mergeThreeWay(
     const t = theirChanges[ti]
 
     if (m && t && overlaps(m, t)) {
-      // Konfliktbereich so weit ausdehnen, wie sich Änderungen berühren
+      // Extend the conflict region as far as changes keep touching
       let start = Math.min(m.start, t.start)
       let end = Math.max(m.end, t.end)
       const mineHere: Change[] = []
@@ -153,7 +153,7 @@ export function mergeThreeWay(
       const theirsRegion = applyToRegion(baseLines, start, end, theirsHere)
 
       if (mineRegion.join('\n') === theirsRegion.join('\n')) {
-        // Beide haben dasselbe getan — kein Konflikt, einmal übernehmen
+        // Both did the same thing — not a conflict, take it once
         out.push(...mineRegion)
       } else {
         conflicts += 1
@@ -169,7 +169,7 @@ export function mergeThreeWay(
       continue
     }
 
-    // Kein Konflikt: die vordere Änderung anwenden
+    // No conflict: apply whichever change comes first
     const next = !t || (m && m.start <= t.start) ? m : t
     if (!next) break
     if (next === m) mi += 1
@@ -189,8 +189,8 @@ export function mergeThreeWay(
 }
 
 /**
- * Nur die eindeutigen Marker prüfen. Eine Zeile aus Gleichheitszeichen ist in
- * Markdown eine H1-Unterstreichung — die darf keinen Fehlalarm auslösen.
+ * Only check the unambiguous markers. A line of equals signs is a setext H1
+ * underline in Markdown — it must not raise a false alarm.
  */
 export function hasConflictMarkers(text: string): boolean {
   return text

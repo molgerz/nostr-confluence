@@ -2,9 +2,9 @@ import { diffArrays } from 'diff'
 import type { Revision } from './revision'
 
 /**
- * Zeilenweise Zuordnung: welche Revision hat diese Zeile eingeführt?
- * Wird clientseitig aus der Kette berechnet — jede Zeile trägt damit einen
- * npub, und das ist der Punkt, an dem "an den npub geknüpft" überprüfbar wird.
+ * Line-by-line attribution: which revision introduced this line? Computed
+ * client-side from the chain — every line therefore carries an npub, and that
+ * is where "bound to an npub" becomes checkable.
  * docs/05-versioning-history.md
  */
 export type BlameLine = {
@@ -13,10 +13,10 @@ export type BlameLine = {
 }
 
 /**
- * Kette vom Head rückwärts entlang des ersten Vorgängers. Bei einer
- * Merge-Revision ist das der erste `parent-rev`-Eintrag; die Zeilen des
- * zweiten Zweiges erscheinen dann als vom Merge eingeführt. Das ist dieselbe
- * Vereinfachung, die auch `git blame` ohne Zusatzoptionen macht.
+ * The chain from the head backwards along the first parent. For a merge
+ * revision that is the first `parent-rev` entry; the lines of the second branch
+ * then appear as introduced by the merge. That is the same simplification
+ * `git blame` makes without extra options.
  */
 export function firstParentChain(revisions: Revision[], head: Revision): Revision[] {
   const byId = new Map(revisions.map((revision) => [revision.id, revision]))

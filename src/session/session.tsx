@@ -24,8 +24,8 @@ type SessionContextValue = {
   login: () => Promise<void>
   logout: () => void
   /**
-   * Vor jedem Schreibvorgang aufrufen. Wechselt jemand in der Extension den
-   * Account, darf nicht im Namen der alten Identität signiert werden.
+   * Call before every write. If somebody switches accounts in the extension,
+   * we must not keep signing in the name of the old identity.
    * docs/03-auth-nip07-nip42.md
    */
   ensureSamePubkey: () => Promise<{ ok: true } | { ok: false; reason: string }>
@@ -47,7 +47,7 @@ function storePubkey(pubkey: string | null): void {
     if (pubkey) localStorage.setItem(STORAGE_KEY, pubkey)
     else localStorage.removeItem(STORAGE_KEY)
   } catch {
-    /* Sitzung gilt dann nur bis zum Reload */
+    /* the session then only lasts until the next reload */
   }
 }
 
@@ -68,9 +68,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  // Extension erkennen und eine frühere Sitzung fortsetzen. getPublicKey wird
-  // hier absichtlich NICHT aufgerufen: das öffnet einen Extension-Dialog und
-  // gehört deshalb an einen Klick, nicht an den Seitenaufbau.
+  // Detect the extension and resume an earlier session. getPublicKey is
+  // deliberately NOT called here: it opens an extension dialog and therefore
+  // belongs on a click, not on page load.
   useEffect(() => {
     let cancelled = false
     void waitForNip07().then((provider) => {
@@ -109,14 +109,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setExtension('available')
       const signer = createNip07Signer(provider)
       const pubkey = await signer.getPublicKey()
-      if (!/^[0-9a-f]{64}$/.test(pubkey)) throw new Error('Extension lieferte keinen gültigen Pubkey')
+      if (!/^[0-9a-f]{64}$/.test(pubkey)) throw new Error('the extension returned no valid pubkey')
       storePubkey(pubkey)
       client.setSigner(signer)
       setSession({ status: 'signed-in', pubkey, npub: toNpub(pubkey), signer, profile: null })
       void loadProfile(pubkey)
     } catch (err) {
       setSession({ status: 'anonymous' })
-      setError(err instanceof Error ? err.message : 'Anmeldung abgebrochen')
+      setError(err instanceof Error ? err.message : 'sign-in was cancelled')
     }
   }, [loadProfile])
 
@@ -130,11 +130,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const ensureSamePubkey = useCallback(async (): Promise<
     { ok: true } | { ok: false; reason: string }
   > => {
-    if (session.status !== 'signed-in') return { ok: false, reason: 'nicht angemeldet' }
+    if (session.status !== 'signed-in') return { ok: false, reason: 'not signed in' }
     try {
       const current = await session.signer.getPublicKey()
       if (current !== session.pubkey) {
-        // Kein stilles Weiterarbeiten: Sitzung auf die neue Identität umstellen.
+        // No silent continuation: switch the session to the new identity.
         storePubkey(current)
         client.setSigner(session.signer)
         setSession({
@@ -145,11 +145,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           profile: null,
         })
         void loadProfile(current)
-        return { ok: false, reason: 'In der Extension ist jetzt ein anderer Account aktiv.' }
+        return { ok: false, reason: 'A different account is now active in the extension.' }
       }
       return { ok: true }
     } catch (err) {
-      return { ok: false, reason: err instanceof Error ? err.message : 'Signer nicht erreichbar' }
+      return { ok: false, reason: err instanceof Error ? err.message : 'signer unreachable' }
     }
   }, [session, loadProfile])
 

@@ -2,8 +2,8 @@ import type { AuthState, RelaySnapshot } from '../nostr/client'
 import type { RelayInfo } from '../nostr/relay-status'
 
 const CONNECTION_LABEL = {
-  connecting: 'verbinde…',
-  online: 'verbunden',
+  connecting: 'connecting…',
+  online: 'connected',
   offline: 'offline',
 } as const
 
@@ -14,16 +14,16 @@ const CONNECTION_DOT = {
 } as const
 
 const AUTH_LABEL: Record<AuthState, string> = {
-  none: 'nicht verlangt',
-  pending: 'läuft…',
-  ok: 'bestätigt',
-  failed: 'fehlgeschlagen',
+  none: 'not requested',
+  pending: 'in progress…',
+  ok: 'confirmed',
+  failed: 'failed',
 }
 
 /**
- * Ohne Relay ist nichts publizierbar, und ohne AUTH schlägt ein Publish auf
- * einem NIP-42-Relay fehl. Beide Zustände gehören dauerhaft sichtbar in die
- * Sidebar. docs/06-ui-information-architecture.md
+ * Without a relay nothing can be published, and without AUTH a publish fails on
+ * a NIP-42 relay. Both states belong permanently visible in the sidebar.
+ * docs/06-ui-information-architecture.md
  */
 export function RelayStatusBadge({
   snapshot,
@@ -42,7 +42,7 @@ export function RelayStatusBadge({
         />
         <span className="text-fg-muted">
           Relay {CONNECTION_LABEL[connection]}
-          {connection === 'offline' && attempts > 0 ? ` (Versuch ${attempts})` : ''}
+          {connection === 'offline' && attempts > 0 ? ` (attempt ${attempts})` : ''}
         </span>
       </div>
 
@@ -59,9 +59,9 @@ export function RelayStatusBadge({
         <div className="text-fg-subtle">
           NIP-29:{' '}
           {info.supportsNip29 ? (
-            <span className="text-success">unterstützt</span>
+            <span className="text-success">supported</span>
           ) : (
-            <span className="text-warning">nein, Gruppen simuliert</span>
+            <span className="text-warning">no — groups are not enforced</span>
           )}
         </div>
       ) : null}

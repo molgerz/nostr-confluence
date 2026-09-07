@@ -12,9 +12,9 @@ export type RevisionInput = {
   parentSlug: string | null
   summary: string | null
   content: string
-  /** Vorgänger-Revisionen: leer bei einer neuen Seite, zwei bei einem Merge */
+  /** predecessor revisions: empty for a new page, two for a merge */
   parentRevs: string[]
-  /** Wiederherstellung: Event-ID der Revision, deren Inhalt übernommen wurde */
+  /** restore: event id of the revision whose content was taken over */
   restoreOf?: string
 }
 
@@ -24,8 +24,8 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 /**
- * Eine neue Revision signieren und publishen. Jede Speicherung ist ein neues,
- * unveränderliches Event — es wird nichts überschrieben.
+ * Sign and publish a new revision. Every save is a new, immutable event —
+ * nothing is overwritten.
  * docs/05-versioning-history.md
  */
 export async function publishRevision(
@@ -38,13 +38,13 @@ export async function publishRevision(
     [TAGS.TITLE, input.title],
     [TAGS.MIME, MIME_MARKDOWN],
     [TAGS.CONTENT_HASH, await sha256Hex(input.content)],
-    [TAGS.ALT, `Wiki-Seite "${input.title}" im Space ${input.groupId}`],
+    [TAGS.ALT, `Wiki page "${input.title}" in space ${input.groupId}`],
   ]
   if (input.parentSlug) tags.push([TAGS.PAGE_PARENT, input.parentSlug])
   if (input.summary) tags.push([TAGS.SUMMARY, input.summary])
   for (const parent of input.parentRevs) tags.push([TAGS.PARENT_REV, parent])
-  // Wiederherstellen löscht nichts: es entsteht eine neue Revision mit altem
-  // Inhalt, die auf ihre Vorlage verweist. docs/05-versioning-history.md
+  // A restore deletes nothing: it creates a new revision with the old content
+  // that points at its template. docs/05-versioning-history.md
   if (input.restoreOf) tags.push([TAGS.RESTORE_OF, input.restoreOf])
 
   const event = await signer.signEvent({
@@ -55,7 +55,7 @@ export async function publishRevision(
   })
 
   if (!verifyEvent(event)) {
-    return { ok: false, reason: 'Die Signatur des Events ist ungültig' }
+    return { ok: false, reason: 'the event signature is invalid' }
   }
 
   return client.publish(input.relayUrl, event)

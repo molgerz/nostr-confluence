@@ -10,33 +10,33 @@ export function EditorView() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
-  if (!group || !base || !slug) return <p className="text-sm text-danger">Ungültige Adresse.</p>
+  if (!group || !base || !slug) return <p className="text-sm text-danger">Invalid address.</p>
 
   const page = space.pages.find((entry) => entry.slug === slug)
   if (!page) {
     return (
       <p className="text-sm text-fg-muted">
-        {space.loading ? 'lade…' : 'Diese Seite gibt es noch nicht.'}
+        {space.loading ? 'loading…' : 'This page does not exist yet.'}
       </p>
     )
   }
 
-  // Merge-Modus: die offenen Fassungen einer verzweigten Seite zusammenführen.
-  // Basis ist ihr jüngster gemeinsamer Vorfahre.
+  // Merge mode: combine the open versions of a forked page. The base is
+  // their most recent common ancestor.
   const mergeRequested = params.get('merge') === '1'
   const mergeMode = mergeRequested && page.leaves.length > 1
 
   // Der Editor friert seinen Anfangsinhalt beim Mounten ein, deshalb hier auf
-  // den vollständigen Ladevorgang warten. Zwei Blätter allein genügen nicht:
-  // solange die gemeinsame Basis noch unterwegs ist, fände der Merge keinen
-  // Vorfahren und würde alles als Konflikt melden.
+  // the load to finish. Two leaves alone are not enough: while the common
+  // base is still in flight the merge would find no ancestor and report
+  // everything as a conflict.
   if (mergeRequested && space.loading) {
-    return <p className="text-sm text-fg-muted">lade Fassungen…</p>
+    return <p className="text-sm text-fg-muted">loading versions…</p>
   }
   if (mergeRequested && !mergeMode) {
     return (
       <p className="text-sm text-fg-muted">
-        Diese Seite hat nur noch eine Fassung — es gibt nichts zusammenzuführen.
+        This page has only one version left — there is nothing to merge.
       </p>
     )
   }
@@ -48,36 +48,36 @@ export function EditorView() {
     const [mine, theirs] = page.leaves
     const ancestor = findCommonAncestor(page.revisions, mine, theirs)
     const merged = mergeThreeWay(ancestor?.content ?? '', mine.content, theirs.content, {
-      mine: `Fassung von ${shortNpub(toNpub(mine.author))}`,
-      theirs: `Fassung von ${shortNpub(toNpub(theirs.author))}`,
+      mine: `version by ${shortNpub(toNpub(mine.author))}`,
+      theirs: `version by ${shortNpub(toNpub(theirs.author))}`,
     })
     mergeContent = merged.content
     mergeParents = page.leaves.map((leaf) => leaf.id)
     mergeNotice =
       merged.status === 'conflict'
-        ? `${page.leaves.length} Fassungen, ${merged.conflicts} überschneidende Stelle(n). ` +
-          'Bitte im Text auflösen, die Marker entfernen und speichern — das Ergebnis wird eine ' +
-          'Merge-Revision mit beiden Vorgängern.'
+        ? `${page.leaves.length} versions, ${merged.conflicts} overlapping spot(s). ` +
+          'Please resolve them in the text, remove the markers and save — the result will ' +
+          'be a merge revision with both predecessors.'
         : ancestor
-          ? 'Die Fassungen liessen sich ohne Überschneidung zusammenführen. Bitte prüfen und ' +
-            'speichern; das Ergebnis wird eine Merge-Revision mit beiden Vorgängern.'
-          : 'Kein gemeinsamer Vorfahre gefunden — die Fassungen sind unabhängig entstanden. ' +
-            'Bitte den Text von Hand zusammenstellen.'
+          ? 'The versions merged without any overlap. Please review and save; the result ' +
+            'will be a merge revision with both predecessors.'
+          : 'No common ancestor found — the versions came into being independently. ' +
+            'Please assemble the text by hand.'
   }
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">{mergeMode ? 'zusammenführen' : 'bearbeiten'}</div>
+      <div className="text-xs text-fg-subtle">{mergeMode ? 'merging' : 'editing'}</div>
       <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
       {mergeMode ? null : (
         <p className="text-xs text-fg-subtle">
-          Speichern erzeugt eine neue Revision mit Vorgänger {page.head.id.slice(0, 8)} — nichts
-          wird überschrieben.
+          Saving creates a new revision with predecessor {page.head.id.slice(0, 8)} — nothing
+          is overwritten.
         </p>
       )}
       <PageEditor
-        // Neu aufbauen, wenn zwischen Bearbeiten und Zusammenführen gewechselt
-        // wird: der Anfangsinhalt wird nur beim Mounten gelesen.
+        // Rebuild when switching between editing and merging: the initial
+        // content is only read on mount.
         key={mergeMode ? `merge-${page.leaves.map((leaf) => leaf.id).join('-')}` : 'edit'}
         relayUrl={group.relayUrl}
         groupId={group.id}

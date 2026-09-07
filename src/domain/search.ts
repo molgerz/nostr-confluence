@@ -1,13 +1,13 @@
 import type { Page } from './pages'
 
 /**
- * Volltextsuche über die Seiten eines Spaces. Läuft rein lokal über die
- * ohnehin geladenen Revisionen — NIP-50 unterstützt nicht jedes Relay, und
- * eine Suche, die vom Relay abhängt, wäre offline sofort kaputt.
+ * Full-text search over a space's pages. Runs purely locally over the revisions
+ * that are loaded anyway — not every relay supports NIP-50, and a search that
+ * depends on the relay would break the moment you are offline.
  * docs/07-tech-stack.md
  */
 export type SearchSnippet = {
-  /** 1-basierte Zeilennummer im Seiteninhalt */
+  /** 1-based line number within the page content */
   line: number
   text: string
 }
@@ -28,9 +28,8 @@ function tokenize(query: string): string[] {
 }
 
 /**
- * Treffer einer Seite bewerten. Titel wiegt schwerer als Inhalt, und eine
- * Seite muss **alle** Suchbegriffe enthalten — sonst ertrinkt man bei zwei
- * Wörtern in Rauschen.
+ * Scores a page's hits. The title weighs more than the content, and a page has
+ * to contain **all** search terms — otherwise two words drown you in noise.
  */
 export function searchPages(pages: Page[], query: string, maxSnippets = 3): SearchHit[] {
   const tokens = tokenize(query)
@@ -69,7 +68,7 @@ export function searchPages(pages: Page[], query: string, maxSnippets = 3): Sear
   return hits.sort((a, b) => b.score - a.score || a.page.title.localeCompare(b.page.title, 'de'))
 }
 
-/** Fundstellen im Text markieren, ohne HTML zu bauen. */
+/** Marks the hits inside a text without building HTML. */
 export function highlightParts(
   text: string,
   query: string,

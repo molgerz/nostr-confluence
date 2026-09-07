@@ -6,14 +6,13 @@ import type { Profile } from './profile'
 import { DEFAULT_RELAY_URL, PROFILE_RELAYS } from './relay-status'
 
 /**
- * Profile (Kind 0) für Anzeigenamen und Avatare.
+ * Profiles (kind 0) for display names and avatars.
  *
- * Anfragen werden gesammelt und gebündelt gestellt, sonst schickt eine Seite
- * mit dreissig Bylines dreissig REQs los. Ein echtes NIP-29-Relay nimmt Kind 0
- * nicht an (jedes Event braucht dort einen h-Tag), deshalb kommen Profile in
- * der Regel von den Relays der Nutzerin — konfigurierbar über
- * VITE_PROFILE_RELAYS. Ohne Konfiguration bleibt es beim npub, und das ist
- * ehrlicher als ein erfundener Name.
+ * Requests are collected and sent in batches, otherwise a page with thirty
+ * bylines fires thirty REQs. A real NIP-29 relay does not accept kind 0 (every
+ * event needs an h tag there), so profiles usually come from the user's own
+ * relays — configurable through VITE_PROFILE_RELAYS. Without configuration it
+ * stays at the npub, which is more honest than an invented name.
  */
 type Entry = Profile | null
 
@@ -33,7 +32,7 @@ class ProfileStore {
     return () => this.listeners.delete(listener)
   }
 
-  /** undefined = noch nicht beantwortet, null = nachgefragt, aber nichts da */
+  /** undefined = not answered yet, null = asked but nothing there */
   get(pubkey: string | null): Entry | undefined {
     if (!pubkey) return null
     return this.cache.get(pubkey)
@@ -71,7 +70,7 @@ class ProfileStore {
       { kinds: [KINDS.PROFILE], authors: batch },
       (event) => {
         const seen = found.get(event.pubkey)
-        // Mehrere Relays können unterschiedlich alte Profile liefern
+        // Different relays may return profiles of different ages
         if (seen && seen.createdAt >= event.created_at) return
         found.set(event.pubkey, { profile: parseProfile(event), createdAt: event.created_at })
       },

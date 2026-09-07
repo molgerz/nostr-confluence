@@ -2,8 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 
 /**
- * Drei Zustände, nicht zwei: System folgt prefers-color-scheme, Hell und
- * Dunkel überschreiben. docs/12-theming.md
+ * Three states, not two: system follows prefers-color-scheme, while light and
+ * dark override it. docs/12-theming.md
  */
 export type ThemeMode = 'system' | 'light' | 'dark'
 
@@ -11,7 +11,7 @@ const STORAGE_KEY = 'nc-theme'
 
 type ThemeContextValue = {
   mode: ThemeMode
-  /** tatsächlich aktiver Modus, nachdem 'system' aufgelöst wurde */
+  /** the mode actually in effect, after resolving 'system' */
   resolved: 'light' | 'dark'
   setMode: (mode: ThemeMode) => void
 }
@@ -23,7 +23,7 @@ function readStoredMode(): ThemeMode {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === 'light' || raw === 'dark' || raw === 'system') return raw
   } catch {
-    /* localStorage kann blockiert sein */
+    /* localStorage may be blocked */
   }
   return 'system'
 }
@@ -56,7 +56,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, next)
     } catch {
-      /* ignorieren: Theme gilt dann nur für diese Sitzung */
+      /* ignore: the theme then only applies to this session */
     }
   }, [])
 
@@ -66,6 +66,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
-  if (!ctx) throw new Error('useTheme braucht einen ThemeProvider')
+  if (!ctx) throw new Error('useTheme requires a ThemeProvider')
   return ctx
 }

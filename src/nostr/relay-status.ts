@@ -6,7 +6,7 @@ export type RelayInfo = {
   name: string
   software: string | null
   supportedNips: number[]
-  /** Setzt das Relay Gruppen selbst durch, oder simulieren wir sie nur? */
+  /** Does the relay enforce groups itself, or would we only be pretending? */
   supportsNip29: boolean
 }
 
@@ -38,7 +38,7 @@ async function fetchRelayInfo(relayUrl: string, signal: AbortSignal): Promise<Re
   }
 }
 
-/** Verbindung offenhalten und Zustand plus NIP-11-Dokument liefern. */
+/** Keeps the connection open and returns state plus the NIP-11 document. */
 export function useRelay(relayUrl: string): { snapshot: RelaySnapshot; info: RelayInfo | null } {
   const subscribe = useCallback((listener: () => void) => client.subscribeState(listener), [])
   const getSnapshot = useCallback(() => client.getSnapshot(relayUrl), [relayUrl])
@@ -60,17 +60,17 @@ export function useRelay(relayUrl: string): { snapshot: RelaySnapshot; info: Rel
 }
 
 /**
- * Relay aus der Umgebung. Default ist das lokale NIP-29-Relay aus
- * scripts/dev-relay-up.sh — nicht ein dummes Testrelay, damit lokal dieselbe
- * Rechtelogik gilt wie produktiv. docs/08-relay-setup.md
+ * The relay from the environment. The default is the local NIP-29 relay from
+ * scripts/dev-relay-up.sh — not a dumb test relay, so that the same permission
+ * logic applies locally as in production. docs/08-relay-setup.md
  */
 export const DEFAULT_RELAY_URL: string = import.meta.env.VITE_RELAY_URL ?? 'ws://localhost:8080'
 
 /**
- * Relays für Kind-0-Profile. Leer per Default: im lokalen Betrieb liegen die
- * Profile der Testschlüssel auf dem Testrelay, und ungefragte Verbindungen zu
- * öffentlichen Relays soll die App nicht aufbauen.
- * Beispiel: VITE_PROFILE_RELAYS="wss://purplepag.es,wss://relay.damus.io"
+ * Relays for kind 0 profiles. Empty by default: locally the test keys' profiles
+ * live on a local relay, and the app should not open unasked-for connections to
+ * public relays.
+ * Example: VITE_PROFILE_RELAYS="wss://purplepag.es,wss://relay.damus.io"
  */
 export const PROFILE_RELAYS: string[] = (import.meta.env.VITE_PROFILE_RELAYS ?? '')
   .split(',')

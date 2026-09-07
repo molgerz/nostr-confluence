@@ -12,7 +12,7 @@ type Props = {
   space: SpaceSnapshot
   snapshot: RelaySnapshot
   info: RelayInfo | null
-  /** im Handy-Overlay ist Einklappen sinnlos — dort immer ausgeklappt */
+  /** collapsing makes no sense in the mobile overlay — always expanded there */
   alwaysExpanded?: boolean
 }
 
@@ -23,9 +23,9 @@ function itemClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
- * Linke Leiste wie in Confluence: Space-Kopf, feste Einträge, Seitenbaum,
- * Fußzeile mit Relay- und AUTH-Status. Der Baum ist eine Projektion der
- * Revisions-Events, kein eigenes Index-Event.
+ * The left bar, like in Confluence: space header, fixed entries, page tree and
+ * a footer with relay and AUTH status. The tree is a projection of the revision
+ * events, not an index event of its own.
  * docs/06-ui-information-architecture.md
  */
 const COLLAPSE_KEY = 'nc-sidebar-collapsed'
@@ -49,7 +49,7 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
       try {
         localStorage.setItem(COLLAPSE_KEY, value ? '0' : '1')
       } catch {
-        /* dann gilt es nur für diese Sitzung */
+        /* then it only applies to this session */
       }
       return !value
     })
@@ -61,8 +61,8 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
         <button
           type="button"
           onClick={toggle}
-          aria-label="Seitenleiste ausklappen"
-          title="Seitenleiste ausklappen"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
           className="rounded-md px-2 py-1 text-sm text-fg-muted hover:bg-surface-2"
         >
           »
@@ -90,15 +90,15 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
               </div>
             </>
           ) : (
-            <div className="text-sm text-fg-subtle">kein Space gewählt</div>
+            <div className="text-sm text-fg-subtle">no space selected</div>
           )}
         </div>
         {alwaysExpanded ? null : (
           <button
             type="button"
             onClick={toggle}
-            aria-label="Seitenleiste einklappen"
-            title="Seitenleiste einklappen"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
             className="rounded-md px-1.5 py-0.5 text-sm text-fg-subtle hover:bg-surface-2"
           >
             «
@@ -109,17 +109,17 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
       {base ? (
         <>
           <NavLink to={base} end className={itemClass}>
-            Übersicht
+            Overview
           </NavLink>
           <NavLink to={`${base}/search`} className={itemClass}>
-            Suche
+            Search
           </NavLink>
 
           <div className="my-2 border-t border-line" />
 
           {nodes.length === 0 ? (
             <div className="px-2 text-xs text-fg-subtle">
-              {space.loading ? 'lade Seiten…' : 'noch keine Seiten'}
+              {space.loading ? 'loading pages…' : 'no pages yet'}
             </div>
           ) : (
             nodes.map((node) => (
@@ -140,7 +140,7 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
             to={`${base}/new`}
             className="block rounded-md px-2 py-1.5 text-xs font-medium text-accent-fg hover:bg-surface-2"
           >
-            + Seite erstellen
+            + New page
           </Link>
         </>
       ) : (

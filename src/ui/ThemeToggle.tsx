@@ -3,8 +3,8 @@ import type { ThemeMode } from '../theme/theme'
 
 const OPTIONS: { mode: ThemeMode; label: string }[] = [
   { mode: 'system', label: 'System' },
-  { mode: 'light', label: 'Hell' },
-  { mode: 'dark', label: 'Dunkel' },
+  { mode: 'light', label: 'Light' },
+  { mode: 'dark', label: 'Dark' },
 ]
 
 export function ThemeToggle() {
@@ -12,7 +12,7 @@ export function ThemeToggle() {
   return (
     <div
       role="group"
-      aria-label="Farbmodus"
+      aria-label="Colour mode"
       className="flex items-center gap-0.5 rounded-md border border-line bg-surface-2 p-0.5"
     >
       {OPTIONS.map((option) => {

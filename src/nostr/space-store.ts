@@ -37,9 +37,9 @@ const EMPTY: SpaceSnapshot = {
 }
 
 /**
- * Hält den Zustand eines Spaces: den vom Relay erzeugten Gruppenzustand und
- * alle Revisions-Events. Seiten und Seitenbaum sind daraus abgeleitet — es
- * gibt kein separates Index-Event, das veralten könnte.
+ * Holds the state of one space: the group state produced by the relay and all
+ * revision events. Pages and the page tree are derived from those — there is no
+ * separate index event that could go stale.
  * docs/02-data-model-events.md
  */
 class SpaceStore {
@@ -65,7 +65,7 @@ class SpaceStore {
     return () => {
       this.listeners.delete(listener)
       if (this.listeners.size === 0) {
-        // kurz warten: React montiert im StrictMode zweimal
+        // wait briefly: React mounts twice in StrictMode
         window.setTimeout(() => {
           if (this.listeners.size === 0) this.close()
         }, 500)
@@ -78,8 +78,8 @@ class SpaceStore {
   }
 
   /**
-   * Ein vom Relay gelöschtes Event lokal vergessen. Das Relay teilt Löschungen
-   * nicht aktiv mit, deshalb muss die auslösende Stelle Bescheid geben.
+   * Forget an event the relay deleted. The relay does not announce deletions,
+   * so whoever triggered it has to tell us.
    */
   forget(eventId: string): void {
     const hadRevision = this.revisions.delete(eventId)
@@ -92,9 +92,9 @@ class SpaceStore {
   }
 
   /**
-   * Abos sterben mit ihrer Verbindung und mit jedem Signer-Wechsel (AUTH gilt
-   * pro Verbindung). Beides hier erkennen und neu aufsetzen — sonst zeigt die
-   * App nach einem Relay-Neustart stillschweigend veraltete Daten.
+   * Subscriptions die with their connection and with every signer change (AUTH
+   * is per connection). Detect both here and set them up again — otherwise the
+   * app silently shows stale data after a relay restart.
    */
   checkConnection(): void {
     if (this.listeners.size === 0) return
@@ -104,7 +104,7 @@ class SpaceStore {
 
   private start(): void {
     this.close()
-    // Ohne Gruppen-ID gibt es nichts zu abonnieren (z. B. auf /login).
+    // Without a group id there is nothing to subscribe to (e.g. on /login).
     if (this.groupId.length === 0) {
       if (this.snapshot.loading) this.emit({ loading: false })
       return
@@ -161,8 +161,8 @@ class SpaceStore {
   }
 
   /**
-   * Relays liefern nicht zwingend in zeitlicher Reihenfolge. Ohne diese
-   * Prüfung könnte eine ältere Mitgliederliste eine neuere überschreiben.
+   * Relays do not necessarily deliver in chronological order. Without this
+   * check an older member list could overwrite a newer one.
    */
   private isOutdated(event: Event): boolean {
     const seen = this.groupEventAt.get(event.kind)
@@ -206,20 +206,20 @@ export function getSpaceStore(relayUrl: string, groupId: string): SpaceStore {
   return store
 }
 
-/** Ein gelöschtes Event aus dem lokalen Zustand entfernen. */
+/** Removes a deleted event from the local state. */
 export function forgetEvent(relayUrl: string, groupId: string, eventId: string): void {
   getSpaceStore(relayUrl, groupId).forget(eventId)
 }
 
 export function useSpace(relayUrl: string, groupId: string): SpaceSnapshot {
   const store = getSpaceStore(relayUrl, groupId)
-  // Muss memoisiert sein: bei einer neuen Funktionsidentität abonniert
-  // useSyncExternalStore neu, was den Store neu starten liesse — Endlosschleife.
+  // Has to be memoised: with a new function identity useSyncExternalStore
+  // resubscribes, which would restart the store — an endless loop.
   const subscribe = useCallback((listener: () => void) => store.subscribe(listener), [store])
   const getSnapshot = useCallback(() => store.getSnapshot(), [store])
   const snapshot = useSyncExternalStore(subscribe, getSnapshot)
-  // Nach Login/Logout und nach jedem Reconnect müssen die Abos neu aufgebaut
-  // werden.
+  // After sign-in/sign-out and after every reconnect the subscriptions have to
+  // be rebuilt.
   useEffect(() => client.subscribeState(() => store.checkConnection()), [store])
   return snapshot
 }

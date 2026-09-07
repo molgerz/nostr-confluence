@@ -19,57 +19,57 @@ function rev(slug: string, title: string, content: string): Revision {
 }
 
 const pages = buildPages([
-  rev('onboarding', 'Onboarding', '# Onboarding\n\nZugang zum VPN beantragen.\n\nLaptop abholen.'),
-  rev('deployment', 'Deployment', '# Deployment\n\nBuild, Test, Deploy.\n\nVPN ist dafür nötig.'),
-  rev('urlaub', 'Urlaub', '# Urlaub\n\nAntrag im Tool stellen.'),
+  rev('onboarding', 'Onboarding', '# Onboarding\n\nRequest VPN access.\n\nPick up a laptop.'),
+  rev('deployment', 'Deployment', '# Deployment\n\nBuild, test, deploy.\n\nVPN is required for this.'),
+  rev('leave', 'Leave', '# Leave\n\nFile a request in the tool.'),
 ])
 
 describe('searchPages', () => {
-  it('findet Seiten über den Inhalt und sortiert nach Relevanz', () => {
+  it('finds pages by content and sorts by relevance', () => {
     const hits = searchPages(pages, 'vpn')
     expect(hits.map((hit) => hit.page.slug)).toEqual(['deployment', 'onboarding'])
   })
 
-  it('gewichtet einen Titeltreffer höher als einen Inhaltstreffer', () => {
+  it('weighs a title hit higher than a content hit', () => {
     const hits = searchPages(pages, 'deployment')
     expect(hits[0].page.slug).toBe('deployment')
     expect(hits[0].titleMatch).toBe(true)
   })
 
-  it('verlangt alle Suchbegriffe', () => {
+  it('requires every search term', () => {
     expect(searchPages(pages, 'vpn laptop').map((hit) => hit.page.slug)).toEqual(['onboarding'])
     expect(searchPages(pages, 'vpn gibtsnicht')).toEqual([])
   })
 
-  it('ignoriert Groß- und Kleinschreibung', () => {
+  it('ignores case', () => {
     expect(searchPages(pages, 'ONBOARDING')).toHaveLength(1)
   })
 
-  it('gibt bei leerer Eingabe nichts zurück', () => {
+  it('returns nothing for empty input', () => {
     expect(searchPages(pages, '   ')).toEqual([])
   })
 
-  it('liefert Textausschnitte mit Zeilennummer und ohne Leerzeilen', () => {
+  it('returns snippets with a line number and no blank lines', () => {
     const [hit] = searchPages(pages, 'laptop')
-    expect(hit.snippets).toEqual([{ line: 5, text: 'Laptop abholen.' }])
+    expect(hit.snippets).toEqual([{ line: 5, text: 'Pick up a laptop.' }])
   })
 })
 
 describe('highlightParts', () => {
-  it('trennt Treffer vom übrigen Text', () => {
-    expect(highlightParts('Zugang zum VPN beantragen', 'vpn')).toEqual([
-      { text: 'Zugang zum ', hit: false },
+  it('separates hits from the surrounding text', () => {
+    expect(highlightParts('Request VPN access', 'vpn')).toEqual([
+      { text: 'Request ', hit: false },
       { text: 'VPN', hit: true },
-      { text: ' beantragen', hit: false },
+      { text: ' access', hit: false },
     ])
   })
 
-  it('markiert mehrere Vorkommen', () => {
-    const parts = highlightParts('VPN und VPN', 'vpn')
+  it('marks several occurrences', () => {
+    const parts = highlightParts('VPN and VPN', 'vpn')
     expect(parts.filter((part) => part.hit)).toHaveLength(2)
   })
 
-  it('gibt den Text unverändert zurück, wenn nichts passt', () => {
-    expect(highlightParts('nichts hier', 'vpn')).toEqual([{ text: 'nichts hier', hit: false }])
+  it('returns the text unchanged when nothing matches', () => {
+    expect(highlightParts('nothing here', 'vpn')).toEqual([{ text: 'nothing here', hit: false }])
   })
 })

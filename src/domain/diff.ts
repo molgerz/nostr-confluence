@@ -1,18 +1,18 @@
 import { diffArrays, diffWords } from 'diff'
 
 /**
- * Zeilenweiser Vergleich zweier Revisionen. Weil jede Revision einen
- * Volltext-Snapshot enthält, lassen sich beliebige Revisionen vergleichen —
- * nicht nur benachbarte. docs/05-versioning-history.md
+ * Line-by-line comparison of two revisions. Because every revision carries a
+ * full-text snapshot, any two revisions can be compared — not just neighbours.
+ * docs/05-versioning-history.md
  */
 export type DiffLineType = 'context' | 'added' | 'removed'
 
 export type DiffLine = {
   type: DiffLineType
   text: string
-  /** Zeilennummer in der älteren Fassung, null bei hinzugefügten Zeilen */
+  /** line number in the older version, null for added lines */
   oldNumber: number | null
-  /** Zeilennummer in der neueren Fassung, null bei entfernten Zeilen */
+  /** line number in the newer version, null for removed lines */
   newNumber: number | null
 }
 
@@ -53,8 +53,8 @@ export function countChanges(lines: DiffLine[]): { added: number; removed: numbe
 }
 
 /**
- * Lange unveränderte Strecken zusammenfalten, damit die Ansicht lesbar bleibt.
- * Es wird nur gefaltet, wenn dadurch wirklich etwas gespart wird.
+ * Folds long unchanged runs so the view stays readable. Folding only happens
+ * when it actually saves something.
  */
 export function collapseContext<T extends DiffLine>(
   lines: T[],
@@ -88,10 +88,9 @@ export function collapseContext<T extends DiffLine>(
 export type WordPart = { text: string; kind: 'same' | 'added' | 'removed' }
 
 /**
- * Zeilenpaare finden, bei denen eine entfernte direkt durch eine hinzugefügte
- * ersetzt wurde, und dafür den wortgenauen Unterschied berechnen. Nur so sieht
- * man bei einer geänderten Zeile, *was* sich geändert hat, statt die ganze
- * Zeile doppelt zu lesen.
+ * Finds line pairs where a removed line was directly replaced by an added one
+ * and computes the word-level difference for them. Only then can you see *what*
+ * changed in a modified line instead of reading the whole line twice.
  */
 export function wordDiffsForPairs(lines: DiffLine[]): Map<number, WordPart[]> {
   const result = new Map<number, WordPart[]>()
@@ -99,7 +98,7 @@ export function wordDiffsForPairs(lines: DiffLine[]): Map<number, WordPart[]> {
   for (let i = 0; i < lines.length; i += 1) {
     if (lines[i].type !== 'removed') continue
 
-    // Lauf von entfernten Zeilen, danach Lauf von hinzugefügten Zeilen
+    // A run of removed lines, then a run of added lines
     let end = i
     while (end < lines.length && lines[end].type === 'removed') end += 1
     let addedEnd = end
@@ -123,7 +122,7 @@ export function wordDiffsForPairs(lines: DiffLine[]): Map<number, WordPart[]> {
   return result
 }
 
-/** Wortgenauer Vergleich für ein Zeilenpaar, das sich nur leicht unterscheidet. */
+/** Word-level comparison for a line pair that differs only slightly. */
 export function diffWordsInLine(before: string, after: string): WordPart[] {
   return diffWords(before, after).map((part) => ({
     text: part.value,

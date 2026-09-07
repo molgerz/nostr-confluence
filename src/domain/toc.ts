@@ -3,15 +3,15 @@ import { normalizeSlug } from '../nostr/kinds'
 export type Heading = {
   level: number
   text: string
-  /** Anker-ID, wie sie der Markdown-Renderer setzt */
+  /** anchor id, matching what the Markdown renderer sets */
   id: string
 }
 
 /**
- * Überschriften aus Markdown ziehen für das "Auf dieser Seite"-Verzeichnis.
+ * Extracts headings from Markdown for the "on this page" table of contents.
  *
- * Codeblöcke werden übersprungen: `# nicht wirklich eine Überschrift` in einem
- * Shell-Beispiel darf nicht im Inhaltsverzeichnis landen.
+ * Code blocks are skipped: `# not really a heading` inside a shell example must
+ * not end up in the table of contents.
  */
 export function extractHeadings(markdown: string): Heading[] {
   const headings: Heading[] = []

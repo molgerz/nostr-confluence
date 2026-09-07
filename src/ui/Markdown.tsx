@@ -7,9 +7,9 @@ import { normalizeSlug } from '../nostr/kinds'
 import { isOwnAttachment } from '../nostr/blossom'
 
 /**
- * Bilder aus fremden Quellen werden erst auf Klick geladen: ein eingebettetes
- * Bild verrät sonst jedem fremden Server, wer wann welche Seite liest.
- * Anhänge vom eigenen Blossom-Server laden direkt.
+ * Images from foreign sources are only loaded on click: otherwise an embedded
+ * image tells a foreign server who reads which page and when. Attachments from
+ * our own Blossom server load directly.
  * docs/09-security-privacy.md
  */
 function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: string }) {
@@ -29,11 +29,11 @@ function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: st
     )
   }
 
-  let host = 'einer fremden Quelle'
+  let host = 'a foreign source'
   try {
     host = new URL(src).host
   } catch {
-    /* relative oder kaputte URL */
+    /* relative or broken URL */
   }
 
   return (
@@ -42,15 +42,15 @@ function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: st
       onClick={() => setAllowed(true)}
       className="my-2 block rounded-lg border border-dashed border-line px-3 py-2 text-left text-xs text-fg-muted hover:border-line-strong"
     >
-      Bild von {host} laden
+      Load image from {host}
       {alt ? <span className="block text-fg-subtle">{alt}</span> : null}
     </button>
   )
 }
 
 /**
- * Anker-ID aus dem Überschriftentext — dieselbe Ableitung wie in
- * `extractHeadings`, damit die Sprungmarken im Inhaltsverzeichnis passen.
+ * Anchor id from the heading text — the same derivation as in
+ * `extractHeadings`, so the table of contents links line up.
  */
 function headingId(children: ReactNode): string | undefined {
   const text = String(children ?? '').replace(/[*_`]/g, '')
@@ -59,8 +59,8 @@ function headingId(children: ReactNode): string | undefined {
 }
 
 /**
- * Markdown fremder npubs rendern. Sanitizing ist Pflicht, nicht Option:
- * Inhalte kommen von beliebigen Schlüsseln. Kein rohes HTML, keine Skripte.
+ * Renders Markdown written by arbitrary npubs. Sanitising is mandatory, not
+ * optional: content comes from arbitrary keys. No raw HTML, no scripts.
  * docs/09-security-privacy.md
  */
 export function Markdown({ children }: { children: string }) {

@@ -9,15 +9,15 @@ export type SpaceRoute = {
   group: GroupAddress | null
   relayUrl: string
   space: SpaceSnapshot
-  /** Basis für Links innerhalb des Spaces, z. B. /s/host'gruppe */
+  /** Base for links inside the space, e.g. /s/host'group */
   base: string | null
   slug: string | null
 }
 
 /**
- * Gruppen-Adresse aus der Route lesen und den zugehörigen Space-Zustand
+ * Reads the group address from the route and returns the matching space
  * holen. Der Store ist pro (Relay, Gruppe) geteilt, mehrfaches Aufrufen
- * erzeugt also keine zusätzlichen Abos.
+ * calling it several times creates no extra subscriptions.
  */
 export function useSpaceRoute(): SpaceRoute {
   const params = useParams<{ group?: string; slug?: string }>()

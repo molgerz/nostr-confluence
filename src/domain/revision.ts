@@ -2,22 +2,22 @@ import { KINDS, TAGS } from '../nostr/kinds'
 import type { Event } from 'nostr-tools'
 
 /**
- * Eine Seiten-Revision: unveränderliches, signiertes Event. Entspricht einem
- * Git-Commit — Autorschaft steckt in `author` (npub), die Reihenfolge in
- * `parentRevs`. docs/05-versioning-history.md
+ * A page revision: an immutable, signed event. The equivalent of a Git commit —
+ * authorship sits in `author` (npub), the ordering in `parentRevs`.
+ * docs/05-versioning-history.md
  */
 export type Revision = {
   id: string
   author: string
   createdAt: number
-  /** Gruppen-ID aus dem h-Tag */
+  /** group id from the h tag */
   group: string
-  /** normalisierter Slug aus dem d-Tag */
+  /** normalised slug from the d tag */
   slug: string
   title: string
-  /** Slug der Elternseite für den Sidebar-Baum */
+  /** slug of the parent page, for the sidebar tree */
   parentSlug: string | null
-  /** Vorgänger-Revisionen. Leer = erste Revision, zwei = Merge */
+  /** predecessor revisions. Empty = first revision, two = a merge */
   parentRevs: string[]
   summary: string | null
   content: string
@@ -29,9 +29,9 @@ function firstTag(event: Event, name: string): string | null {
 }
 
 /**
- * Event zu einer Revision machen. Gibt null zurück, wenn das Event nicht in
- * diese Gruppe gehört oder Pflichtangaben fehlen — ein Relay könnte Fremdes
- * mitliefern, deshalb wird der h-Tag hier geprüft und nicht geglaubt.
+ * Turns an event into a revision. Returns null when the event does not belong
+ * to this group or required fields are missing — a relay could deliver foreign
+ * events, so the h tag is checked here rather than trusted.
  * docs/09-security-privacy.md
  */
 export function parseRevision(event: Event, expectedGroup: string): Revision | null {

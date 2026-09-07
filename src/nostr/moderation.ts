@@ -5,10 +5,10 @@ import { KINDS, TAGS } from './kinds'
 import type { Signer } from './signer'
 
 /**
- * Moderations-Events nach NIP-29. Diese Events sind **Anträge** an das Relay,
- * keine Befehle: das Relay prüft, ob die Absenderin Admin ist, und lehnt sonst
- * ab. Die Mitgliederliste (39002) erzeugt danach das Relay selbst — sie wird
- * hier nie direkt geschrieben. docs/04-permissions-nip29.md
+ * Moderation events per NIP-29. These events are **requests** to the relay, not
+ * commands: the relay checks whether the sender is an admin and rejects
+ * otherwise. The member list (39002) is then produced by the relay itself — it
+ * is never written directly here. docs/04-permissions-nip29.md
  */
 type Base = { relayUrl: string; groupId: string }
 
@@ -24,7 +24,7 @@ async function publishModeration(
     tags: [[TAGS.GROUP, groupId], ...tags],
     content: '',
   })
-  if (!verifyEvent(event)) return { ok: false, reason: 'Signatur ungültig' }
+  if (!verifyEvent(event)) return { ok: false, reason: 'invalid signature' }
   return client.publish(relayUrl, event)
 }
 
@@ -44,9 +44,9 @@ export function removeMember(
 }
 
 /**
- * Ein Event aus der Gruppe entfernen. Anders als eine NIP-09-Löschanfrage
- * setzt das Relay diese Löschung durch — sie gilt aber nur auf diesem Relay,
- * Kopien anderswo bleiben. docs/09-security-privacy.md
+ * Removes an event from the group. Unlike a NIP-09 deletion request the relay
+ * enforces this deletion — but it only applies to this relay; copies elsewhere
+ * remain. docs/09-security-privacy.md
  */
 export function deleteGroupEvent(
   signer: Signer,

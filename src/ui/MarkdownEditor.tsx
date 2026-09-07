@@ -8,11 +8,11 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { useTheme } from '../theme/theme'
 
 /**
- * Markdown-Editor auf CodeMirror 6.
+ * Markdown editor built on CodeMirror 6.
  *
- * Der Farbmodus wird über ein `Compartment` umkonfiguriert und nicht durch
- * Neuaufbau des Editors — sonst gingen Cursor und Undo-Historie beim
- * Umschalten verloren. docs/12-theming.md
+ * The colour mode is swapped through a `Compartment` rather than by rebuilding
+ * the editor — otherwise cursor and undo history would be lost on every switch.
+ * docs/12-theming.md
  */
 const themeCompartment = new Compartment()
 
@@ -44,7 +44,7 @@ function editorTheme(dark: boolean) {
 }
 
 export type EditorHandle = {
-  /** Text an der Cursorposition einfügen */
+  /** insert text at the cursor position */
   insert: (text: string) => void
 }
 
@@ -52,9 +52,9 @@ type Props = {
   value: string
   onChange: (value: string) => void
   ariaLabel: string
-  /** wird mit einer kleinen API befüllt, damit Anhänge am Cursor landen */
+  /** filled with a small API so attachments land at the cursor */
   handleRef?: { current: EditorHandle | null }
-  /** Dateien, die in den Editor gezogen wurden */
+  /** files dropped onto the editor */
   onDropFiles?: (files: File[]) => void
 }
 
@@ -118,19 +118,19 @@ export function MarkdownEditor({ value, onChange, ariaLabel, handleRef, onDropFi
       view.current = null
       if (handleRef) handleRef.current = null
     }
-    // Absichtlich nur einmal aufbauen: der Inhalt wird unten synchronisiert.
+    // Deliberately built once: the content is synchronised below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ariaLabel])
 
-  // Farbmodus umschalten, ohne den Editor neu aufzubauen
+  // Switch the colour mode without rebuilding the editor
   useEffect(() => {
     view.current?.dispatch({
       effects: themeCompartment.reconfigure(editorTheme(resolved === 'dark')),
     })
   }, [resolved])
 
-  // Änderungen von aussen übernehmen (z. B. Ergebnis eines Merges), ohne den
-  // Cursor bei jeder eigenen Eingabe zurückzusetzen
+  // Adopt changes from outside (e.g. the result of a merge) without resetting
+  // the cursor on every keystroke of our own
   useEffect(() => {
     const instance = view.current
     if (!instance) return

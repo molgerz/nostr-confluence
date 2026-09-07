@@ -4,18 +4,18 @@ import { blame } from '../domain/blame'
 import { shortNpub, toNpub } from '../nostr/profile'
 
 /**
- * Wer hat welche Zeile geschrieben. Die Zuordnung wird aus der Revisionskette
- * berechnet; jede Zeile trägt damit einen npub.
+ * Who wrote which line. The attribution is computed from the revision chain,
+ * so every line carries an npub.
  */
 export function BlameView() {
   const { group, space, base, slug } = useSpaceRoute()
 
-  if (!group || !base || !slug) return <p className="text-sm text-danger">Ungültige Adresse.</p>
+  if (!group || !base || !slug) return <p className="text-sm text-danger">Invalid address.</p>
 
   const page = space.pages.find((entry) => entry.slug === slug)
   if (!page) {
     return (
-      <p className="text-sm text-fg-muted">{space.loading ? 'lade…' : 'Seite nicht gefunden.'}</p>
+      <p className="text-sm text-fg-muted">{space.loading ? 'loading…' : 'Page not found.'}</p>
     )
   }
 
@@ -30,7 +30,7 @@ export function BlameView() {
       <h1 className="text-2xl font-medium text-fg">{page.title}</h1>
       <div className="flex gap-3 text-xs">
         <Link to={`${base}/${page.slug}`} className="text-accent-fg underline">
-          zurück zur Seite
+          back to the page
         </Link>
         <Link to={`${base}/${page.slug}/history`} className="text-accent-fg underline">
           Historie

@@ -24,30 +24,32 @@ export function SearchView() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
 
-  if (!group || !base) return <p className="text-sm text-danger">Ungültige Adresse.</p>
+  if (!group || !base) return <p className="text-sm text-danger">Invalid address.</p>
 
   const hits = searchPages(space.pages, query)
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">Suche in {group.id}</div>
+      <div className="text-xs text-fg-subtle">Search in {group.id}</div>
       <h1 className="text-2xl font-medium text-fg">
-        {query.trim().length === 0 ? 'Suche' : `„${query}"`}
+        {query.trim().length === 0 ? 'Search' : `“${query}”`}
       </h1>
 
       {query.trim().length === 0 ? (
         <p className="text-sm text-fg-muted">
-          Suchbegriff oben eingeben. Gesucht wird lokal in den geladenen Seiten dieses Spaces —
-          Titel und Inhalt, mehrere Wörter müssen alle vorkommen.
+          Type a search term above. Search runs locally over the loaded pages of this space —
+          titles and content, and every word has to appear.
         </p>
       ) : hits.length === 0 ? (
         <p className="text-sm text-fg-muted">
-          {space.loading ? 'lade Seiten…' : `Nichts gefunden in ${space.pages.length} Seiten.`}
+          {space.loading
+            ? 'loading pages…'
+            : `Nothing found in ${space.pages.length} pages.`}
         </p>
       ) : (
         <>
           <p className="text-xs text-fg-subtle">
-            {hits.length} von {space.pages.length} Seiten
+            {hits.length} of {space.pages.length} pages
           </p>
           <ul className="space-y-3">
             {hits.map((hit) => (
@@ -59,14 +61,14 @@ export function SearchView() {
                   <Highlighted text={hit.page.title} query={query} />
                 </Link>
                 <div className="mt-0.5 text-xs text-fg-subtle">
-                  {hit.page.revisions.length} Revision
-                  {hit.page.revisions.length === 1 ? '' : 'en'} ·{' '}
+                  {hit.page.revisions.length} revision
+                  {hit.page.revisions.length === 1 ? '' : 's'} ·{' '}
                   <span className="font-mono">{shortNpub(toNpub(hit.page.head.author))}</span>
                 </div>
                 <ul className="mt-2 space-y-1">
                   {hit.snippets.map((snippet) => (
                     <li key={snippet.line} className="flex gap-2 text-xs">
-                      <span className="shrink-0 font-mono text-fg-subtle">Z{snippet.line}</span>
+                      <span className="shrink-0 font-mono text-fg-subtle">L{snippet.line}</span>
                       <span className="text-fg-muted">
                         <Highlighted text={snippet.text} query={query} />
                       </span>

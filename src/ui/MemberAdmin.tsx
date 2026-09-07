@@ -15,9 +15,9 @@ type Props = {
 }
 
 /**
- * Mitgliederverwaltung. Alle Aktionen sind Anträge an das Relay — es
- * entscheidet, ob sie durchgehen, und erzeugt danach die neue Mitgliederliste
- * selbst. Die Liste hier wird deshalb nie lokal "korrigiert".
+ * Member administration. Every action is a request to the relay — it decides
+ * whether they go through and then produces the new member list itself. That is
+ * why the list here is never "corrected" locally.
  */
 export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Props) {
   const { session, ensureSamePubkey } = useSession()
@@ -40,7 +40,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
       }
       const result = await action()
       if (result.ok) {
-        setMessage({ ok: true, text: 'Das Relay hat die Änderung übernommen.' })
+        setMessage({ ok: true, text: 'The relay accepted the change.' })
         setInput('')
         return
       }
@@ -49,11 +49,11 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
         ok: false,
         text:
           classifyRejection(reason) === 'permission'
-            ? `Das Relay lässt dich das nicht tun: ${reason}`
-            : `Abgelehnt: ${reason}`,
+            ? `The relay does not let you do that: ${reason}`
+            : `Rejected: ${reason}`,
       })
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : 'Signieren abgebrochen' })
+      setMessage({ ok: false, text: err instanceof Error ? err.message : 'signing was cancelled' })
     } finally {
       setBusy(null)
     }
@@ -61,7 +61,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium text-fg">Mitglieder ({members.length})</h2>
+      <h2 className="text-sm font-medium text-fg">Members ({members.length})</h2>
 
       <ul className="space-y-1 text-xs">
         {members.map((pubkey) => {
@@ -75,7 +75,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
                 </span>
               ) : null}
               {session.status === 'signed-in' && pubkey === session.pubkey ? (
-                <span className="text-fg-subtle">(du)</span>
+                <span className="text-fg-subtle">(you)</span>
               ) : null}
               {isAdmin && session.status === 'signed-in' && pubkey !== session.pubkey ? (
                 <button
@@ -88,7 +88,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
                   }
                   className="rounded-md border border-line px-2 py-0.5 text-fg-muted disabled:opacity-60"
                 >
-                  {busy === pubkey ? '…' : 'entfernen'}
+                  {busy === pubkey ? '…' : 'remove'}
                 </button>
               ) : null}
             </li>
@@ -96,7 +96,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
         })}
         {members.length === 0 ? (
           <li className="text-fg-subtle">
-            {loading ? 'lade…' : 'Das Relay meldet keine Mitgliederliste.'}
+            {loading ? 'loading…' : 'The relay reports no member list.'}
           </li>
         ) : null}
       </ul>
@@ -104,7 +104,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
       {isAdmin && session.status === 'signed-in' ? (
         <div className="space-y-2 rounded-xl border border-line bg-surface-1 p-3">
           <label htmlFor="member" className="text-xs font-medium text-fg-subtle">
-            Mitglied aufnehmen (npub oder Hex)
+            Add a member (npub or hex)
           </label>
           <div className="flex flex-wrap gap-2">
             <input
@@ -120,19 +120,19 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
               onClick={() => {
                 const pubkey = parsePubkeyInput(input)
                 if (!pubkey) {
-                  setMessage({ ok: false, text: 'Das ist kein gültiger npub und kein Hex-Schlüssel.' })
+                  setMessage({ ok: false, text: 'That is neither a valid npub nor a hex key.' })
                   return
                 }
                 void run('add', () => addMember(session.signer, { relayUrl, groupId, pubkey }))
               }}
               className="rounded-md bg-accent-bg px-3 py-1 text-xs font-medium text-accent-fg disabled:opacity-60"
             >
-              {busy === 'add' ? 'sende…' : 'aufnehmen'}
+              {busy === 'add' ? 'sending…' : 'add'}
             </button>
           </div>
           <p className="text-xs text-fg-subtle">
-            In einer offenen Gruppe ist das nicht nötig: wer schreibt, wird vom Relay automatisch
-            aufgenommen.
+            In an open group this is unnecessary: whoever writes is added by the relay
+            automatically.
           </p>
         </div>
       ) : null}

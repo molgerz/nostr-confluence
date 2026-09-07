@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
 /**
- * Platzhalter für noch nicht gebaute Funktionen. Benennt ausdrücklich die
- * Phase aus docs/10-roadmap.md, damit das Skelett selbsterklärend bleibt und
- * niemand einen leeren Bereich für einen Bug hält.
+ * Placeholder for features that are not built yet. It names the phase from
+ * docs/10-roadmap.md explicitly, so the skeleton explains itself and nobody
+ * mistakes an empty area for a bug.
  */
 export function PhaseNote({ phase, children }: { phase: string; children: ReactNode }) {
   return (

@@ -1,40 +1,40 @@
 /**
- * Einzige Stelle im Code, an der Nostr-Kind-Nummern und Tag-Namen stehen.
- * Komponenten importieren von hier — keine magischen Zahlen in der UI.
- * Fachliche Herleitung: docs/02-data-model-events.md
+ * The only place in the code that holds Nostr kind numbers and tag names.
+ * Components import from here — no magic numbers in the UI.
+ * The reasoning behind them: docs/02-data-model-events.md
  */
 
 export const KINDS = {
-  /** NIP-01: Profil-Metadaten (Anzeigename, Avatar) für Bylines */
+  /** NIP-01: profile metadata (display name, avatar) for bylines */
   PROFILE: 0,
-  /** NIP-09: Löschanfrage (Bitte, keine Garantie) */
+  /** NIP-09: deletion request (a plea, not a guarantee) */
   DELETION_REQUEST: 5,
   /** NIP-42: Relay-AUTH */
   CLIENT_AUTH: 22242,
-  /** Blossom BUD-01: autorisiert einen Datei-Upload, kein Relay-Event */
+  /** Blossom BUD-01: authorises a file upload; not a relay event */
   BLOSSOM_AUTH: 24242,
 
-  /** NIP-22: Kommentar auf eine Seite (Phase 6) */
+  /** NIP-22: comment on a page */
   COMMENT: 1111,
 
   /**
-   * Ephemer (20000-29999), wird von Relays nicht gespeichert. Dient nur der
-   * Diagnose "darf ich hier schreiben?", ohne Spuren zu hinterlassen.
+   * Ephemeral (20000-29999), not stored by relays. Only used to answer "may I
+   * write here?" without leaving traces.
    */
   DIAGNOSTIC_PING: 20817,
 
-  /** Eigener Kind: unveränderliche Seiten-Revision. Der eigentliche Inhalt. */
+  /** Our own kind: an immutable page revision. The actual content. */
   PAGE_REVISION: 1818,
-  /** NIP-54: Wiki-Artikel, bei uns nur Interop-Spiegel (nie die Wahrheit) */
+  /** NIP-54: wiki article, here only an interop mirror (never the truth) */
   PAGE_HEAD_MIRROR: 30818,
 
-  /** NIP-29, vom Relay erzeugt */
+  /** NIP-29, produced by the relay */
   GROUP_METADATA: 39000,
   GROUP_ADMINS: 39001,
   GROUP_MEMBERS: 39002,
   GROUP_ROLES: 39003,
 
-  /** NIP-29, von Nutzern gesendet */
+  /** NIP-29, sent by users */
   GROUP_ADD_USER: 9000,
   GROUP_REMOVE_USER: 9001,
   GROUP_EDIT_METADATA: 9002,
@@ -49,34 +49,34 @@ export const KINDS = {
 
 export type Kind = (typeof KINDS)[keyof typeof KINDS]
 
-/** Tag-Namen. Einbuchstabige Tags sind relay-indexiert und filterbar. */
+/** Tag names. Single-letter tags are relay-indexed and filterable. */
 export const TAGS = {
-  /** NIP-29 Gruppen-ID. Daran prüft das Relay die Schreibberechtigung. */
+  /** NIP-29 group id. The relay checks write permission against this. */
   GROUP: 'h',
-  /** Normalisierter Seiten-Slug (indexiert, filterbar via #d) */
+  /** Normalised page slug (indexed, filterable via #d) */
   SLUG: 'd',
-  /** Pubkey-Referenz (Mitglieder, Admins) */
+  /** Pubkey reference (members, admins) */
   PUBKEY: 'p',
   TITLE: 'title',
-  /** Event-ID der Vorgänger-Revision. Zwei Vorkommen = Merge-Revision. */
+  /** Event id of the preceding revision. Two of them = a merge revision. */
   PARENT_REV: 'parent-rev',
-  /** sha256 über den Inhalt, erkennt No-Op-Speichern und Restores */
+  /** sha256 of the content; detects no-op saves and restores */
   CONTENT_HASH: 'content-hash',
-  /** Slug der Elternseite — daraus baut die Sidebar den Baum */
+  /** Slug of the parent page — the sidebar builds its tree from it */
   PAGE_PARENT: 'page-parent',
-  /** Änderungsnotiz, entspricht der Commit-Message */
+  /** Change note, the equivalent of a commit message */
   SUMMARY: 'summary',
-  /** Wiederherstellung: ID der Revision, deren Inhalt übernommen wurde */
+  /** Restore: id of the revision whose content was taken over */
   RESTORE_OF: 'restore-of',
-  /** Inhaltstyp, bei uns immer text/markdown */
+  /** Content type, always text/markdown here */
   MIME: 'm',
-  /** NIP-31: Fallback-Beschreibung für fremde Clients */
+  /** NIP-31: fallback description for foreign clients */
   ALT: 'alt',
-  /** NIP-29 Timeline-Referenzen gegen Verschweigen von Events */
+  /** NIP-29 timeline references, against relays withholding events */
   PREVIOUS: 'previous',
   /**
-   * In 39000: Liste der Kinds, die die Gruppe akzeptiert.
-   * Unterstrich, nicht Bindestrich — mit Bindestrich wird der Tag ignoriert.
+   * In 39000: the list of kinds the group accepts.
+   * Underscore, not hyphen — with a hyphen the tag is ignored.
    */
   SUPPORTED_KINDS: 'supported_kinds',
 } as const
@@ -84,9 +84,9 @@ export const TAGS = {
 export const MIME_MARKDOWN = 'text/markdown'
 
 /**
- * Slug-Normalisierung nach NIP-54-Vorbild: Kleinbuchstaben, Bindestriche,
- * nur a-z0-9-. Gleiche Eingabe muss auf allen Clients denselben Slug ergeben,
- * sonst zeigen zwei Nutzer auf zwei verschiedene Seiten.
+ * Slug normalisation modelled on NIP-54: lowercase, hyphens, only a-z0-9-.
+ * The same input has to produce the same slug on every client, otherwise two
+ * users end up pointing at two different pages.
  */
 export function normalizeSlug(input: string): string {
   return input

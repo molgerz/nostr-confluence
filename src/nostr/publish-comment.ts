@@ -9,9 +9,9 @@ export type CommentInput = {
   groupId: string
   slug: string
   content: string
-  /** Kommentar, auf den geantwortet wird */
+  /** the comment being replied to */
   parentId?: string | null
-  /** Autor des Kommentars, auf den geantwortet wird — für spätere Erwähnungen */
+  /** author of the comment being replied to — for mentions later */
   parentAuthor?: string | null
 }
 
@@ -22,10 +22,10 @@ export async function publishComment(
   const tags: string[][] = [
     [TAGS.GROUP, input.groupId],
     [TAGS.SLUG, input.slug],
-    // NIP-22: K nennt die Art des Wurzelobjekts, hier unsere Seiten-Revision
+    // NIP-22: K names the kind of the root object, here our page revision
     ['K', String(KINDS.PAGE_REVISION)],
     ['k', String(input.parentId ? KINDS.COMMENT : KINDS.PAGE_REVISION)],
-    [TAGS.ALT, `Kommentar zur Seite ${input.slug} im Space ${input.groupId}`],
+    [TAGS.ALT, `Comment on page ${input.slug} in space ${input.groupId}`],
   ]
   if (input.parentId) tags.push(['e', input.parentId])
   if (input.parentAuthor) tags.push([TAGS.PUBKEY, input.parentAuthor])
@@ -38,7 +38,7 @@ export async function publishComment(
   })
 
   if (!verifyEvent(event)) {
-    return { ok: false, reason: 'Die Signatur des Kommentars ist ungültig' }
+    return { ok: false, reason: 'the comment signature is invalid' }
   }
 
   return client.publish(input.relayUrl, event)

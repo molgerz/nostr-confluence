@@ -2,20 +2,20 @@ import { KINDS, TAGS } from '../nostr/kinds'
 import type { Event } from 'nostr-tools'
 
 /**
- * Kommentar zu einer Seite (NIP-22, Kind 1111).
+ * A comment on a page (NIP-22, kind 1111).
  *
- * Abweichung vom Buchstaben des NIP: dort verweist ein Kommentar per `A`/`E`
- * auf ein einzelnes Wurzel-Event. Unsere Seite *ist* kein einzelnes Event,
- * sondern das Paar (Gruppe, Slug) — ein Verweis auf eine Revision würde mit
- * der nächsten Bearbeitung veralten. Deshalb wird über `h` und `d` verankert,
- * genau wie die Revisionen selbst. docs/02-data-model-events.md
+ * Deviation from the letter of the NIP: there a comment points at a single root
+ * event via `A`/`E`. Our page *is* not a single event but the pair (group,
+ * slug) — a reference to one revision would go stale with the next edit. So it
+ * is anchored through `h` and `d`, exactly like the revisions themselves.
+ * docs/02-data-model-events.md
  */
 export type Comment = {
   id: string
   author: string
   createdAt: number
   slug: string
-  /** Kommentar-ID, auf die geantwortet wird; null bei einem Wurzelkommentar */
+  /** id of the comment being replied to; null for a root comment */
   parentId: string | null
   content: string
 }
@@ -45,9 +45,9 @@ export function parseComment(event: Event, expectedGroup: string): Comment | nul
 }
 
 /**
- * Kommentare in Threads bringen. Antworten auf gelöschte oder (noch) nicht
- * geladene Kommentare hängen oben — verstecken wäre schlimmer als falsch
- * einsortieren.
+ * Arranges comments into threads. Replies to deleted or not-yet-loaded comments
+ * hang at the top — hiding them would be worse than filing them in the wrong
+ * place.
  */
 export function buildCommentTree(comments: Comment[]): CommentNode[] {
   const sorted = [...comments].sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1))
@@ -63,7 +63,7 @@ export function buildCommentTree(comments: Comment[]): CommentNode[] {
 
   const setDepth = (list: CommentNode[], depth: number) => {
     for (const node of list) {
-      // Einrückung deckeln, sonst wird ein tiefer Thread unlesbar schmal
+      // Cap the indentation, otherwise a deep thread becomes unreadably narrow
       node.depth = Math.min(depth, 4)
       setDepth(node.replies, depth + 1)
     }

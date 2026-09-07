@@ -1,8 +1,8 @@
 import { extractHeadings } from '../../domain/toc'
 
 /**
- * "Auf dieser Seite" — rechte Leiste wie in Confluence. Wird nur angezeigt,
- * wenn es überhaupt etwas zu springen gibt.
+ * "On this page" — the right-hand rail, like in Confluence. Only shown when
+ * there is something to jump to at all.
  */
 export function TableOfContents({ markdown }: { markdown: string }) {
   const headings = extractHeadings(markdown).filter((heading) => heading.level <= 3)
@@ -11,7 +11,7 @@ export function TableOfContents({ markdown }: { markdown: string }) {
 
   return (
     <nav className="hidden w-44 shrink-0 border-l border-line px-3 py-6 xl:block">
-      <div className="text-xs font-medium text-fg-subtle">Auf dieser Seite</div>
+      <div className="text-xs font-medium text-fg-subtle">On this page</div>
       <ul className="mt-2 space-y-1">
         {headings.map((heading) => (
           <li key={heading.id} style={{ paddingLeft: `${(heading.level - 1) * 8}px` }}>

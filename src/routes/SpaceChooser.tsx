@@ -10,12 +10,12 @@ export function SpaceChooser() {
     <div className="space-y-4">
       <h1 className="text-2xl font-medium text-fg">Spaces</h1>
       <p className="text-sm text-fg-muted">
-        Ein Space ist eine NIP-29-Gruppe auf einem Relay. Der Space unten ist der, den{' '}
+        A space is a NIP-29 group on a relay. The one below is the space that{' '}
         <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">
           scripts/dev-group-seed.sh
         </code>{' '}
-        per <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">nak group</code> auf
-        dem lokalen NIP-29-Relay anlegt.
+        creates on the local NIP-29 relay via{' '}
+        <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-xs">nak group</code>.
       </p>
       <Link
         to={`/s/${encodeURIComponent(SEEDED)}`}
@@ -25,7 +25,7 @@ export function SpaceChooser() {
         <div className="mt-0.5 font-mono text-xs text-fg-subtle">{SEEDED}</div>
       </Link>
       <PhaseNote phase="Phase 2">
-        Hier stehen später die Spaces, in denen dein npub laut Event 39002 Mitglied ist.
+        Later this will list the spaces your npub is a member of according to event 39002.
       </PhaseNote>
     </div>
   )

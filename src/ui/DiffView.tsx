@@ -14,8 +14,8 @@ const PREFIX: Record<DiffLine['type'], string> = {
 }
 
 /**
- * Innerhalb einer ersetzten Zeile das geänderte Wort hervorheben. Ohne das
- * muss man zwei fast gleiche Zeilen von Hand vergleichen.
+ * Highlights the changed word inside a replaced line. Without it you have to
+ * compare two nearly identical lines by eye.
  */
 function LineText({ text, parts }: { text: string; parts?: WordPart[] }) {
   if (!parts || parts.length === 0) return <>{text.length === 0 ? ' ' : text}</>
@@ -38,27 +38,27 @@ function LineText({ text, parts }: { text: string; parts?: WordPart[] }) {
 }
 
 /**
- * Zeilen-Diff zweier Revisionen. Hinzufügen und Entfernen werden zusätzlich
- * durch + und − gekennzeichnet, nicht nur durch Farbe — Rot-Grün allein wäre
- * für einen Teil der Leute unlesbar. docs/12-theming.md
+ * Line diff of two revisions. Additions and removals are marked with + and −
+ * as well, not by colour alone — red/green on its own would be unreadable for
+ * some people. docs/12-theming.md
  */
 export function DiffView({ before, after }: { before: string; after: string }) {
   const lines = diffTexts(before, after)
   const { added, removed } = countChanges(lines)
   const wordDiffs = wordDiffsForPairs(lines)
-  // collapseContext wirft Zeilen weg, deshalb die Wortmarkierungen vorher an
-  // die Zeile hängen statt später über den Index zu suchen
+  // collapseContext drops lines, so attach the word markers to the line up
+  // front instead of looking them up by index later
   const rows = collapseContext(lines.map((line, index) => ({ ...line, index })))
 
   if (added === 0 && removed === 0) {
-    return <p className="text-xs text-fg-subtle">Kein Unterschied im Text.</p>
+    return <p className="text-xs text-fg-subtle">No difference in the text.</p>
   }
 
   return (
     <div className="space-y-2">
       <div className="text-xs text-fg-subtle">
         <span className="text-success">+{added}</span>{' '}
-        <span className="text-danger">−{removed}</span> Zeilen
+        <span className="text-danger">−{removed}</span> lines
       </div>
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full border-collapse font-mono text-xs">
@@ -67,7 +67,7 @@ export function DiffView({ before, after }: { before: string; after: string }) {
               row.type === 'gap' ? (
                 <tr key={`gap-${index}`}>
                   <td colSpan={3} className="bg-surface-1 px-2 py-1 text-fg-subtle">
-                    … {row.hidden} unveränderte Zeile{row.hidden === 1 ? '' : 'n'}
+                    … {row.hidden} unchanged line{row.hidden === 1 ? '' : 's'}
                   </td>
                 </tr>
               ) : (

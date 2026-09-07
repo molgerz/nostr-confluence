@@ -18,7 +18,7 @@ export function Topbar({
       <button
         type="button"
         onClick={onToggleMenu}
-        aria-label="Seitenleiste anzeigen"
+        aria-label="Show sidebar"
         className="rounded-md px-2 py-1 text-sm text-fg-muted hover:bg-surface-2 md:hidden"
       >
         ☰
@@ -42,8 +42,8 @@ export function Topbar({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           disabled={!groupBase}
-          placeholder={groupBase ? 'Seiten durchsuchen' : 'erst einen Space öffnen'}
-          aria-label="Seiten durchsuchen"
+          placeholder={groupBase ? 'Search pages' : 'open a space first'}
+          aria-label="Search pages"
           className="w-full max-w-md rounded-md border border-line bg-surface-2 px-3 py-1.5 text-xs text-fg placeholder:text-fg-subtle disabled:opacity-60"
         />
       </form>
@@ -53,15 +53,15 @@ export function Topbar({
           to={`${groupBase}/new`}
           className="shrink-0 rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
         >
-          <span className="hidden sm:inline">+ Erstellen</span>
+          <span className="hidden sm:inline">+ Create</span>
           <span className="sm:hidden">+</span>
         </Link>
       ) : (
         <span
-          title="Erst einen Space öffnen"
+          title="Open a space first"
           className="hidden shrink-0 rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg opacity-60 sm:inline"
         >
-          + Erstellen
+          + Create
         </span>
       )}
 

@@ -9,12 +9,12 @@ export function Login() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-medium text-fg">Mit Nostr anmelden</h1>
+      <h1 className="text-2xl font-medium text-fg">Sign in with Nostr</h1>
 
       {session.status === 'signed-in' ? (
         <div className="space-y-3 rounded-xl border border-line bg-surface-1 p-4">
           <div className="text-sm font-medium text-fg">
-            Angemeldet als {displayName(session.profile, session.npub)}
+            Signed in as {displayName(session.profile, session.npub)}
           </div>
           <div className="font-mono text-xs break-all text-fg-subtle">{session.npub}</div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
@@ -29,30 +29,29 @@ export function Login() {
               {snapshot.auth}
               {snapshot.authMessage ? ` (${snapshot.authMessage})` : ''}
             </dd>
-            <dt className="text-fg-subtle">Profil</dt>
+            <dt className="text-fg-subtle">Profile</dt>
             <dd className="text-fg-muted">
-              {session.profile ? 'aus Kind 0 geladen' : 'kein Kind-0-Event gefunden'}
+              {session.profile ? 'loaded from kind 0' : 'no kind 0 event found'}
             </dd>
           </dl>
         </div>
       ) : (
         <>
           <p className="text-sm text-fg-muted">
-            Die Anmeldung läuft über eine NIP-07-Extension. Diese App speichert niemals einen
-            privaten Schlüssel und bietet auch kein Feld dafür an.
+            Signing in works through a NIP-07 extension. This app never stores a private key
+            and offers no field for one.
           </p>
 
           {extension === 'checking' ? (
-            <p className="text-sm text-fg-subtle">Suche NIP-07-Extension…</p>
+            <p className="text-sm text-fg-subtle">Looking for a NIP-07 extension…</p>
           ) : null}
 
           {extension === 'missing' ? (
             <div className="space-y-2 rounded-xl border border-warning bg-warning-bg p-4">
-              <div className="text-sm font-medium text-fg">Keine Extension gefunden</div>
+              <div className="text-sm font-medium text-fg">No extension found</div>
               <p className="text-sm text-fg-muted">
-                Es wurde kein <code className="font-mono text-xs">window.nostr</code> gefunden.
-                Verbreitete NIP-07-Extensions sind Alby und nos2x. Nach der Installation diese
-                Seite neu laden.
+                No <code className="font-mono text-xs">window.nostr</code> was found. Common
+                NIP-07 extensions are Alby and nos2x. Reload this page after installing one.
               </p>
             </div>
           ) : null}
@@ -63,20 +62,20 @@ export function Login() {
             disabled={session.status === 'signing-in'}
             className="rounded-md bg-accent-bg px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
           >
-            {session.status === 'signing-in' ? 'warte auf Extension…' : 'Mit Nostr anmelden'}
+            {session.status === 'signing-in' ? 'waiting for the extension…' : 'Sign in with Nostr'}
           </button>
 
           {error ? <p className="text-sm text-danger">{error}</p> : null}
         </>
       )}
 
-      <PhaseNote phase="Phase 1 erledigt">
-        Erkennung von window.nostr, getPublicKey per Klick, Profil aus Kind 0, NIP-42-AUTH
-        automatisch bei jeder neuen Verbindung, erneuter Publish-Versuch nach
-        auth-required, Account-Wechsel wird vor dem Schreiben erkannt.
+      <PhaseNote phase="Phase 1 done">
+        Detecting window.nostr, getPublicKey on click, profile from kind 0, NIP-42 AUTH
+        automatically on every new connection, a retried publish after auth-required, and an
+        account switch detected before writing.
       </PhaseNote>
-      <PhaseNote phase="später">
-        NIP-46 (Bunker) als zweite Signer-Implementierung hinter demselben Interface.
+      <PhaseNote phase="later">
+        NIP-46 (bunker) as a second signer implementation behind the same interface.
       </PhaseNote>
     </div>
   )

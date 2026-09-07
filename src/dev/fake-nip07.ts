@@ -4,12 +4,12 @@ import type { EventTemplate } from 'nostr-tools'
 const DEV_KEY_STORAGE = 'nc-dev-nsec'
 
 /**
- * NUR FÜR DIE ENTWICKLUNG. Installiert ein window.nostr, das mit einem
- * Wegwerf-Schlüssel signiert, damit der komplette Login- und AUTH-Pfad ohne
- * Browser-Extension testbar ist (auch automatisiert).
+ * DEVELOPMENT ONLY. Installs a window.nostr that signs with a throwaway key so
+ * that the whole sign-in and AUTH path can be tested without a browser
+ * extension (including automated tests).
  *
- * Wird ausschliesslich geladen, wenn import.meta.env.DEV gilt UND die URL
- * ?devsigner enthält — im Produktionsbundle existiert diese Datei nicht.
+ * Loaded exclusively when import.meta.env.DEV holds AND the URL contains
+ * ?devsigner — this file does not exist in a production bundle.
  */
 export function installFakeNip07(input?: string | null): string {
   let secret: Uint8Array
@@ -26,7 +26,7 @@ export function installFakeNip07(input?: string | null): string {
   try {
     localStorage.setItem(DEV_KEY_STORAGE, nip19.nsecEncode(secret))
   } catch {
-    /* dann gilt der Schlüssel nur für diese Sitzung */
+    /* then the key only lasts for this session */
   }
 
   const pubkey = getPublicKey(secret)
@@ -35,20 +35,20 @@ export function installFakeNip07(input?: string | null): string {
     signEvent: async (template: EventTemplate) => finalizeEvent(template, secret),
     getRelays: async () => ({}),
   }
-  console.warn(`[dev] window.nostr ersetzt durch Wegwerf-Signer ${nip19.npubEncode(pubkey)}`)
+  console.warn(`[dev] window.nostr replaced by throwaway signer ${nip19.npubEncode(pubkey)}`)
   return pubkey
 }
 
 function parseKey(input: string): Uint8Array {
   if (input.startsWith('nsec')) {
     const decoded = nip19.decode(input)
-    if (decoded.type !== 'nsec') throw new Error('kein nsec')
+    if (decoded.type !== 'nsec') throw new Error('not an nsec')
     return decoded.data
   }
   if (/^[0-9a-f]{64}$/.test(input)) {
     return Uint8Array.from(input.match(/.{2}/g)!.map((byte) => parseInt(byte, 16)))
   }
-  throw new Error('devsigner erwartet ein nsec oder 64 Hex-Zeichen')
+  throw new Error('devsigner expects an nsec or 64 hex characters')
 }
 
 function readStoredKey(): Uint8Array | null {

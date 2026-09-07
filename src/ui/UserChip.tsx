@@ -3,8 +3,8 @@ import { useSession } from '../session/session'
 import { displayName, shortNpub } from '../nostr/profile'
 
 /**
- * Anzeigename plus npub — nie nur der Name. Anzeigenamen sind frei wählbar
- * und nicht eindeutig, der npub ist die Identität.
+ * Display name plus npub — never the name alone. Display names are freely
+ * chosen and not unique; the npub is the identity.
  */
 export function UserChip() {
   const { session, logout } = useSession()
@@ -15,7 +15,7 @@ export function UserChip() {
         to="/login"
         className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
       >
-        {session.status === 'signing-in' ? 'melde an…' : 'Anmelden'}
+        {session.status === 'signing-in' ? 'signing in…' : 'Sign in'}
       </Link>
     )
   }
@@ -45,7 +45,7 @@ export function UserChip() {
         onClick={logout}
         className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted hover:border-line-strong"
       >
-        Abmelden
+        Sign out
       </button>
     </div>
   )

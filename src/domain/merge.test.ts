@@ -1,130 +1,130 @@
 import { describe, expect, it } from 'vitest'
 import { hasConflictMarkers, mergeThreeWay } from './merge'
 
-const base = ['# Onboarding', '', 'Willkommen im Team.', '', '## Zugänge', '', 'Bitte fragen.'].join(
+const base = ['# Onboarding', '', 'Welcome to the team.', '', '## Access', '', 'Please ask.'].join(
   '\n',
 )
 
 describe('mergeThreeWay', () => {
-  it('gibt identische Fassungen unverändert zurück', () => {
+  it('returns identical versions unchanged', () => {
     const result = mergeThreeWay(base, base, base)
     expect(result.status).toBe('identical')
     expect(result.content).toBe(base)
   })
 
-  it('übernimmt die fremde Fassung, wenn ich nichts geändert habe', () => {
-    const theirs = base.replace('Bitte fragen.', 'Bitte bei Bob fragen.')
+  it('takes their version when I changed nothing', () => {
+    const theirs = base.replace('Please ask.', 'Please ask Bob.')
     const result = mergeThreeWay(base, base, theirs)
     expect(result.status).toBe('clean')
     expect(result.content).toBe(theirs)
   })
 
-  it('führt Änderungen an verschiedenen Stellen ohne Konflikt zusammen', () => {
-    const mine = base.replace('Willkommen im Team.', 'Willkommen im Team! Schön, dass du da bist.')
-    const theirs = base.replace('Bitte fragen.', 'Bitte bei Bob fragen.')
+  it('merges changes in different places without a conflict', () => {
+    const mine = base.replace('Welcome to the team.', 'Welcome to the team! Glad you are here.')
+    const theirs = base.replace('Please ask.', 'Please ask Bob.')
     const result = mergeThreeWay(base, mine, theirs)
     expect(result.status).toBe('clean')
     expect(result.conflicts).toBe(0)
-    expect(result.content).toContain('Schön, dass du da bist.')
-    expect(result.content).toContain('Bitte bei Bob fragen.')
+    expect(result.content).toContain('Glad you are here.')
+    expect(result.content).toContain('Please ask Bob.')
   })
 
-  it('markiert einen Konflikt, wenn beide dieselbe Zeile ändern', () => {
-    const mine = base.replace('Bitte fragen.', 'Bitte bei Alice fragen.')
-    const theirs = base.replace('Bitte fragen.', 'Bitte bei Bob fragen.')
+  it('marks a conflict when both change the same line', () => {
+    const mine = base.replace('Please ask.', 'Please ask Alice.')
+    const theirs = base.replace('Please ask.', 'Please ask Bob.')
     const result = mergeThreeWay(base, mine, theirs, { mine: 'alice', theirs: 'bob' })
     expect(result.status).toBe('conflict')
     expect(result.conflicts).toBe(1)
     expect(result.content).toContain('<<<<<<< alice')
-    expect(result.content).toContain('||||||| gemeinsame Basis')
+    expect(result.content).toContain('||||||| common base')
     expect(result.content).toContain('>>>>>>> bob')
-    expect(result.content).toContain('Bitte bei Alice fragen.')
-    expect(result.content).toContain('Bitte bei Bob fragen.')
+    expect(result.content).toContain('Please ask Alice.')
+    expect(result.content).toContain('Please ask Bob.')
     expect(hasConflictMarkers(result.content)).toBe(true)
   })
 
-  it('wertet dieselbe Änderung auf beiden Seiten nicht als Konflikt', () => {
-    const both = base.replace('Bitte fragen.', 'Bitte bei Bob fragen.')
+  it('does not treat the same change on both sides as a conflict', () => {
+    const both = base.replace('Please ask.', 'Please ask Bob.')
     const result = mergeThreeWay(base, both, both)
     expect(result.status).toBe('identical')
     expect(result.content).toBe(both)
   })
 
-  it('führt Anhängen am Ende und Ändern am Anfang zusammen', () => {
+  it('merges an append at the end with a change at the start', () => {
     const mine = `${base}\n\n## Kontakt\n\nteam@example.org`
-    const theirs = base.replace('# Onboarding', '# Onboarding für neue Kolleg:innen')
+    const theirs = base.replace('# Onboarding', '# Onboarding for new colleagues')
     const result = mergeThreeWay(base, mine, theirs)
     expect(result.status).toBe('clean')
-    expect(result.content).toContain('# Onboarding für neue Kolleg:innen')
+    expect(result.content).toContain('# Onboarding for new colleagues')
     expect(result.content).toContain('team@example.org')
   })
 
-  it('erkennt zwei verschiedene Einfügungen an derselben Stelle als Konflikt', () => {
-    const mine = base.replace('## Zugänge', '## Ziel\n\nSchnell startklar.\n\n## Zugänge')
-    const theirs = base.replace('## Zugänge', '## Voraussetzungen\n\nLaptop.\n\n## Zugänge')
+  it('treats two different insertions at the same spot as a conflict', () => {
+    const mine = base.replace('## Access', '## Goal\n\nGet started quickly.\n\n## Access')
+    const theirs = base.replace('## Access', '## Requirements\n\nLaptop.\n\n## Access')
     const result = mergeThreeWay(base, mine, theirs)
     expect(result.status).toBe('conflict')
     expect(result.conflicts).toBe(1)
   })
 
-  it('behandelt eine leere Basis (neue Seite auf beiden Seiten)', () => {
-    const result = mergeThreeWay('', 'meins', 'ihres')
+  it('handles an empty base (a new page on both sides)', () => {
+    const result = mergeThreeWay('', 'mine', 'theirs')
     expect(result.status).toBe('conflict')
   })
 
-  it('lässt keinen Inhalt verschwinden, wenn beide anhängen', () => {
-    const mine = `${base}\n\nvon alice`
-    const theirs = `${base}\n\nvon bob`
+  it('loses no content when both append', () => {
+    const mine = `${base}\n\nfrom alice`
+    const theirs = `${base}\n\nfrom bob`
     const result = mergeThreeWay(base, mine, theirs)
     // Gleiche Stelle, unterschiedlicher Text: Konflikt, aber beide Texte sind da
-    expect(result.content).toContain('von alice')
-    expect(result.content).toContain('von bob')
+    expect(result.content).toContain('from alice')
+    expect(result.content).toContain('from bob')
   })
 })
 
-describe('Platzierung', () => {
-  const doc = '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Kontakt\n\nBitte fragen.'
+describe('placement', () => {
+  const doc = '# Merge test\n\nThis line stays.\n\n## Contact\n\nPlease ask.'
 
-  it('setzt einen eingefügten Abschnitt an genau die richtige Stelle', () => {
+  it('puts an inserted section in exactly the right place', () => {
     const mine =
-      '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Ziel\n\nSchnell startklar werden.\n\n## Kontakt\n\nBitte fragen.'
-    const theirs = '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Kontakt\n\nBitte bei Alice fragen.'
+      '# Merge test\n\nThis line stays.\n\n## Goal\n\nGet started quickly.\n\n## Contact\n\nPlease ask.'
+    const theirs = '# Merge test\n\nThis line stays.\n\n## Contact\n\nPlease ask Alice.'
     const result = mergeThreeWay(doc, mine, theirs)
     expect(result.status).toBe('clean')
     expect(result.content).toBe(
-      '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Ziel\n\nSchnell startklar werden.\n\n## Kontakt\n\nBitte bei Alice fragen.',
+      '# Merge test\n\nThis line stays.\n\n## Goal\n\nGet started quickly.\n\n## Contact\n\nPlease ask Alice.',
     )
   })
 
-  it('funktioniert auch mit vertauschten Rollen', () => {
+  it('works with the roles swapped as well', () => {
     const a =
-      '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Ziel\n\nSchnell startklar werden.\n\n## Kontakt\n\nBitte fragen.'
-    const b = '# Merge-Test\n\nDiese Zeile bleibt.\n\n## Kontakt\n\nBitte bei Alice fragen.'
+      '# Merge test\n\nThis line stays.\n\n## Goal\n\nGet started quickly.\n\n## Contact\n\nPlease ask.'
+    const b = '# Merge test\n\nThis line stays.\n\n## Contact\n\nPlease ask Alice.'
     expect(mergeThreeWay(doc, b, a).content).toBe(mergeThreeWay(doc, a, b).content)
   })
 
-  it('fügt am Dateianfang vor der ersten Zeile ein', () => {
-    const mine = 'Vorwort\n\n' + doc
-    const theirs = doc.replace('Bitte fragen.', 'Bitte bei Bob fragen.')
+  it('inserts before the first line at the top of the file', () => {
+    const mine = 'Foreword\n\n' + doc
+    const theirs = doc.replace('Please ask.', 'Please ask Bob.')
     const result = mergeThreeWay(doc, mine, theirs)
     expect(result.status).toBe('clean')
-    expect(result.content.startsWith('Vorwort\n\n# Merge-Test')).toBe(true)
-    expect(result.content.endsWith('Bitte bei Bob fragen.')).toBe(true)
+    expect(result.content.startsWith('Foreword\n\n# Merge test')).toBe(true)
+    expect(result.content.endsWith('Please ask Bob.')).toBe(true)
   })
 })
 
 describe('hasConflictMarkers', () => {
-  it('erkennt nichts in normalem Markdown', () => {
-    expect(hasConflictMarkers('# Titel\n\nText mit <b>HTML</b> und ===== Linie')).toBe(false)
+  it('finds nothing in ordinary Markdown', () => {
+    expect(hasConflictMarkers('# Title\n\nText with <b>HTML</b> and ===== line')).toBe(false)
   })
 
-  it('meldet eine H1-Unterstreichung nicht als Konflikt', () => {
-    // Setext-Überschrift: eine Zeile aus Gleichheitszeichen ist gültiges Markdown
-    expect(hasConflictMarkers('Überschrift\n=======\n\nText')).toBe(false)
+  it('does not report a setext H1 underline as a conflict', () => {
+    // setext heading: a line of equals signs is valid Markdown
+    expect(hasConflictMarkers('Heading\n=======\n\nText')).toBe(false)
   })
 
-  it('erkennt einen echten Marker', () => {
-    expect(hasConflictMarkers('Text\n<<<<<<< deine Fassung\nmehr')).toBe(true)
-    expect(hasConflictMarkers('>>>>>>> ihre Fassung')).toBe(true)
+  it('recognises a real marker', () => {
+    expect(hasConflictMarkers('Text\n<<<<<<< your version\nmore')).toBe(true)
+    expect(hasConflictMarkers('>>>>>>> their version')).toBe(true)
   })
 })

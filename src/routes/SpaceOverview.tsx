@@ -10,7 +10,7 @@ export function SpaceOverview() {
   const { group, space, base } = useSpaceRoute()
   const { session } = useSession()
 
-  if (!group || !base) return <p className="text-sm text-danger">Ungültige Gruppen-Adresse.</p>
+  if (!group || !base) return <p className="text-sm text-danger">Invalid group address.</p>
 
   const meta = space.metadata
   const isMember = session.status === 'signed-in' && space.members.includes(session.pubkey)
@@ -32,24 +32,24 @@ export function SpaceOverview() {
           {meta ? (
             <>
               <span className="rounded bg-surface-1 px-2 py-0.5 text-fg-muted">
-                {meta.isPublic ? 'öffentlich lesbar' : 'nur für Mitglieder'}
+                {meta.isPublic ? 'publicly readable' : 'members only'}
               </span>
               <span className="rounded bg-surface-1 px-2 py-0.5 text-fg-muted">
-                {meta.isOpen ? 'offen für alle' : 'Beitritt auf Einladung'}
+                {meta.isOpen ? 'open to everyone' : 'joining by invitation'}
               </span>
               {isAdmin ? (
                 <span className="rounded bg-accent-bg px-2 py-0.5 font-medium text-accent-fg">
-                  du bist Admin
+                  you are an admin
                 </span>
               ) : isMember ? (
                 <span className="rounded bg-accent-bg px-2 py-0.5 font-medium text-accent-fg">
-                  du bist Mitglied
+                  you are a member
                 </span>
               ) : null}
             </>
           ) : (
             <span className="text-fg-subtle">
-              {space.loading ? 'lade Gruppenzustand…' : 'keine Gruppen-Metadaten gefunden'}
+              {space.loading ? 'loading group state…' : 'no group metadata found'}
             </span>
           )}
         </div>
@@ -57,27 +57,29 @@ export function SpaceOverview() {
 
       {revisionKindMissing ? (
         <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs">
-          <div className="font-medium text-fg">Dieser Space nimmt Kind 1818 laut Relay nicht an</div>
+          <div className="font-medium text-fg">
+            According to the relay this space does not accept kind 1818
+          </div>
           <p className="mt-1 text-fg-muted">
-            Die Gruppen-Metadaten listen {meta?.supportedKinds.join(', ')}. Seiten zu speichern wird
-            das Relay vermutlich ablehnen.
+            The group metadata lists {meta?.supportedKinds.join(', ')}. Saving pages will most
+            likely be rejected by the relay.
           </p>
         </div>
       ) : null}
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-fg">Seiten ({space.pages.length})</h2>
+          <h2 className="text-sm font-medium text-fg">Pages ({space.pages.length})</h2>
           <Link
             to={`${base}/new`}
             className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
           >
-            + Seite anlegen
+            + New page
           </Link>
         </div>
         {space.pages.length === 0 ? (
           <p className="text-sm text-fg-muted">
-            {space.loading ? 'lade Seiten…' : 'Noch keine Seiten in diesem Space.'}
+            {space.loading ? 'loading pages…' : 'No pages in this space yet.'}
           </p>
         ) : (
           <ul className="divide-y divide-line rounded-xl border border-line">
@@ -87,9 +89,9 @@ export function SpaceOverview() {
                   {page.title}
                 </Link>
                 <div className="mt-0.5 text-xs text-fg-subtle">
-                  {page.revisions.length} Revision{page.revisions.length === 1 ? '' : 'en'} ·{' '}
+                  {page.revisions.length} revision{page.revisions.length === 1 ? '' : 's'} ·{' '}
                   <Author pubkey={page.head.author} />
-                  {page.leaves.length > 1 ? ' · verzweigt' : ''}
+                  {page.leaves.length > 1 ? ' · forked' : ''}
                 </div>
               </li>
             ))}
@@ -106,10 +108,10 @@ export function SpaceOverview() {
       />
 
       <section className="space-y-2 rounded-xl border border-line bg-surface-1 p-4">
-        <h2 className="text-sm font-medium text-fg">Schreibzugriff prüfen</h2>
+        <h2 className="text-sm font-medium text-fg">Check write access</h2>
         <p className="text-xs text-fg-muted">
-          Signiert ein ephemeres Event (Kind 20817) mit dem h-Tag dieser Gruppe und publisht es.
-          Prüft Signer, NIP-42-AUTH und Relay-Antwort, ohne etwas zu speichern.
+          Signs an ephemeral event (kind 20817) carrying this group's h tag and publishes it.
+          Exercises signer, NIP-42 AUTH and the relay's answer without storing anything.
         </p>
         <WriteCheck relayUrl={group.relayUrl} groupId={group.id} />
       </section>

@@ -8,7 +8,7 @@ import {
 } from './diff'
 
 describe('diffTexts', () => {
-  it('zählt Zeilennummern für beide Seiten getrennt', () => {
+  it('counts line numbers separately for both sides', () => {
     const lines = diffTexts('a\nb\nc', 'a\nB\nc')
     expect(lines.map((line) => [line.type, line.text, line.oldNumber, line.newNumber])).toEqual([
       ['context', 'a', 1, 1],
@@ -18,12 +18,12 @@ describe('diffTexts', () => {
     ])
   })
 
-  it('zählt Hinzufügungen und Entfernungen', () => {
+  it('counts additions and removals', () => {
     const lines = diffTexts('a\nb', 'a\nb\nc\nd')
     expect(countChanges(lines)).toEqual({ added: 2, removed: 0 })
   })
 
-  it('kommt mit leeren Texten zurecht', () => {
+  it('copes with empty texts', () => {
     expect(countChanges(diffTexts('', 'neu'))).toEqual({ added: 1, removed: 0 })
     expect(countChanges(diffTexts('weg', ''))).toEqual({ added: 0, removed: 1 })
     expect(diffTexts('', '')).toEqual([])
@@ -31,25 +31,25 @@ describe('diffTexts', () => {
 })
 
 describe('collapseContext', () => {
-  it('faltet lange unveränderte Strecken zusammen', () => {
-    const before = Array.from({ length: 30 }, (_, i) => `Zeile ${i}`).join('\n')
-    const after = before.replace('Zeile 15', 'Zeile fünfzehn')
+  it('folds long unchanged runs', () => {
+    const before = Array.from({ length: 30 }, (_, i) => `line ${i}`).join('\n')
+    const after = before.replace('line 15', 'line fifteen')
     const collapsed = collapseContext(diffTexts(before, after), 2)
     const gaps = collapsed.filter((entry) => entry.type === 'gap')
     expect(gaps).toHaveLength(2)
-    // sichtbar bleiben die geänderten Zeilen plus je zwei Zeilen Kontext
+    // the changed lines stay visible plus two lines of context each
     expect(collapsed.filter((entry) => entry.type !== 'gap')).toHaveLength(6)
   })
 
-  it('faltet nichts, wenn alles nah beieinander liegt', () => {
+  it('folds nothing when everything is close together', () => {
     const collapsed = collapseContext(diffTexts('a\nb', 'a\nc'), 3)
     expect(collapsed.some((entry) => entry.type === 'gap')).toBe(false)
   })
 })
 
 describe('diffWordsInLine', () => {
-  it('markiert nur das geänderte Wort', () => {
-    const parts = diffWordsInLine('Bitte bei Bob fragen.', 'Bitte bei Alice fragen.')
+  it('marks only the changed word', () => {
+    const parts = diffWordsInLine('Please ask Bob.', 'Please ask Alice.')
     expect(parts.find((part) => part.kind === 'removed')?.text).toContain('Bob')
     expect(parts.find((part) => part.kind === 'added')?.text).toContain('Alice')
     expect(parts.filter((part) => part.kind === 'same').length).toBeGreaterThan(0)
@@ -57,25 +57,25 @@ describe('diffWordsInLine', () => {
 })
 
 describe('wordDiffsForPairs', () => {
-  it('markiert bei einer ersetzten Zeile nur das geänderte Wort', () => {
-    const lines = diffTexts('Bitte bei Bob fragen.', 'Bitte bei Alice fragen.')
+  it('marks only the changed word in a replaced line', () => {
+    const lines = diffTexts('Please ask Bob.', 'Please ask Alice.')
     const pairs = wordDiffsForPairs(lines)
     const entfernt = pairs.get(0)?.filter((part) => part.kind === 'removed')
     const hinzu = pairs.get(1)?.filter((part) => part.kind === 'added')
     expect(entfernt?.map((part) => part.text)).toEqual(['Bob'])
     expect(hinzu?.map((part) => part.text)).toEqual(['Alice'])
-    // die entfernte Zeile zeigt keine hinzugefügten Teile und umgekehrt
+    // the removed line shows no added parts and vice versa
     expect(pairs.get(0)?.some((part) => part.kind === 'added')).toBe(false)
     expect(pairs.get(1)?.some((part) => part.kind === 'removed')).toBe(false)
   })
 
-  it('lässt reine Hinzufügungen unangetastet', () => {
+  it('leaves pure additions untouched', () => {
     const lines = diffTexts('a', 'a\nb')
     expect(wordDiffsForPairs(lines).size).toBe(0)
   })
 
-  it('paart mehrere ersetzte Zeilen der Reihe nach', () => {
-    const lines = diffTexts('eins\nzwei', 'EINS\nZWEI')
+  it('pairs several replaced lines in order', () => {
+    const lines = diffTexts('one\ntwo', 'ONE\nTWO')
     const pairs = wordDiffsForPairs(lines)
     expect(pairs.size).toBe(4)
   })

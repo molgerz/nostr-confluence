@@ -2,12 +2,12 @@ import { KINDS } from './kinds'
 import type { Signer } from './signer'
 
 /**
- * Datei-Anhänge über Blossom (BUD-01/02).
+ * File attachments via Blossom (BUD-01/02).
  *
- * Nostr speichert keine Dateien. Ein Blob wird auf einen Blossom-Server
- * geladen, ist dort über seinen sha256 adressiert und wird per URL in den
- * Markdown-Text eingebettet. Der Upload wird mit einem Kind-24242-Event
- * autorisiert — der Server prüft die Signatur, nicht ein Passwort.
+ * Nostr does not store files. A blob is uploaded to a Blossom server, addressed
+ * there by its sha256 and embedded into the Markdown as a URL. The upload is
+ * authorised with a kind 24242 event — the server verifies a signature, not a
+ * password.
  */
 export type UploadResult =
   | { ok: true; url: string; sha256: string; size: number; type: string }
@@ -24,7 +24,7 @@ async function sha256Hex(data: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-/** Gehört diese URL zu unserem konfigurierten Server? */
+/** Does this URL belong to our configured server? */
 export function isOwnAttachment(url: string): boolean {
   if (!attachmentsEnabled()) return false
   try {
@@ -36,7 +36,7 @@ export function isOwnAttachment(url: string): boolean {
 
 export async function uploadAttachment(signer: Signer, file: File): Promise<UploadResult> {
   if (!attachmentsEnabled()) {
-    return { ok: false, reason: 'Kein Blossom-Server konfiguriert (VITE_BLOSSOM_SERVER).' }
+    return { ok: false, reason: 'No Blossom server configured (VITE_BLOSSOM_SERVER).' }
   }
 
   const data = await file.arrayBuffer()
@@ -50,7 +50,7 @@ export async function uploadAttachment(signer: Signer, file: File): Promise<Uplo
       ['x', hash],
       ['expiration', String(Math.floor(Date.now() / 1000) + 300)],
     ],
-    content: `Anhang ${file.name} hochladen`,
+    content: `upload attachment ${file.name}`,
   })
 
   try {
@@ -67,7 +67,7 @@ export async function uploadAttachment(signer: Signer, file: File): Promise<Uplo
       const message = await response.text().catch(() => '')
       return {
         ok: false,
-        reason: `Server antwortete ${response.status}${message ? `: ${message.slice(0, 200)}` : ''}`,
+        reason: `The server answered ${response.status}${message ? `: ${message.slice(0, 200)}` : ''}`,
       }
     }
 
@@ -84,12 +84,12 @@ export async function uploadAttachment(signer: Signer, file: File): Promise<Uplo
   } catch (error) {
     return {
       ok: false,
-      reason: error instanceof Error ? error.message : 'Upload fehlgeschlagen',
+      reason: error instanceof Error ? error.message : 'upload failed',
     }
   }
 }
 
-/** Markdown-Einbettung für eine hochgeladene Datei. */
+/** Markdown embed for an uploaded file. */
 export function attachmentMarkdown(result: {
   url: string
   type: string

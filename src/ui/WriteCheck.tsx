@@ -6,13 +6,12 @@ import { useSession } from '../session/session'
 type Result = { ok: boolean; text: string }
 
 /**
- * Prüft echten Schreibzugriff: signiert ein ephemeres Event (Kind 20817, wird
- * von Relays nicht gespeichert) und publisht es. Deckt damit die Kette
- * Signer → NIP-42-AUTH → Relay-Antwort ab, ohne Spuren zu hinterlassen.
+ * Checks real write access: signs an ephemeral event (kind 20817, which relays
+ * do not store) and publishes it. That exercises the whole chain of signer →
+ * NIP-42 AUTH → relay answer without leaving traces.
  *
- * Erfüllt das Abnahmekriterium aus docs/10-roadmap.md: ein Publish darf nach
- * einem Reconnect nicht still fehlschlagen — hier wird die Relay-Antwort
- * wörtlich angezeigt.
+ * Satisfies the acceptance criterion from docs/10-roadmap.md: a publish must
+ * not fail silently after a reconnect — the relay's answer is shown verbatim.
  */
 export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: string }) {
   const { session, ensureSamePubkey } = useSession()
@@ -22,7 +21,7 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
   if (session.status !== 'signed-in') {
     return (
       <p className="text-sm text-fg-muted">
-        Zum Prüfen des Schreibzugriffs anmelden — Lesen geht ohne Anmeldung.
+        Sign in to check write access — reading works without signing in.
       </p>
     )
   }
@@ -51,8 +50,8 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
         setResult({
           ok: true,
           text: echoed
-            ? `Schreiben erlaubt. Relay: ${published.message}. Das Event kam über das Abo zurück.`
-            : `Schreiben erlaubt. Relay: ${published.message}. Kein Rückweg — Abo hat es nicht erhalten.`,
+            ? `Writing allowed. Relay: ${published.message}. The event came back through the subscription.`
+            : `Writing allowed. Relay: ${published.message}. No echo — the subscription did not receive it.`,
         })
         return
       }
@@ -60,18 +59,18 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
       const kind = classifyRejection(published.reason)
       const explanation =
         kind === 'auth'
-          ? 'Das Relay verlangt NIP-42-AUTH, und die Anmeldung am Relay ist nicht durchgegangen.'
+          ? 'The relay requires NIP-42 AUTH and authenticating did not go through.'
           : kind === 'permission'
-            ? 'Das Relay verbietet dieser Identität das Schreiben in dieser Gruppe.'
+            ? 'The relay forbids this identity from writing in this group.'
             : kind === 'not-stored'
-              ? 'Kein Rechteproblem: das Relay speichert ephemere Events nicht und hatte keinen Abonnenten dafür.'
-              : 'Grund unklar — bitte den Relay-Text lesen.'
+              ? 'Not a permission problem: the relay does not store ephemeral events and had no subscriber for it.'
+              : 'Reason unclear — please read the message from the relay.'
       setResult({ ok: kind === 'not-stored', text: `${published.reason} — ${explanation}` })
       return
     } catch (error) {
       setResult({
         ok: false,
-        text: error instanceof Error ? error.message : 'Signieren abgebrochen',
+        text: error instanceof Error ? error.message : 'signing was cancelled',
       })
     } finally {
       setBusy(false)
@@ -86,7 +85,7 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
         disabled={busy}
         className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-60"
       >
-        {busy ? 'prüfe…' : 'Schreibzugriff prüfen'}
+        {busy ? 'checking…' : 'Check write access'}
       </button>
       {result ? (
         <p className={`text-xs ${result.ok ? 'text-success' : 'text-danger'}`}>{result.text}</p>

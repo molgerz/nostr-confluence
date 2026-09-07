@@ -26,7 +26,7 @@ function Shell() {
   const tocMarkdown = useTocMarkdown()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Auf dem Handy soll die Leiste nach einem Sprung nicht offen bleiben
+  // On a phone the bar should not stay open after navigating
   useEffect(() => setMenuOpen(false), [location.pathname])
 
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
@@ -44,7 +44,7 @@ function Shell() {
           <>
             <button
               type="button"
-              aria-label="Menü schließen"
+              aria-label="Close menu"
               onClick={() => setMenuOpen(false)}
               className="fixed inset-0 z-20 bg-black/40 md:hidden"
             />

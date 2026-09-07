@@ -20,7 +20,7 @@ function event(partial: Partial<Event>): Event {
 }
 
 describe('parseRevision', () => {
-  it('liest Tags vollständig aus', () => {
+  it('reads all tags', () => {
     const revision = parseRevision(
       event({
         tags: [
@@ -28,7 +28,7 @@ describe('parseRevision', () => {
           ['d', 'onboarding'],
           ['title', 'Onboarding'],
           ['page-parent', 'handbuch'],
-          ['summary', 'Tippfehler'],
+          ['summary', 'typo'],
           ['parent-rev', 'r1'],
           ['parent-rev', 'r2'],
         ],
@@ -39,25 +39,25 @@ describe('parseRevision', () => {
       slug: 'onboarding',
       title: 'Onboarding',
       parentSlug: 'handbuch',
-      summary: 'Tippfehler',
+      summary: 'typo',
       parentRevs: ['r1', 'r2'],
     })
   })
 
-  it('verwirft Events einer fremden Gruppe', () => {
-    // Ein Relay könnte Fremdes mitliefern — der h-Tag wird geprüft, nicht geglaubt
+  it('discards events from a foreign group', () => {
+    // A relay could deliver foreign events — the h tag is checked, not trusted
     expect(parseRevision(event({}), 'andere-gruppe')).toBeNull()
   })
 
-  it('verwirft den falschen Kind', () => {
+  it('discards the wrong kind', () => {
     expect(parseRevision(event({ kind: 1 }), 'engineering')).toBeNull()
   })
 
-  it('verwirft Events ohne Slug', () => {
+  it('discards events without a slug', () => {
     expect(parseRevision(event({ tags: [['h', 'engineering']] }), 'engineering')).toBeNull()
   })
 
-  it('nimmt den Slug als Titel, wenn kein Titel-Tag da ist', () => {
+  it('falls back to the slug as the title when no title tag exists', () => {
     expect(parseRevision(event({}), 'engineering')?.title).toBe('onboarding')
   })
 })
