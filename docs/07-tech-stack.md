@@ -6,16 +6,18 @@
 | UI | React | Größtes Ökosystem für Editor/Diff-Komponenten |
 | Nostr | **`nostr-tools`** (entschieden in Phase 1) | `pool.automaticallyAuth` signiert NIP-42-Challenges automatisch, `pool.publish` wiederholt nach `auth-required` — genau die Haken, die [03](03-auth-nip07-nip42.md) verlangt. Dazu `nip19` für npub und `verifyEvent` |
 | Verworfen | NDK (`@nostr-dev-kit/ndk`) | Cache- und Event-Abstraktionen stehen unserem eigenen Revisions-DAG im Weg; die AUTH-Haken sind bei nostr-tools direkter zugänglich |
-| Cache | IndexedDB (`idb` oder NDK-Dexie-Adapter) | Sofort-Rendern, Offline-Lesen, lokale Suche |
-| State | Zustand | Klein, kein Boilerplate; Domänenobjekte statt Events im Store |
+| Cache | **noch keiner** | Geplant war IndexedDB für Sofort-Rendern und Offline-Lesen. Bisher lebt alles im Speicher und wird bei jedem Laden neu vom Relay geholt → offen |
+| State | **eigene Stores** (`useSyncExternalStore`) | Zustand war geplant, wurde aber nicht gebraucht: der Space-Zustand hängt an Relay-Abos, die ohnehin ein eigener Store sind. Eine Bibliothek hätte nur eine Schicht dazwischen gelegt |
 | Markdown rendern | `react-markdown` + `remark-gfm` + **`rehype-sanitize`** | Inhalte kommen von beliebigen npubs → Sanitizing ist Pflicht, nicht Option |
 | Editor | CodeMirror 6 (`@codemirror/lang-markdown`) | Robust, große Dokumente, gute Selektions-API für Inline-Kommentare später |
-| Diff | `diff` (jsdiff) | Zeilen- und Wort-Diff, Basis für Blame und 3-Wege-Merge |
-| 3-Wege-Merge | `diff3` (aus jsdiff-Ökosystem) | Automatisches Zusammenführen nicht-kollidierender Absätze |
+| Diff | `diff` (jsdiff), `diffArrays` auf Zeilen-Arrays | Zeilen- und Wort-Diff, Basis für Blame und 3-Wege-Merge |
+| 3-Wege-Merge | **selbst geschrieben** (`src/domain/merge.ts`) | jsdiff v8 hat kein `merge` mehr. Der eigene Merge ist knapp 100 Zeilen, vollständig getestet und wir bestimmen die Konfliktdarstellung selbst |
 | Styling | Tailwind, `dark`-Variante an `data-theme` gekoppelt | Atlassian-artige Dichte in Tokens; manuelle Hell/Dunkel-Umschaltung nötig → [12](12-theming.md) |
-| Syntax-Highlighting | Shiki (Dual-Theme) | Ein Rendering für beide Modi, kein Stylesheet-Wechsel zur Laufzeit |
-| Suche | MiniSearch über den Cache | Volltextsuche ohne Relay-Unterstützung (NIP-50 ist nicht überall vorhanden) |
-| Tests | Vitest + Playwright | Kettenlogik (Head, Merge, Blame) ist reine Funktionslogik → gut unit-testbar |
+| Syntax-Highlighting im Editor | CodeMirror (`@codemirror/lang-markdown`) | Deckt den Editor ab |
+| Syntax-Highlighting in der Anzeige | **noch keins** | Codeblöcke werden ungefärbt gerendert. Shiki mit Dual-Theme war geplant → offen |
+| Suche | **selbst geschrieben** (`src/domain/search.ts`) | MiniSearch war geplant; für die Titel- und Zeilensuche über die geladenen Seiten reichen 60 Zeilen ohne Abhängigkeit und ohne Index, der veralten kann |
+| Unit-Tests | Vitest | Kettenlogik (Head, Merge, Blame, Suche) ist reine Funktionslogik → 73 Tests |
+| End-to-End-Tests | **noch keine** | Playwright war geplant, auch für die Farbmodus-Regression aus [12](12-theming.md). Bisher wird von Hand im Browser geprüft → offen |
 
 ## Konfiguration
 

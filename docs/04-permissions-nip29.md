@@ -89,15 +89,13 @@ freischalten.
 auto-join the author when posting"), und `39002` wird dabei aktualisiert. Ein
 expliziter `9021`-Beitritt ist dort also nicht nötig — Schreiben genügt.
 
-Die App behandelt beides, weil andere Relays strenger sein können:
+Umgesetzt ist bisher nur der Auto-Join-Fall: die App publisht direkt, und in
+einer offenen Gruppe nimmt das Relay die Autorin dabei auf. Eine Ablehnung
+zeigt sie mit dem Relay-Grund an.
 
-1. Publish direkt versuchen. Erfolg → fertig (Auto-Join-Fall).
-2. Bei Ablehnung mit Mitgliedschaftsgrund → `9021` senden, auf `39002` warten,
-   erneut publishen.
-3. Bleibt es abgelehnt (`closed`-Gruppe) → Hinweis "Beitritt anfragen" statt
-   Editor.
-
-UI-Zustände dafür: "Beitritt läuft" und "Beitritt abgelehnt".
+**Offen** für Relays ohne Auto-Join: bei einer Ablehnung mit
+Mitgliedschaftsgrund ein `9021` senden, auf das neue `39002` warten und erneut
+publishen — samt UI-Zuständen "Beitritt läuft" und "Beitritt abgelehnt".
 
 ## Umgesetzt in der App
 

@@ -183,6 +183,27 @@ Erledigt:
 Offen: `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`), Echtzeit-CRDT
 (gleichzeitiges Tippen), NIP-46-Login, Editor-Toolbar.
 
+### Was in den Dokumenten steht, aber noch nicht gebaut ist
+
+Stand 2026-09-07, beim Abgleich Doku gegen Code gefunden:
+
+| Lücke | Wo beschrieben |
+|---|---|
+| IndexedDB-Cache: Sofort-Rendern beim Reload, Offline-Lesen | [01](01-architecture.md), [07](07-tech-stack.md) |
+| End-to-End-Tests (Playwright), inklusive Farbmodus-Regression | [07](07-tech-stack.md), [12](12-theming.md) |
+| `9021`-Beitrittsablauf für Relays ohne Auto-Join | [04](04-permissions-nip29.md) |
+| Eigene Revision selbst löschen (NIP-09 `kind 5`) | [05](05-versioning-history.md) |
+| Ganze Seite ausblenden (Tombstone) | [05](05-versioning-history.md) |
+| `previous`-Timeline-Referenzen schreiben | [02](02-data-model-events.md) |
+| Sidebar-Einträge "Alle Seiten", "Zuletzt geändert", "Space-Einstellungen" | [06](06-ui-information-architecture.md) |
+| Syntax-Highlighting in der *Anzeige* von Codeblöcken | [07](07-tech-stack.md) |
+| Onboarding-Hinweis, dass ein npub ein dauerhaftes Pseudonym ist | [09](09-security-privacy.md) |
+| `30818`-Interop-Spiegel für NIP-54-Clients | [02](02-data-model-events.md) |
+
+Bewusst anders gelöst als geplant (kein Rückstand, nur andere Wahl): eigene
+Stores statt Zustand, eigene Suche statt MiniSearch, eigener 3-Wege-Merge statt
+`diff3` — begründet in [07](07-tech-stack.md).
+
 **Ausserdem offen und für einen echten Einsatz nötig:** Die Gruppe entsteht
 bisher komplett ausserhalb der App über `nak` — es gibt keinen Knopf, um einen
 Space anzulegen (`9007`), seine Metadaten zu ändern (`9002`) oder einen

@@ -67,5 +67,6 @@ bei jedem Reload kurz den hellen Modus aufblitzen.
 Dunkelmodus nachzurüsten heißt, jede Komponente ein zweites Mal anzufassen; von
 Anfang an mit Tokens zu arbeiten kostet fast nichts.
 
-Prüfung: Playwright-Screenshots der vier Kernansichten (Seite lesen, Editor,
-Historie, Diff) in beiden Modi — als Regressionstest, nicht als Handprüfung.
+Prüfung: **offen.** Geplant sind Playwright-Screenshots der vier Kernansichten
+(Seite lesen, Editor, Historie, Diff) in beiden Modi als Regressionstest.
+Bisher wird von Hand im Browser geprüft.

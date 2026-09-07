@@ -25,8 +25,10 @@ Es gibt kein eigenes Backend. Alles, was ein klassisches Wiki serverseitig macht
    Konflikte erkennen.
 3. **Nostr-Datenschicht** — Relay-Verbindungen, Subscriptions, Signieren,
    NIP-42-AUTH, Retry. Einzige Schicht, die `kind`-Nummern kennt.
-4. **Cache-Schicht** — IndexedDB. Zweck: Sofort-Rendern beim Reload,
-   Offline-Lesen, lokale Volltextsuche über Seiteninhalte.
+4. **Cache-Schicht** — *noch nicht gebaut.* Geplant ist IndexedDB für
+   Sofort-Rendern beim Reload und Offline-Lesen. Bisher hält der Space-Store
+   alles nur im Speicher; nach einem Reload wird erneut vom Relay geladen, und
+   die Volltextsuche läuft über genau diese geladenen Seiten.
 
 **Entscheidung:** Kind-Nummern und Tag-Namen existieren an genau einer Stelle im
 Code (`src/nostr/kinds.ts`). Keine magischen Zahlen in Komponenten.
@@ -34,7 +36,7 @@ Code (`src/nostr/kinds.ts`). Keine magischen Zahlen in Komponenten.
 ## Datenfluss: Seite öffnen
 
 1. Route `/space/:groupId/:slug` wird geöffnet.
-2. Cache-Treffer wird sofort gerendert (falls vorhanden).
+2. *(geplant: Cache-Treffer sofort rendern — siehe oben)*
 3. Subscription: alle Revisions-Events mit `#h=groupId` und `#s=slug`.
 4. Domänenschicht baut die Revisionskette, ermittelt den Head.
 5. UI rendert Markdown des Heads + Byline (npub, Zeit) + Konflikt-Banner,

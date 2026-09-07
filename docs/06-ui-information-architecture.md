@@ -30,8 +30,10 @@ Vier Zonen, von oben:
 
 1. **Space-Kopf** — Name und Bild aus `39000`, Badge `öffentlich`/`privat`,
    Space-Wechsler. Bei Nicht-Mitgliedschaft: Button "Beitreten".
-2. **Fixe Einträge** — Übersicht, Alle Seiten, Zuletzt geändert, Mitglieder
-   (`39002`), Space-Einstellungen (nur wenn in `39001`).
+2. **Fixe Einträge** — umgesetzt sind *Übersicht* und *Suche*. Die
+   Mitgliederliste und die Moderation liegen auf der Übersichtsseite statt in
+   der Leiste. **Offen:** eigene Einträge für "Alle Seiten", "Zuletzt geändert"
+   und "Space-Einstellungen".
 3. **Seitenbaum** — aufklappbar, aus `page-parent` projiziert
    ([02](02-data-model-events.md)). Aktive Seite hervorgehoben, Elternpfad
    automatisch geöffnet. Ungespeicherte Entwürfe erscheinen kursiv mit Punkt.
@@ -89,13 +91,15 @@ zeigt das konsequent, statt es zu verstecken.
 ## Routing
 
 ```
-/                          Space-Auswahl (meine + zuletzt besuchte)
-/s/:groupId                Space-Übersicht
-/s/:groupId/:slug          Seite lesen
-/s/:groupId/:slug/edit     Bearbeiten
-/s/:groupId/:slug/history  Historie
-/s/:groupId/:slug/history/:revA..:revB   Diff
+/                          Space-Auswahl
 /login                     NIP-07-Anmeldung
+/s/:group                  Space-Übersicht (Metadaten, Mitglieder, Seitenliste)
+/s/:group/new              Seite anlegen  (?parent=<slug> für eine Unterseite)
+/s/:group/search           Suche          (?q=…)
+/s/:group/:slug            Seite lesen
+/s/:group/:slug/edit       Bearbeiten     (?merge=1 zum Zusammenführen)
+/s/:group/:slug/history    Historie mit Vergleich
+/s/:group/:slug/blame      Zeilenherkunft
 ```
 
 `groupId` inklusive Relay-Host (URL-kodiert), damit ein Link vollständig ist:

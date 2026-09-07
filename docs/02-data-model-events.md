@@ -88,7 +88,8 @@ Bedeutung der Tags:
 - **`page-parent`** — Slug der Elternseite. Daraus baut die Sidebar den Baum.
 - **`previous`** — NIP-29-Timeline-Referenzen: Kurz-IDs kürzlich gesehener
   Gruppen-Events. Verhindert, dass ein Relay Events fälscht oder in eine andere
-  Gruppen-Historie umhängt.
+  Gruppen-Historie umhängt. **Noch nicht umgesetzt:** die App schreibt den Tag
+  nicht, und `groups_relay` prüft ihn ohnehin nicht ([09](09-security-privacy.md)).
 
 **Entscheidung: Volltext-Snapshot statt Diff.** Jede Revision enthält den
 kompletten Markdown-Text, nicht nur die Änderung. Begründung: eine Seite lesen

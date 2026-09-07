@@ -75,13 +75,13 @@ Funktionen:
 
 ## Löschen
 
-- Nutzerin löscht eigene Revision: NIP-09 `kind 5` — eine *Bitte* an Relays.
-  Andere Kopien können bleiben. Das UI formuliert es deshalb als "Löschung
-  anfragen".
-- Admin löscht fremdes Event: NIP-29 `kind 9005`, wird vom Gruppen-Relay
-  durchgesetzt.
-- Seite als Ganzes: neue Revision mit Tag `deleted` (Tombstone) + `9005` auf die
-  Vorgänger, damit Sidebar und Suche sie ausblenden.
+- **Umgesetzt:** Admin löscht ein Event über NIP-29 `kind 9005`; das
+  Gruppen-Relay setzt das durch. Gilt für Revisionen und Kommentare, mit
+  Rückfrage im UI.
+- **Offen:** Nutzerin löscht ihre *eigene* Revision per NIP-09 `kind 5` — eine
+  *Bitte* an Relays, im UI als "Löschung anfragen" zu formulieren.
+- **Offen:** Seite als Ganzes verstecken — neue Revision mit Tombstone-Tag
+  plus `9005` auf die Vorgänger, damit Sidebar und Suche sie ausblenden.
 
 ## Verhältnis zu ngit / NIP-34
 
