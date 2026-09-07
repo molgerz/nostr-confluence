@@ -47,6 +47,9 @@ Relay in [`docs/08-relay-setup.md`](docs/08-relay-setup.md). Port 5273 statt
 4. Der Client hält niemals einen privaten Schlüssel. Signieren macht die
    NIP-07-Extension.
 
+Welche NIPs, Event-Kinds und Tags dabei im Spiel sind — inklusive der
+Abweichungen vom Standard — steht in [NOSTR.md](NOSTR.md).
+
 ## Konzept lesen
 
 Start: [docs/README.md](docs/README.md)

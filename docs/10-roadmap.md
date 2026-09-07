@@ -183,6 +183,13 @@ Erledigt:
 Offen: `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`), Echtzeit-CRDT
 (gleichzeitiges Tippen), NIP-46-Login, Editor-Toolbar.
 
+**Ausserdem offen und für einen echten Einsatz nötig:** Die Gruppe entsteht
+bisher komplett ausserhalb der App über `nak` — es gibt keinen Knopf, um einen
+Space anzulegen (`9007`), seine Metadaten zu ändern (`9002`) oder einen
+Beitritt anzufragen (`9021`, für Relays ohne Auto-Join). Dazu ein Relay unter
+eigener Domain mit TLS statt `localhost`. Siehe [NOSTR.md](../NOSTR.md),
+Abschnitt „Stand jetzt".
+
 ## Reihenfolge-Begründung
 
 Anforderung 5 (Historie) kommt spät, obwohl sie dir wichtig ist — weil das
