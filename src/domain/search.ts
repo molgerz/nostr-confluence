@@ -1,0 +1,99 @@
+import type { Page } from './pages'
+
+/**
+ * Volltextsuche über die Seiten eines Spaces. Läuft rein lokal über die
+ * ohnehin geladenen Revisionen — NIP-50 unterstützt nicht jedes Relay, und
+ * eine Suche, die vom Relay abhängt, wäre offline sofort kaputt.
+ * docs/07-tech-stack.md
+ */
+export type SearchSnippet = {
+  /** 1-basierte Zeilennummer im Seiteninhalt */
+  line: number
+  text: string
+}
+
+export type SearchHit = {
+  page: Page
+  score: number
+  titleMatch: boolean
+  snippets: SearchSnippet[]
+}
+
+function tokenize(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0)
+}
+
+/**
+ * Treffer einer Seite bewerten. Titel wiegt schwerer als Inhalt, und eine
+ * Seite muss **alle** Suchbegriffe enthalten — sonst ertrinkt man bei zwei
+ * Wörtern in Rauschen.
+ */
+export function searchPages(pages: Page[], query: string, maxSnippets = 3): SearchHit[] {
+  const tokens = tokenize(query)
+  if (tokens.length === 0) return []
+
+  const hits: SearchHit[] = []
+
+  for (const page of pages) {
+    const title = page.title.toLowerCase()
+    const lines = page.head.content.split('\n')
+    const lower = lines.map((line) => line.toLowerCase())
+
+    const matchesAll = tokens.every(
+      (token) => title.includes(token) || lower.some((line) => line.includes(token)),
+    )
+    if (!matchesAll) continue
+
+    let score = 0
+    const titleMatch = tokens.some((token) => title.includes(token))
+    for (const token of tokens) {
+      if (title.includes(token)) score += 10
+      if (page.slug.includes(token)) score += 5
+      score += lower.filter((line) => line.includes(token)).length
+    }
+
+    const snippets: SearchSnippet[] = []
+    for (let index = 0; index < lines.length && snippets.length < maxSnippets; index += 1) {
+      if (tokens.some((token) => lower[index].includes(token)) && lines[index].trim().length > 0) {
+        snippets.push({ line: index + 1, text: lines[index].trim() })
+      }
+    }
+
+    hits.push({ page, score, titleMatch, snippets })
+  }
+
+  return hits.sort((a, b) => b.score - a.score || a.page.title.localeCompare(b.page.title, 'de'))
+}
+
+/** Fundstellen im Text markieren, ohne HTML zu bauen. */
+export function highlightParts(
+  text: string,
+  query: string,
+): { text: string; hit: boolean }[] {
+  const tokens = tokenize(query)
+  if (tokens.length === 0) return [{ text, hit: false }]
+
+  const lower = text.toLowerCase()
+  const marks: boolean[] = new Array(text.length).fill(false)
+  for (const token of tokens) {
+    let from = lower.indexOf(token)
+    while (from !== -1) {
+      for (let i = from; i < from + token.length; i += 1) marks[i] = true
+      from = lower.indexOf(token, from + token.length)
+    }
+  }
+
+  const parts: { text: string; hit: boolean }[] = []
+  let start = 0
+  for (let i = 1; i <= text.length; i += 1) {
+    if (i === text.length || marks[i] !== marks[start]) {
+      parts.push({ text: text.slice(start, i), hit: marks[start] })
+      start = i
+    }
+  }
+  return parts
+}

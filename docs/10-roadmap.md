@@ -166,10 +166,19 @@ einer Merge-Revision erscheinen die Zeilen des zweiten Zweiges deshalb als von
 der Zusammenführung eingeführt — dasselbe Verhalten wie `git blame` ohne
 Zusatzoptionen.
 
-## Phase 6 — Ausbau
-Moderation (`9000`/`9001`/`9005`), Kommentare (`1111`), Volltextsuche,
-Anhänge (Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
-Echtzeit-CRDT, NIP-46-Login, mobiles Layout.
+## Phase 6 — Ausbau (läuft)
+
+Erledigt:
+
+| Baustein | Ort |
+|---|---|
+| Volltextsuche über Titel und Inhalt, lokal statt über NIP-50 | `src/domain/search.ts`, `src/routes/SearchView.tsx` |
+| Einklappbare Sidebar, Zustand bleibt erhalten | `src/ui/layout/Sidebar.tsx` |
+
+Offen: Moderation (`9000`/`9001`/`9005`), Kommentare (`1111`), Anhänge
+(Blossom/NIP-96), `30818`-Interop-Spiegel, Sidebar-Sortierung (`30820`),
+Echtzeit-CRDT, NIP-46-Login, mobiles Layout, CodeMirror-Editor,
+Anzeigenamen über `VITE_PROFILE_RELAYS`.
 
 ## Reihenfolge-Begründung
 

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
@@ -25,27 +26,88 @@ function itemClass({ isActive }: { isActive: boolean }): string {
  * Revisions-Events, kein eigenes Index-Event.
  * docs/06-ui-information-architecture.md
  */
+const COLLAPSE_KEY = 'nc-sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function Sidebar({ group, space, snapshot, info }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = flattenTree(space.tree)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+
+  const toggle = () => {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, value ? '0' : '1')
+      } catch {
+        /* dann gilt es nur für diese Sitzung */
+      }
+      return !value
+    })
+  }
+
+  if (collapsed) {
+    return (
+      <nav className="flex w-10 shrink-0 flex-col items-center gap-2 border-r border-line bg-surface-1 py-2">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="Seitenleiste ausklappen"
+          title="Seitenleiste ausklappen"
+          className="rounded-md px-2 py-1 text-sm text-fg-muted hover:bg-surface-2"
+        >
+          »
+        </button>
+        <div className="flex-1" />
+        <span
+          className={`size-2 rounded-full ${snapshot.connection === 'online' ? 'bg-success' : snapshot.connection === 'connecting' ? 'bg-warning' : 'bg-danger'}`}
+          title={`Relay ${snapshot.connection}`}
+        />
+      </nav>
+    )
+  }
 
   return (
     <nav className="flex w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-surface-1 p-2">
-      {group ? (
-        <div className="px-2 pt-1 pb-3">
-          <div className="text-sm font-medium text-fg">{space.metadata?.name ?? group.id}</div>
-          <div className="truncate font-mono text-xs text-fg-subtle" title={group.host}>
-            {group.host}
-          </div>
+      <div className="flex items-start gap-1 px-2 pt-1 pb-3">
+        <div className="min-w-0 flex-1">
+          {group ? (
+            <>
+              <div className="truncate text-sm font-medium text-fg">
+                {space.metadata?.name ?? group.id}
+              </div>
+              <div className="truncate font-mono text-xs text-fg-subtle" title={group.host}>
+                {group.host}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-fg-subtle">kein Space gewählt</div>
+          )}
         </div>
-      ) : (
-        <div className="px-2 pt-1 pb-3 text-sm text-fg-subtle">kein Space gewählt</div>
-      )}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="Seitenleiste einklappen"
+          title="Seitenleiste einklappen"
+          className="rounded-md px-1.5 py-0.5 text-sm text-fg-subtle hover:bg-surface-2"
+        >
+          «
+        </button>
+      </div>
 
       {base ? (
         <>
           <NavLink to={base} end className={itemClass}>
             Übersicht
+          </NavLink>
+          <NavLink to={`${base}/search`} className={itemClass}>
+            Suche
           </NavLink>
 
           <div className="my-2 border-t border-line" />

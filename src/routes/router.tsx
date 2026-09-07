@@ -5,6 +5,7 @@ import { SpaceOverview } from './SpaceOverview'
 import { PageView } from './PageView'
 import { EditorView } from './EditorView'
 import { NewPageView } from './NewPageView'
+import { SearchView } from './SearchView'
 import { HistoryView } from './HistoryView'
 import { BlameView } from './BlameView'
 import { Login } from './Login'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: '/login', element: <Login /> },
       { path: '/s/:group', element: <SpaceOverview /> },
       { path: '/s/:group/new', element: <NewPageView /> },
+      { path: '/s/:group/search', element: <SearchView /> },
       { path: '/s/:group/:slug', element: <PageView /> },
       { path: '/s/:group/:slug/edit', element: <EditorView /> },
       { path: '/s/:group/:slug/history', element: <HistoryView /> },
