@@ -4,7 +4,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│ Logo   Search…                    [+ Create]   Theme   Account   │  top bar 48px
+│ Logo        Search…  [+ Create]              Theme   Account     │  top bar 48px
 ├──────────────┬────────────────────────────────────┬───────────────┤
 │ Space header │ Breadcrumb: Handbook / Onboarding  │ On this page  │
 │ Engineering  │                                    │               │
@@ -61,6 +61,13 @@ headings. Headings inside code blocks do not count — a `# comment` in a shell
 example is not a heading.
 
 ## Top bar
+
+Three columns, not a row: the two outer ones share the remaining width equally,
+so **search and "+ create" sit on the centre line of the window** whatever the
+logo or the account chip happen to be doing. In a plain flex row they would
+drift off centre the moment one side grew — and a display name is exactly the
+kind of thing that grows. The two belong next to each other because one finds a
+page and the other makes the one that was not found.
 
 Logo, search, "+ create", the **theme switch (system/light/dark,
 [12](12-theming.md))** and, when signed out, a **sign-in button that calls the
