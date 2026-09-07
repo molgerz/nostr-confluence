@@ -34,12 +34,20 @@ Four zones, top to bottom:
    **Open:** dedicated entries for "all pages", "recently changed" and "space
    settings".
 3. **Page tree** — projected from `page-parent`
-   ([02](02-data-model-events.md)). The active page is highlighted; forked pages
-   are marked with a dot. A branch with children folds away behind a triangle;
-   the folded ones are kept in `localStorage`. Deliberately the *folded* ones,
-   not the open ones — otherwise a page created later would stay hidden until
-   somebody expanded its parent. The branch leading to the page being read is
-   always drawn open, so a fold can never hide the very page you are on.
+   ([02](02-data-model-events.md)). Every row carries a page icon; the active
+   row is highlighted.
+
+   A branch with children folds away behind a triangle, a leaf shows a dot in
+   that same slot. Both occupy it, so titles stay on one vertical line instead
+   of stepping in and out depending on whether a sibling happens to have
+   children. A forked page keeps its own marker, but amber and *after* the
+   title — otherwise it would read as the leaf dot.
+
+   Which branches are folded is kept in `localStorage`. Deliberately the
+   *folded* ones rather than the open ones, otherwise a page created later would
+   stay hidden until somebody expanded its parent. The branch leading to the
+   page being read is always drawn open, so a fold can never hide the very page
+   you are on.
 4. **Footer** — "+ new page" and the relay status (connected / AUTH / offline) —
    important, because nothing can be published without a relay.
 

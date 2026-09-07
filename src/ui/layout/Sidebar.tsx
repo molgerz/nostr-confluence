@@ -205,16 +205,38 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
 }
 
 function treeItemClass({ isActive }: { isActive: boolean }): string {
-  const shared = 'min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-sm'
+  const shared = 'flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-sm'
   return isActive
     ? `${shared} bg-accent-bg font-medium text-accent-fg`
     : `${shared} text-fg-muted hover:bg-surface-2`
 }
 
 /**
- * One level of the page tree. Branches fold; leaves get a spacer of the same
- * width as a triangle so their titles stay on one vertical line instead of
- * stepping in and out depending on whether a sibling has children.
+ * Marks every row as a page. Decorative — the title already says which one, so
+ * it is hidden from assistive technology. It inherits the row's colour instead
+ * of fixing its own, so on the active row it follows into the accent colour
+ * rather than sitting there grey.
+ */
+function PageIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      className="size-3.5 shrink-0 opacity-70"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+    >
+      <rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2.5" />
+      <path d="M5.75 6.5h4.5M5.75 9.5h3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/**
+ * One level of the page tree. A branch gets a triangle to fold it, a leaf a dot
+ * in the same slot — so titles stay on one vertical line instead of stepping in
+ * and out depending on whether a sibling has children.
  */
 function TreeBranch({
   nodes,
@@ -253,11 +275,20 @@ function TreeBranch({
                   {open ? '▾' : '▸'}
                 </button>
               ) : (
-                <span className="w-4 shrink-0" aria-hidden="true" />
+                <span className="flex w-4 shrink-0 justify-center" aria-hidden="true">
+                  <span className="size-1 rounded-full bg-fg-subtle" />
+                </span>
               )}
               <NavLink to={`${base}/${node.slug}`} className={treeItemClass}>
-                {node.title}
-                {node.leaves.length > 1 ? <span className="text-warning"> ●</span> : null}
+                <PageIcon />
+                <span className="truncate">{node.title}</span>
+                {/* A forked page has more than one current version. Amber and
+                    after the title, so it cannot be read as the leaf dot. */}
+                {node.leaves.length > 1 ? (
+                  <span className="text-warning" title="several open versions">
+                    ●
+                  </span>
+                ) : null}
               </NavLink>
             </div>
 
