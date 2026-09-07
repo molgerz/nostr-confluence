@@ -1,8 +1,9 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import { useState } from 'react'
-import type { ReactNode } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import type { ThemedToken } from 'shiki'
 import { normalizeSlug } from '../nostr/kinds'
 import { isOwnAttachment } from '../nostr/blossom'
 
@@ -106,6 +107,63 @@ function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: st
       Load image from {host}
       {alt ? <span className="block text-fg-subtle">{alt}</span> : null}
     </button>
+  )
+}
+
+/**
+ * A code block, coloured once the grammar has arrived. It renders plain first
+ * and swaps in the tokens afterwards — a block that appears instantly and gains
+ * colour a moment later reads better than one that is not there yet. An unknown
+ * language simply stays plain.
+ */
+function CodeBlock({
+  code,
+  language,
+  className,
+}: {
+  code: string
+  language: string
+  className: string
+}) {
+  const [lines, setLines] = useState<ThemedToken[][] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLines(null)
+    // The highlighter is imported here rather than at the top of the file so
+    // that Shiki's engine is a chunk of its own: a reader who never opens a
+    // page with a code block never downloads it.
+    void import('./code-highlight')
+      .then(({ highlight }) => highlight(code, language))
+      .then((result) => {
+        if (!cancelled) setLines(result)
+      })
+      .catch(() => {
+        /* stays plain */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [code, language])
+
+  if (!lines) return <code className={className}>{code}</code>
+
+  return (
+    <code className={className}>
+      {lines.map((tokens, line) => (
+        <Fragment key={line}>
+          {tokens.map((token, index) => (
+            <span key={index} className="shiki-token" style={token.htmlStyle as CSSProperties}>
+              {token.content}
+            </span>
+          ))}
+          {/* The newline stays real text — the surrounding `pre` preserves it,
+              so no per-line block element is needed and empty lines keep their
+              height. */}
+          {line < lines.length - 1 ? '\n' : null}
+        </Fragment>
+      ))}
+    </code>
   )
 }
 
@@ -217,9 +275,28 @@ export function Markdown({
               {...props}
             />
           ),
-          code: ({ className, ...props }) => (
-            <code className={cx('rounded bg-code-bg px-1 py-0.5 font-mono', s.code, className)} {...props} />
-          ),
+          code: ({ className, children, ...props }) => {
+            const style = cx('rounded bg-code-bg px-1 py-0.5 font-mono', s.code, className)
+            // `language-…` on a fenced block is what tells us which grammar to
+            // load. Without it — and for inline code — nothing is highlighted.
+            const language = /(?:^|\s)language-([\w+#.-]+)/.exec(className ?? '')?.[1]
+            if (!language) {
+              return (
+                <code className={style} {...props}>
+                  {children}
+                </code>
+              )
+            }
+            return (
+              <CodeBlock
+                code={String(children).replace(/\n$/, '')}
+                language={language}
+                className={style}
+              />
+            )
+          },
+          // A code block already has the background of the `pre`; without this
+          // the inner `code` would paint a second one on top of it.
           pre: ({ className, ...props }) => (
             <pre
               className={cx(

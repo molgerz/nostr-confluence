@@ -108,6 +108,17 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/* Shiki writes both palettes onto every token; the mode decides which one is
+   read. Switching the theme therefore repaints without highlighting again.
+   src/ui/code-highlight.ts */
+[data-theme='light'] .shiki-token {
+  color: var(--shiki-light);
+}
+
+[data-theme='dark'] .shiki-token {
+  color: var(--shiki-dark);
+}
+
 html,
 body,
 #root {

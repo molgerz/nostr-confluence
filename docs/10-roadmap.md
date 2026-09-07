@@ -184,6 +184,7 @@ Done:
 | Collapsible branches in the page tree, folded state kept | `src/ui/layout/Sidebar.tsx` |
 | Markdown completed: `h4`–`h6`, `hr`, GFM task lists, wide tables scroll | `src/ui/Markdown.tsx` |
 | `color-scheme` per mode, so the browser draws controls and scrollbars to match | `src/index.css` |
+| Syntax highlighting for code blocks (Shiki, dual themes, grammars lazy) | `src/ui/code-highlight.ts` |
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
 Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT
@@ -202,7 +203,6 @@ As of 2026-09-07, found while comparing the docs against the code:
 | Hiding a whole page (tombstone) | [05](05-versioning-history.md) |
 | Writing `previous` timeline references | [02](02-data-model-events.md) |
 | Sidebar entries "all pages", "recently changed", "space settings" | [06](06-ui-information-architecture.md) |
-| Syntax highlighting when *displaying* code blocks | [07](07-tech-stack.md) |
 | Onboarding note that an npub is a permanent pseudonym | [09](09-security-privacy.md) |
 | `30818` interop mirror for NIP-54 clients | [02](02-data-model-events.md) |
 

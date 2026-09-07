@@ -20,6 +20,8 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/state": "^6.7.4",
     "@codemirror/view": "^6.43.11",
+    "@shikijs/langs": "^4.4.3",
+    "@shikijs/themes": "^4.4.3",
     "codemirror": "^6.0.2",
     "diff": "^9.0.0",
     "nostr-tools": "^2.25.2",
@@ -28,7 +30,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.1",
     "rehype-sanitize": "^6.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "shiki": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",

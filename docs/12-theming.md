@@ -47,11 +47,11 @@ everywhere.
 
 ## The four places this usually breaks
 
-1. **Code blocks in Markdown** — syntax highlighting needs two themes. With
-   Shiki, dual themes work through CSS variables in a single rendering; with
-   highlight.js two stylesheets have to be swapped. Suggestion: Shiki, so that
-   no stylesheet swap is needed at runtime. *(Still open — code blocks currently
-   render without colour.)*
+1. **Code blocks in Markdown** — syntax highlighting needs two themes. Shiki
+   emits both palettes in a single pass: every token carries `--shiki-light` and
+   `--shiki-dark`, and two CSS rules keyed on `data-theme` decide which is read.
+   Switching the mode therefore repaints without highlighting again, and no
+   stylesheet is swapped at runtime. *(Done — see below.)*
 2. **The editor** — CodeMirror 6 brings its own theme. The switch has to happen
    through a `Compartment` with `reconfigure`, not by rebuilding the editor,
    otherwise cursor and undo history are lost when switching.
@@ -68,6 +68,26 @@ everywhere.
 4. **Foreign content** — avatars and embedded images from `kind 0` or from pages
    arrive with arbitrary backgrounds. Make no transparency assumptions; in dark
    mode images get a neutral border rather than a filter.
+
+## Highlighting code blocks
+
+Shiki, as suggested above, with two decisions that are not obvious:
+
+- **Tokens, not HTML.** Shiki can return a finished HTML string, but the content
+  of a code block comes from an arbitrary npub, and this app renders no foreign
+  HTML anywhere ([09](09-security-privacy.md)). `codeToTokens` returns text plus
+  colours, which become React elements — no `dangerouslySetInnerHTML` in the
+  reading path.
+- **The JavaScript regex engine, not the Oniguruma WASM one.** 16 kB gzipped
+  against 230 kB, for a chunk almost every reader of a technical wiki will pull.
+  The engine translates Oniguruma patterns into JavaScript regexes and can fail
+  on a grammar it cannot express; all languages the app registers were checked
+  against it. A grammar that fails falls back to plain text rather than breaking
+  the page.
+
+Grammars and the highlighter itself are dynamic imports, so nothing of Shiki
+sits in the main bundle — somebody who never opens a page with a code block
+never downloads it.
 
 ## No flash on load
 

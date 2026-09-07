@@ -14,7 +14,7 @@
 | Three-way merge | **written ourselves** (`src/domain/merge.ts`) | jsdiff v8 no longer ships `merge`. Ours is about 100 lines, fully tested, and we control how conflicts are presented |
 | Styling | Tailwind, `dark` variant bound to `data-theme` | Atlassian-like density in tokens; a manual light/dark switch is required → [12](12-theming.md) |
 | Syntax highlighting in the editor | CodeMirror (`@codemirror/lang-markdown`) | Covers the editor |
-| Syntax highlighting when displaying | **none yet** | Code blocks render without colour. Shiki with dual themes was planned → open |
+| Syntax highlighting when displaying | Shiki (`shiki`, JavaScript regex engine) | Dual themes in one pass, rendered from tokens rather than HTML, grammars loaded lazily — [12](12-theming.md) |
 | Search | **written ourselves** (`src/domain/search.ts`) | MiniSearch was planned; for title and line search over the loaded pages, 60 lines are enough — no dependency and no index that can go stale |
 | Unit tests | Vitest | The chain logic (head, merge, blame, search) is pure function logic → 76 tests |
 | End-to-end tests | **none yet** | Playwright was planned, also for the colour-mode regression from [12](12-theming.md). So far testing is done by hand in the browser → open |
