@@ -11,8 +11,15 @@ follows `prefers-color-scheme`; a manual choice overrides it and is kept in
 Implementation: a `data-theme="light|dark"` attribute on the `<html>` element,
 set by JavaScript. Tailwind's `dark` variant is bound to that attribute (not to
 the media query), otherwise the mode cannot be forced manually. Additionally
-`color-scheme: light dark`, so that scrollbars, selection colour and form
-controls are rendered appropriately by the browser.
+`color-scheme`, so that scrollbars, selection colour and form controls are
+rendered appropriately by the browser.
+
+**Solved slightly differently than written above:** not `color-scheme: light dark`
+on `:root`, but `light` there and `dark` under `[data-theme='dark']`. The
+two-value form hands the choice back to `prefers-color-scheme` — which is
+exactly the manual override this design went to the trouble of building. A
+checkbox in a page would then stay light on a dark page whenever the system was
+set to light.
 
 ## Token layers
 
@@ -52,6 +59,12 @@ everywhere.
    shouting in dark mode. Separate, desaturated tokens for both modes, and mark
    additions and removals with `+`/`−` as well, not by colour alone
    (red-green colour blindness).
+5. **Task-list checkboxes in Markdown** — the sanitiser's default schema drops
+   `checked` from a checkbox, so a ticked box would render as unticked and the
+   list would quietly lie about its state. The schema is extended by that one
+   attribute. The control itself stays native rather than being restyled:
+   `color-scheme` already makes the browser draw it correctly in both modes,
+   and a hand-built box would mean maintaining two more sets of colours.
 4. **Foreign content** — avatars and embedded images from `kind 0` or from pages
    arrive with arbitrary backgrounds. Make no transparency assumptions; in dark
    mode images get a neutral border rather than a filter.

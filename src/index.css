@@ -5,6 +5,11 @@
 /* Semantische Tokens. Komponenten benutzen ausschliesslich diese Namen,
    niemals Rohfarben — siehe docs/12-theming.md. */
 :root {
+  /* Lets the browser render scrollbars, selection and form controls to match
+     the mode. Without it a checkbox stays light on a dark page.
+     docs/12-theming.md */
+  color-scheme: light;
+
   --surface-0: #f1f2f4;
   --surface-1: #f7f8f9;
   --surface-2: #ffffff;
@@ -36,6 +41,8 @@
 }
 
 [data-theme='dark'] {
+  color-scheme: dark;
+
   --surface-0: #1d2125;
   --surface-1: #22272b;
   --surface-2: #282e33;

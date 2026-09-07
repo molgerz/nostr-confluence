@@ -1,10 +1,24 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeSanitize from 'rehype-sanitize'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { normalizeSlug } from '../nostr/kinds'
 import { isOwnAttachment } from '../nostr/blossom'
+
+/**
+ * Sanitising is mandatory, not optional: content comes from arbitrary keys.
+ * The default schema is the GitHub one — no raw HTML, no scripts. One addition:
+ * it drops `checked` from a checkbox, so every ticked task box would render as
+ * unticked and the list would quietly lie about its own state.
+ */
+const SCHEMA = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    input: [...(defaultSchema.attributes?.input ?? []), 'checked'],
+  },
+}
 
 /**
  * Two densities, one renderer. A page is a reading surface and gets the size
@@ -20,6 +34,8 @@ type Scale = {
   h1: string
   h2: string
   h3: string
+  h4: string
+  h5: string
   list: string
   code: string
   quote: string
@@ -31,6 +47,8 @@ const PAGE: Scale = {
   h1: 'mt-8 mb-3 text-2xl font-semibold tracking-tight text-fg',
   h2: 'mt-8 mb-2 text-xl font-semibold tracking-tight text-fg',
   h3: 'mt-6 mb-2 text-lg font-medium text-fg',
+  h4: 'mt-6 mb-1 text-base font-semibold text-fg',
+  h5: 'mt-4 mb-1 text-sm font-semibold uppercase tracking-wide text-fg-muted',
   list: 'my-4 space-y-1.5 pl-6 text-base leading-7 text-fg',
   code: 'text-sm',
   quote: 'my-4 border-l-2 border-line-strong pl-4 text-base leading-7 text-fg-muted',
@@ -42,6 +60,8 @@ const COMPACT: Scale = {
   h1: 'mt-3 mb-1 text-base font-semibold text-fg',
   h2: 'mt-3 mb-1 text-sm font-semibold text-fg',
   h3: 'mt-2 mb-1 text-sm font-medium text-fg',
+  h4: 'mt-2 mb-1 text-sm font-medium text-fg',
+  h5: 'mt-2 mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted',
   list: 'my-2 space-y-1 pl-5 text-sm leading-relaxed text-fg',
   code: 'text-xs',
   quote: 'my-2 border-l-2 border-line-strong pl-3 text-sm text-fg-subtle',
@@ -100,10 +120,16 @@ function headingId(children: ReactNode): string | undefined {
 }
 
 /**
- * Renders Markdown written by arbitrary npubs. Sanitising is mandatory, not
- * optional: content comes from arbitrary keys. No raw HTML, no scripts.
- * docs/09-security-privacy.md
+ * Merges our classes with any the source brought along. Order matters: spreading
+ * the incoming props over a `className` would silently drop our styling
+ * wherever remark adds a class of its own — `contains-task-list` on a list,
+ * `language-js` on a code block.
  */
+function cx(...parts: (string | undefined | null | false)[]): string {
+  return parts.filter(Boolean).join(' ')
+}
+
+/** Renders Markdown written by arbitrary npubs. */
 export function Markdown({
   children,
   density = 'page',
@@ -120,54 +146,116 @@ export function Markdown({
     <div className="[&>*:first-child]:mt-0">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
+        rehypePlugins={[[rehypeSanitize, SCHEMA]]}
         components={{
-          h1: ({ children, ...props }) => (
-            <h1 id={headingId(children)} className={heading(s.h1)} {...props}>
+          h1: ({ children, className, ...props }) => (
+            <h1 id={headingId(children)} className={cx(heading(s.h1), className)} {...props}>
               {children}
             </h1>
           ),
-          h2: ({ children, ...props }) => (
-            <h2 id={headingId(children)} className={heading(s.h2)} {...props}>
+          h2: ({ children, className, ...props }) => (
+            <h2 id={headingId(children)} className={cx(heading(s.h2), className)} {...props}>
               {children}
             </h2>
           ),
-          h3: ({ children, ...props }) => (
-            <h3 id={headingId(children)} className={heading(s.h3)} {...props}>
+          h3: ({ children, className, ...props }) => (
+            <h3 id={headingId(children)} className={cx(heading(s.h3), className)} {...props}>
               {children}
             </h3>
           ),
-          p: (props) => <p className={text} {...props} />,
-          ul: (props) => <ul className={`list-disc ${s.list} ${s.measure}`} {...props} />,
-          ol: (props) => <ol className={`list-decimal ${s.list} ${s.measure}`} {...props} />,
-          a: (props) => (
+          h4: ({ children, className, ...props }) => (
+            <h4 id={headingId(children)} className={cx(heading(s.h4), className)} {...props}>
+              {children}
+            </h4>
+          ),
+          h5: ({ children, className, ...props }) => (
+            <h5 id={headingId(children)} className={cx(heading(s.h5), className)} {...props}>
+              {children}
+            </h5>
+          ),
+          h6: ({ children, className, ...props }) => (
+            <h6 id={headingId(children)} className={cx(heading(s.h5), className)} {...props}>
+              {children}
+            </h6>
+          ),
+          p: ({ className, ...props }) => <p className={cx(text, className)} {...props} />,
+          strong: ({ className, ...props }) => (
+            <strong className={cx('font-semibold text-fg', className)} {...props} />
+          ),
+          del: ({ className, ...props }) => (
+            <del className={cx('text-fg-subtle', className)} {...props} />
+          ),
+          hr: () => <hr className={`my-8 border-0 border-t border-line ${s.measure}`} />,
+          ul: ({ className, ...props }) => (
+            <ul className={cx('list-disc', s.list, s.measure, className)} {...props} />
+          ),
+          ol: ({ className, ...props }) => (
+            <ol className={cx('list-decimal', s.list, s.measure, className)} {...props} />
+          ),
+          li: ({ children, className, ...props }) => {
+            // A GFM task item carries its own checkbox, so the bullet would be
+            // a second marker. Pulling it left puts the box where the bullet
+            // would have been, so both kinds of item line up.
+            const task = typeof className === 'string' && className.includes('task-list-item')
+            return (
+              <li className={cx(task && '-ml-6 list-none', className)} {...props}>
+                {children}
+              </li>
+            )
+          },
+          input: (props) => (
+            <input
+              {...props}
+              readOnly
+              className="mr-2 size-3.5 translate-y-px accent-accent"
+            />
+          ),
+          a: ({ className, ...props }) => (
             <a
-              className="text-accent-fg underline underline-offset-2"
+              className={cx('text-accent-fg underline underline-offset-2', className)}
               rel="noreferrer noopener"
               {...props}
             />
           ),
-          code: (props) => (
-            <code className={`rounded bg-code-bg px-1 py-0.5 font-mono ${s.code}`} {...props} />
+          code: ({ className, ...props }) => (
+            <code className={cx('rounded bg-code-bg px-1 py-0.5 font-mono', s.code, className)} {...props} />
           ),
-          pre: (props) => (
+          pre: ({ className, ...props }) => (
             <pre
-              className={`my-4 overflow-x-auto rounded-lg border border-code-line bg-code-bg p-3 font-mono ${s.code}`}
+              className={cx(
+                'my-4 overflow-x-auto rounded-lg border border-code-line bg-code-bg p-3 font-mono',
+                s.code,
+                '[&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit',
+                className,
+              )}
               {...props}
             />
           ),
-          blockquote: (props) => <blockquote className={`${s.quote} ${s.measure}`} {...props} />,
+          blockquote: ({ className, ...props }) => (
+            <blockquote className={cx(s.quote, s.measure, className)} {...props} />
+          ),
           img: ({ src, alt, title }) => (
             <SafeImage src={typeof src === 'string' ? src : undefined} alt={alt} title={title} />
           ),
-          table: (props) => <table className="w-full border-collapse text-sm" {...props} />,
-          th: (props) => (
+          // A wide table may exceed the measure — but then it scrolls on its
+          // own instead of stretching the page.
+          table: ({ className, ...props }) => (
+            <div className="my-4 overflow-x-auto">
+              <table className={cx('w-full border-collapse text-sm', className)} {...props} />
+            </div>
+          ),
+          th: ({ className, ...props }) => (
             <th
-              className="border border-line bg-surface-1 px-2 py-1 text-left font-medium text-fg"
+              className={cx(
+                'border border-line bg-surface-1 px-2 py-1 text-left font-medium text-fg',
+                className,
+              )}
               {...props}
             />
           ),
-          td: (props) => <td className="border border-line px-2 py-1 text-fg-muted" {...props} />,
+          td: ({ className, ...props }) => (
+            <td className={cx('border border-line px-2 py-1 text-fg-muted', className)} {...props} />
+          ),
         }}
       >
         {children}

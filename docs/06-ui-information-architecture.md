@@ -68,6 +68,8 @@ in `--text-primary` (not the muted grey the surrounding UI uses), a heading
 scale that steps down visibly, and a line length capped at 70 characters.
 The cap matters because the content column is far wider than that — without it
 a line runs to about 100 characters and the eye loses the start of the next one.
+Tables and code blocks are exempt: they may exceed the measure and scroll
+instead of squeezing.
 
 The same renderer serves comments, but at a second density: a comment sits
 inside somebody else's page and stays at the 14px of the surrounding UI rather
