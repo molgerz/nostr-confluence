@@ -6,6 +6,7 @@ import { DEFAULT_RELAY_URL, PROFILE_RELAYS } from '../nostr/relay-status'
 import { createNip07Signer, getNip07Provider, waitForNip07 } from '../nostr/signer'
 import type { Signer } from '../nostr/signer'
 import { parseProfile, toNpub } from '../nostr/profile'
+import { cacheProfile } from '../nostr/profile-store'
 import type { Profile } from '../nostr/profile'
 
 const STORAGE_KEY = 'nc-pubkey'
@@ -29,6 +30,12 @@ type SessionContextValue = {
    * docs/03-auth-nip07-nip42.md
    */
   ensureSamePubkey: () => Promise<{ ok: true } | { ok: false; reason: string }>
+  /**
+   * Take over a profile that was just published, without asking a relay again.
+   * A read straight after the write races the relay's indexing, and the answer
+   * we would get back is the one we already hold.
+   */
+  applyProfile: (profile: Profile) => void
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -153,9 +160,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [session, loadProfile])
 
+  const applyProfile = useCallback(
+    (profile: Profile) => {
+      if (session.status !== 'signed-in') return
+      // The byline cache lives outside React and never expires by itself.
+      cacheProfile(session.pubkey, profile)
+      setSession((current) =>
+        current.status === 'signed-in' ? { ...current, profile } : current,
+      )
+    },
+    [session],
+  )
+
   const value = useMemo(
-    () => ({ session, extension, error, login, logout, ensureSamePubkey }),
-    [session, extension, error, login, logout, ensureSamePubkey],
+    () => ({
+      session,
+      extension,
+      error,
+      login,
+      logout,
+      ensureSamePubkey,
+      applyProfile,
+    }),
+    [session, extension, error, login, logout, ensureSamePubkey, applyProfile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

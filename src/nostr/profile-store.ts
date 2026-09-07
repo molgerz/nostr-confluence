@@ -38,6 +38,16 @@ class ProfileStore {
     return this.cache.get(pubkey)
   }
 
+  /**
+   * Put a profile into the cache without asking a relay. Needed after saving
+   * one's own kind 0: the cache never expires, so every byline would keep
+   * showing the old name until a reload.
+   */
+  set(pubkey: string, profile: Profile): void {
+    this.cache.set(pubkey, profile)
+    for (const listener of this.listeners) listener()
+  }
+
   request(pubkey: string): void {
     if (this.cache.has(pubkey) || this.inFlight.has(pubkey) || this.wanted.has(pubkey)) return
     this.wanted.add(pubkey)
@@ -83,6 +93,11 @@ class ProfileStore {
 }
 
 const store = new ProfileStore()
+
+/** See ProfileStore.set — used after publishing one's own profile. */
+export function cacheProfile(pubkey: string, profile: Profile): void {
+  store.set(pubkey, profile)
+}
 
 export function useProfile(pubkey: string | null): Profile | null {
   const subscribe = useCallback((listener: () => void) => store.subscribe(listener), [])

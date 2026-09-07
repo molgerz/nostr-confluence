@@ -51,7 +51,10 @@ example is not a heading.
 ## Top bar
 
 Logo, search, "+ create", the **theme switch (system/light/dark,
-[12](12-theming.md))** and the account chip with display name, npub and sign-out.
+[12](12-theming.md))** and the account chip: display name, then the picture at
+the very edge. The whole chip is one link to `/settings/profile`. Signing out is
+**not** in the bar but at the bottom of that page — the outermost corner of the
+layout should not put a destructive action right next to a navigation target.
 
 ## Page states
 
@@ -85,10 +88,36 @@ local cache that has not been built yet.
 
 ## How identity is displayed
 
-Everywhere a person appears: avatar + display name + shortened npub
-(`npub1qz…7k4f`, monospace). Display names are freely chosen and not unique —
-the npub is the identity, and the UI shows that consistently instead of hiding
-it.
+Everywhere a **foreign** person appears — bylines, history, comments, blame,
+the member list: avatar + display name + shortened npub (`npub1qz…7k4f`,
+monospace). Display names are freely chosen and not unique, so a name alone
+could be somebody impersonating somebody else. The npub is the identity and the
+UI shows it rather than hiding it.
+
+**One exception: one's own account chip in the top bar.** There the argument
+does not hold — nobody is impersonating themselves to themselves — and the chip
+is the narrowest spot in the layout. The npub stays in the tooltip and appears
+in full under `/settings/profile`.
+
+## Profile
+
+`/settings/profile` edits one's own `kind 0`: the three fields NIP-01 names —
+`name`, `about`, `picture`. Three things make this more than a form:
+
+- **Kind 0 is replaceable.** A save replaces the whole profile, so serialising
+  only the fields we know would delete what another client has set (`nip05`,
+  `lud16`, `banner`). The editor reads the existing event, writes into it and
+  names the preserved keys in the UI, so that "I only see three fields" does not
+  read as "the rest is gone".
+- **It cannot be published to the space relay.** A NIP-29 relay demands an `h`
+  tag on every event and rejects `kind 0`. The target is `VITE_PROFILE_RELAYS`;
+  with none configured, saving is disabled and the reason is stated.
+- **Several relays mean "saved" is not one boolean.** Every relay is listed with
+  the reason it gave, literally — the same rule as for publishing a page.
+
+Signing out sits at the bottom of the same page, with what it does spelled out:
+it only forgets which npub is signed in here. The key stays in the extension,
+published events stay on the relay.
 
 ## Routing
 
@@ -102,6 +131,7 @@ it.
 /s/:group/:slug/edit       edit           (?merge=1 to merge versions)
 /s/:group/:slug/history    history with comparison
 /s/:group/:slug/blame      line origin
+/settings/profile          edit one's own kind 0
 ```
 
 `:group` includes the relay host (URL-encoded) so that a link is

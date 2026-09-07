@@ -10,8 +10,13 @@ export type Profile = {
 }
 
 export function parseProfile(event: Event): Profile {
+  return parseProfileContent(event.content)
+}
+
+/** The same parsing without an event — for content we have just written ourselves. */
+export function parseProfileContent(content: string): Profile {
   try {
-    const raw: unknown = JSON.parse(event.content)
+    const raw: unknown = JSON.parse(content)
     if (typeof raw !== 'object' || raw === null) return {}
     const data = raw as Record<string, unknown>
     const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value : undefined)

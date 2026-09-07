@@ -179,6 +179,7 @@ Done:
 | Display names and avatars from kind 0, fetched in batches | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
 | CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
 | Attachments via Blossom, upload by button and drag & drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
+| Editing one's own profile (kind 0, NIP-01 fields), foreign fields preserved | `src/nostr/publish-profile.ts`, `src/routes/ProfileSettings.tsx` |
 
 Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT
 (simultaneous typing), NIP-46 sign-in, an editor toolbar.
