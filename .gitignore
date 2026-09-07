@@ -1,0 +1,14 @@
+# Wegwerf-Schlüssel für lokale Testrelays — nie committen
+scripts/.dev-keys
+
+node_modules/
+dist/
+.env
+.env.local
+db/
+
+# lokale Claude-Code-Einstellungen
+.claude/settings.local.json
+
+# macOS
+.DS_Store
