@@ -206,51 +206,51 @@ export function Markdown({
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehypeSanitize, SCHEMA]]}
         components={{
-          h1: ({ children, className, ...props }) => (
+          h1: ({ node: _node, children, className, ...props }) => (
             <h1 id={headingId(children)} className={cx(heading(s.h1), className)} {...props}>
               {children}
             </h1>
           ),
-          h2: ({ children, className, ...props }) => (
+          h2: ({ node: _node, children, className, ...props }) => (
             <h2 id={headingId(children)} className={cx(heading(s.h2), className)} {...props}>
               {children}
             </h2>
           ),
-          h3: ({ children, className, ...props }) => (
+          h3: ({ node: _node, children, className, ...props }) => (
             <h3 id={headingId(children)} className={cx(heading(s.h3), className)} {...props}>
               {children}
             </h3>
           ),
-          h4: ({ children, className, ...props }) => (
+          h4: ({ node: _node, children, className, ...props }) => (
             <h4 id={headingId(children)} className={cx(heading(s.h4), className)} {...props}>
               {children}
             </h4>
           ),
-          h5: ({ children, className, ...props }) => (
+          h5: ({ node: _node, children, className, ...props }) => (
             <h5 id={headingId(children)} className={cx(heading(s.h5), className)} {...props}>
               {children}
             </h5>
           ),
-          h6: ({ children, className, ...props }) => (
+          h6: ({ node: _node, children, className, ...props }) => (
             <h6 id={headingId(children)} className={cx(heading(s.h5), className)} {...props}>
               {children}
             </h6>
           ),
-          p: ({ className, ...props }) => <p className={cx(text, className)} {...props} />,
-          strong: ({ className, ...props }) => (
+          p: ({ node: _node, className, ...props }) => <p className={cx(text, className)} {...props} />,
+          strong: ({ node: _node, className, ...props }) => (
             <strong className={cx('font-semibold text-fg', className)} {...props} />
           ),
-          del: ({ className, ...props }) => (
+          del: ({ node: _node, className, ...props }) => (
             <del className={cx('text-fg-subtle', className)} {...props} />
           ),
           hr: () => <hr className={`my-8 border-0 border-t border-line ${s.measure}`} />,
-          ul: ({ className, ...props }) => (
+          ul: ({ node: _node, className, ...props }) => (
             <ul className={cx('list-disc', s.list, s.measure, className)} {...props} />
           ),
-          ol: ({ className, ...props }) => (
+          ol: ({ node: _node, className, ...props }) => (
             <ol className={cx('list-decimal', s.list, s.measure, className)} {...props} />
           ),
-          li: ({ children, className, ...props }) => {
+          li: ({ node: _node, children, className, ...props }) => {
             // A GFM task item carries its own checkbox, so the bullet would be
             // a second marker. Pulling it left puts the box where the bullet
             // would have been, so both kinds of item line up.
@@ -261,21 +261,21 @@ export function Markdown({
               </li>
             )
           },
-          input: (props) => (
+          input: ({ node: _node, ...props }) => (
             <input
               {...props}
               readOnly
               className="mr-2 size-3.5 translate-y-px accent-accent"
             />
           ),
-          a: ({ className, ...props }) => (
+          a: ({ node: _node, className, ...props }) => (
             <a
               className={cx('text-accent-fg underline underline-offset-2', className)}
               rel="noreferrer noopener"
               {...props}
             />
           ),
-          code: ({ className, children, ...props }) => {
+          code: ({ node: _node, className, children, ...props }) => {
             const style = cx('rounded bg-code-bg px-1 py-0.5 font-mono', s.code, className)
             // `language-…` on a fenced block is what tells us which grammar to
             // load. Without it — and for inline code — nothing is highlighted.
@@ -297,7 +297,7 @@ export function Markdown({
           },
           // A code block already has the background of the `pre`; without this
           // the inner `code` would paint a second one on top of it.
-          pre: ({ className, ...props }) => (
+          pre: ({ node: _node, className, ...props }) => (
             <pre
               className={cx(
                 'my-4 overflow-x-auto rounded-lg border border-code-line bg-code-bg p-3 font-mono',
@@ -308,7 +308,7 @@ export function Markdown({
               {...props}
             />
           ),
-          blockquote: ({ className, ...props }) => (
+          blockquote: ({ node: _node, className, ...props }) => (
             <blockquote className={cx(s.quote, s.measure, className)} {...props} />
           ),
           img: ({ src, alt, title }) => (
@@ -316,12 +316,12 @@ export function Markdown({
           ),
           // A wide table may exceed the measure — but then it scrolls on its
           // own instead of stretching the page.
-          table: ({ className, ...props }) => (
+          table: ({ node: _node, className, ...props }) => (
             <div className="my-4 overflow-x-auto">
               <table className={cx('w-full border-collapse text-sm', className)} {...props} />
             </div>
           ),
-          th: ({ className, ...props }) => (
+          th: ({ node: _node, className, ...props }) => (
             <th
               className={cx(
                 'border border-line bg-surface-1 px-2 py-1 text-left font-medium text-fg',
@@ -330,7 +330,7 @@ export function Markdown({
               {...props}
             />
           ),
-          td: ({ className, ...props }) => (
+          td: ({ node: _node, className, ...props }) => (
             <td className={cx('border border-line px-2 py-1 text-fg-muted', className)} {...props} />
           ),
         }}

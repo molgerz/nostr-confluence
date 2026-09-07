@@ -4,14 +4,16 @@ import { SignInButton } from './SignInButton'
 import { displayName } from '../nostr/profile'
 
 /**
- * One's own account in the top bar: name, then the picture at the very edge.
- * The whole chip is one link to the profile settings — signing out lives down
- * there too, so that the outermost corner of the layout is not a destructive
- * action sitting next to a navigation target.
+ * One's own account in the top bar: the picture alone, at the very edge. The
+ * whole chip is one link to the profile settings — signing out lives down there
+ * too, so that the outermost corner of the layout is not a destructive action
+ * sitting next to a navigation target.
  *
- * The npub is deliberately not spelled out here. Unlike a byline this is not a
- * foreign identity that could be impersonating somebody; it stays in the
- * tooltip and in full under /settings/profile.
+ * Neither name nor npub is spelled out here. This is the one identity nobody
+ * has to be told apart from an impostor — it is the reader's own — and the top
+ * bar is the narrowest strip in the layout. Both appear in the tooltip, and in
+ * full under /settings/profile. Without a picture the initial stands in, so the
+ * chip keeps its size and place.
  * docs/06-ui-information-architecture.md
  */
 export function UserChip() {
@@ -25,10 +27,10 @@ export function UserChip() {
   return (
     <Link
       to="/settings/profile"
-      className="flex shrink-0 items-center gap-2 rounded-md px-1 py-0.5 hover:bg-surface-2"
-      title={`${session.npub} — profile settings`}
+      className="flex shrink-0 items-center rounded-md p-0.5 hover:bg-surface-2"
+      title={`${name} · ${session.npub} — profile settings`}
+      aria-label={`${name} — profile settings`}
     >
-      <span className="hidden text-xs text-fg-muted sm:block">{name}</span>
       {session.profile?.picture ? (
         <img
           src={session.profile.picture}

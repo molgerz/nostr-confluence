@@ -3,10 +3,24 @@ import { shortNpub, toNpub } from '../nostr/profile'
 
 /**
  * Shows authorship: display name **and** npub. Display names are freely chosen
- * and not unique — which is why the npub always sits next to it, never the name
- * alone. docs/06-ui-information-architecture.md
+ * and not unique — which is why the npub sits next to it wherever the point of
+ * the row is attribution: history, blame, comments, the member list.
+ * docs/06-ui-information-architecture.md
+ *
+ * `showNpub={false}` drops it where the name is a byline rather than a claim
+ * about who signed what. Even then the npub appears if the key has no profile
+ * at all — an unattributed byline would be worse than a key.
+ * It stays in the tooltip either way.
  */
-export function Author({ pubkey, avatar = false }: { pubkey: string; avatar?: boolean }) {
+export function Author({
+  pubkey,
+  avatar = false,
+  showNpub = true,
+}: {
+  pubkey: string
+  avatar?: boolean
+  showNpub?: boolean
+}) {
   const profile = useProfile(pubkey)
   const npub = toNpub(pubkey)
   const name = profile?.displayName ?? profile?.name ?? null
@@ -21,7 +35,9 @@ export function Author({ pubkey, avatar = false }: { pubkey: string; avatar?: bo
         />
       ) : null}
       {name ? <span className="text-fg-muted">{name}</span> : null}
-      <span className="font-mono text-fg-subtle">{shortNpub(npub)}</span>
+      {showNpub || !name ? (
+        <span className="font-mono text-fg-subtle">{shortNpub(npub)}</span>
+      ) : null}
     </span>
   )
 }

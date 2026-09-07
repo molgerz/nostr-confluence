@@ -65,7 +65,8 @@ example is not a heading.
 Logo, search, "+ create", the **theme switch (system/light/dark,
 [12](12-theming.md))** and, when signed out, a **sign-in button that calls the
 extension directly** — there is no sign-in page. Signed in it becomes the
-account chip: display name, then the picture at the very edge. The whole chip is one link to `/settings/profile`. Signing out is
+account chip: the picture alone at the very edge, with name and npub in the
+tooltip. The whole chip is one link to `/settings/profile`. Signing out is
 **not** in the bar but at the bottom of that page — the outermost corner of the
 layout should not put a destructive action right next to a navigation target.
 
@@ -116,16 +117,25 @@ local cache that has not been built yet.
 
 ## How identity is displayed
 
-Everywhere a **foreign** person appears — bylines, history, comments, blame,
+Wherever the **subject of the row is attribution** — history, blame, comments,
 the member list: avatar + display name + shortened npub (`npub1qz…7k4f`,
 monospace). Display names are freely chosen and not unique, so a name alone
-could be somebody impersonating somebody else. The npub is the identity and the
-UI shows it rather than hiding it.
+could be somebody impersonating somebody else. Those are the places where
+somebody is deciding whether to trust a change, and there the key is shown
+rather than hidden.
 
-**One exception: one's own account chip in the top bar.** There the argument
-does not hold — nobody is impersonating themselves to themselves — and the chip
-is the narrowest spot in the layout. The npub stays in the tooltip and appears
-in full under `/settings/profile`.
+Two places show the name alone:
+
+- **One's own account chip in the top bar.** Nobody has to tell themselves
+  apart from an impostor, and the bar is the narrowest strip in the layout.
+- **The byline of a page** ("last edited by …"). It says who touched the page,
+  not who signed which revision; the history one click away answers that, with
+  the npub on every entry.
+
+In both the npub stays in the tooltip and appears in full under
+`/settings/profile`. And where a key has no `kind 0` at all, the shortened npub
+is shown regardless — there is no name to fall back to, and an unattributed
+byline would be worse than a key.
 
 ## Profile
 
