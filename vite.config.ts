@@ -4,6 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // 5173 ist auf diesem Rechner von einem Container belegt
+  // 5173 is taken by a container on this machine
   server: { port: 5273, strictPort: true },
 })

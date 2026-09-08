@@ -26,10 +26,10 @@ export function EditorView() {
   const mergeRequested = params.get('merge') === '1'
   const mergeMode = mergeRequested && page.leaves.length > 1
 
-  // Der Editor friert seinen Anfangsinhalt beim Mounten ein, deshalb hier auf
-  // the load to finish. Two leaves alone are not enough: while the common
-  // base is still in flight the merge would find no ancestor and report
-  // everything as a conflict.
+  // The editor freezes its initial content on mount, so wait here for the
+  // load to finish. Two leaves alone are not enough: while the common base is
+  // still in flight the merge would find no ancestor and report everything as
+  // a conflict.
   if (mergeRequested && space.loading) {
     return <p className="text-sm text-fg-muted">loading versions…</p>
   }

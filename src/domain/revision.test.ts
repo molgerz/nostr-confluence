@@ -27,7 +27,7 @@ describe('parseRevision', () => {
           ['h', 'engineering'],
           ['d', 'onboarding'],
           ['title', 'Onboarding'],
-          ['page-parent', 'handbuch'],
+          ['page-parent', 'handbook'],
           ['summary', 'typo'],
           ['parent-rev', 'r1'],
           ['parent-rev', 'r2'],
@@ -38,7 +38,7 @@ describe('parseRevision', () => {
     expect(revision).toMatchObject({
       slug: 'onboarding',
       title: 'Onboarding',
-      parentSlug: 'handbuch',
+      parentSlug: 'handbook',
       summary: 'typo',
       parentRevs: ['r1', 'r2'],
     })
@@ -46,7 +46,7 @@ describe('parseRevision', () => {
 
   it('discards events from a foreign group', () => {
     // A relay could deliver foreign events — the h tag is checked, not trusted
-    expect(parseRevision(event({}), 'andere-gruppe')).toBeNull()
+    expect(parseRevision(event({}), 'other-group')).toBeNull()
   })
 
   it('discards the wrong kind', () => {

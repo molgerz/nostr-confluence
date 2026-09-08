@@ -40,7 +40,7 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
         created_at: Math.floor(Date.now() / 1000),
         tags: [
           [TAGS.GROUP, groupId],
-          [TAGS.ALT, 'Schreibtest von nostr confluence'],
+          [TAGS.ALT, 'write test from nostr confluence'],
         ],
         content: '',
       })

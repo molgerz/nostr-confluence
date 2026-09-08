@@ -13,7 +13,7 @@ describe('parsePubkeyInput', () => {
   })
 
   it('rejects nonsense instead of letting it through', () => {
-    expect(parsePubkeyInput('npub1tippfehler')).toBeNull()
+    expect(parsePubkeyInput('npub1typo')).toBeNull()
     expect(parsePubkeyInput('not a key')).toBeNull()
     expect(parsePubkeyInput('')).toBeNull()
     expect(parsePubkeyInput(hex.slice(0, 63))).toBeNull()

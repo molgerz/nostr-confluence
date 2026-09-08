@@ -57,7 +57,7 @@ export function HistoryView() {
       }
       setError(`Not deleted: ${result.reason}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+      setError(err instanceof Error ? err.message : 'signing was cancelled')
     } finally {
       setBusy(false)
     }
@@ -99,7 +99,7 @@ export function HistoryView() {
           : `Not saved: ${result.reason}`,
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signieren abgebrochen')
+      setError(err instanceof Error ? err.message : 'signing was cancelled')
     } finally {
       setBusy(false)
     }

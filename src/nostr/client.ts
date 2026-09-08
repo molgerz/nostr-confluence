@@ -31,7 +31,7 @@ export type PublishResult = { ok: true; message: string } | { ok: false; reason:
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
-  return 'unbekannter Fehler'
+  return 'unknown error'
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

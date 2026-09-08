@@ -34,7 +34,7 @@ describe('parseComment', () => {
   })
 
   it('discards foreign groups and wrong kinds', () => {
-    expect(parseComment(event({}), 'andere')).toBeNull()
+    expect(parseComment(event({}), 'other')).toBeNull()
     expect(parseComment(event({ kind: 1 }), 'engineering')).toBeNull()
   })
 
@@ -56,7 +56,7 @@ describe('buildCommentTree', () => {
   })
 
   it('puts replies to unknown comments at the top', () => {
-    const tree = buildCommentTree([comment('x', 'fehlt')])
+    const tree = buildCommentTree([comment('x', 'missing')])
     expect(tree.map((node) => node.id)).toEqual(['x'])
   })
 

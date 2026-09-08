@@ -63,6 +63,6 @@ describe('preservedFields', () => {
 
   it('is empty without an existing profile', () => {
     expect(preservedFields(null)).toEqual([])
-    expect(preservedFields('kaputt')).toEqual([])
+    expect(preservedFields('broken')).toEqual([])
   })
 })

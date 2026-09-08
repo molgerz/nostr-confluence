@@ -24,8 +24,8 @@ describe('diffTexts', () => {
   })
 
   it('copes with empty texts', () => {
-    expect(countChanges(diffTexts('', 'neu'))).toEqual({ added: 1, removed: 0 })
-    expect(countChanges(diffTexts('weg', ''))).toEqual({ added: 0, removed: 1 })
+    expect(countChanges(diffTexts('', 'new'))).toEqual({ added: 1, removed: 0 })
+    expect(countChanges(diffTexts('gone', ''))).toEqual({ added: 0, removed: 1 })
     expect(diffTexts('', '')).toEqual([])
   })
 })
