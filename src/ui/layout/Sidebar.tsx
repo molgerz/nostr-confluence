@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
 import type { RelaySnapshot } from '../../nostr/client'
@@ -9,38 +10,41 @@ import { descendantSlugs, orderKeyOf } from '../../domain/pages'
 import type { Page, PageNode } from '../../domain/pages'
 import { keyBetween } from '../../domain/order'
 import { useMovePage } from '../move-page'
+import { InitialsDisc, SectionLabel } from '../controls'
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  PageIcon,
+  PlusIcon,
+  SearchIcon,
+  SettingsIcon,
+} from '../icons'
 
 type Props = {
   group: GroupAddress | null
   space: SpaceSnapshot
   snapshot: RelaySnapshot
   info: RelayInfo | null
-  /** collapsing makes no sense in the mobile overlay — always expanded there */
-  alwaysExpanded?: boolean
-}
-
-function itemClass({ isActive }: { isActive: boolean }): string {
-  return isActive
-    ? 'block rounded-md bg-accent-bg px-2 py-1.5 text-sm font-medium text-accent-fg'
-    : 'block rounded-md px-2 py-1.5 text-sm text-fg-muted hover:bg-surface-2'
 }
 
 /**
- * The left bar, like in Confluence: space header, fixed entries, page tree and
- * a footer with relay and AUTH status. The tree is a projection of the revision
- * events, not an index event of its own.
+ * The left bar: space header, fixed entries, page tree, footer with the relay
+ * state. The tree is a projection of the revision and placement events, not an
+ * index event of its own.
+ *
+ * The bar shares its background with the top bar and carries no divider of its
+ * own — the canvas to its right is a raised, rounded surface, and *that* edge
+ * is the divider. One line instead of two, and the document ends up sitting on
+ * the chrome rather than being fenced off from it.
+ *
+ * A selected row is **grey**, not blue. In this bar the accent had been doing
+ * two jobs: "this is where you are" and "this does something". Handing state to
+ * the neutral fills leaves blue meaning one thing, and the tree stops looking
+ * like a column of buttons.
  * docs/06-ui-information-architecture.md
  */
-const COLLAPSE_KEY = 'nc-sidebar-collapsed'
 const BRANCH_KEY = 'nc-sidebar-collapsed-branches'
-
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 /**
  * Which branches are folded away. Storing the *collapsed* ones rather than the
@@ -109,11 +113,40 @@ type TreeDnd = {
   onDropInGap: (parentSlug: string | null, before: PageNode | null, after: PageNode | null) => void
 }
 
-export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }: Props) {
+/** A fixed entry: icon, label, and grey when it is the page you are on. */
+function NavRow({
+  to,
+  icon,
+  end = false,
+  children,
+}: {
+  to: string
+  icon: ReactNode
+  end?: boolean
+  children: ReactNode
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `flex h-8 items-center gap-2.5 rounded-md px-2 text-sm ${
+          isActive
+            ? 'bg-surface-selected font-medium text-fg'
+            : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+        }`
+      }
+    >
+      {icon}
+      <span className="truncate">{children}</span>
+    </NavLink>
+  )
+}
+
+export function Sidebar({ group, space, snapshot, info }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = space.tree
   const { slug } = useParams<{ slug?: string }>()
-  const [collapsedPreference, setCollapsed] = useState(readCollapsed)
   const [collapsedBranches, setCollapsedBranches] = useState(readCollapsedBranches)
   const [dragging, setDragging] = useState<string | null>(null)
   const [over, setOver] = useState<DropTarget | null>(null)
@@ -122,7 +155,6 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
     group?.id ?? '',
     space.pages,
   )
-  const collapsed = alwaysExpanded ? false : collapsedPreference
   const forcedOpen = pathToActive(nodes, slug)
 
   // Dragging a page onto another one files it there, dragging it into the gap
@@ -216,146 +248,108 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
     })
   }
 
-  const toggle = () => {
-    setCollapsed((value) => {
-      try {
-        localStorage.setItem(COLLAPSE_KEY, value ? '0' : '1')
-      } catch {
-        /* then it only applies to this session */
-      }
-      return !value
-    })
-  }
-
-  if (collapsed) {
-    return (
-      <nav className="flex w-10 shrink-0 flex-col items-center gap-2 border-r border-line bg-surface-1 py-2">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-          className="rounded-md px-2 py-1 text-sm text-fg-muted hover:bg-surface-2"
-        >
-          »
-        </button>
-        <div className="flex-1" />
-        <span
-          className={`size-2 rounded-full ${snapshot.connection === 'online' ? 'bg-success' : snapshot.connection === 'connecting' ? 'bg-warning' : 'bg-danger'}`}
-          title={`Relay ${snapshot.connection}`}
-        />
-      </nav>
-    )
-  }
-
   return (
-    <nav className="flex w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-surface-1 p-2">
-      <div className="flex items-start gap-1 px-2 pt-1 pb-3">
-        <div className="min-w-0 flex-1">
-          {group ? (
-            <>
-              <div className="truncate text-sm font-medium text-fg">
-                {space.metadata?.name ?? group.id}
-              </div>
-              <div className="truncate font-mono text-xs text-fg-subtle" title={group.host}>
-                {group.host}
-              </div>
-            </>
-          ) : (
-            <div className="text-sm text-fg-subtle">no space selected</div>
-          )}
-        </div>
-        {alwaysExpanded ? null : (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-            className="rounded-md px-1.5 py-0.5 text-sm text-fg-subtle hover:bg-surface-2"
+    <nav className="flex w-66 shrink-0 flex-col bg-surface-1">
+      {/* The space, as one row: disc, name, host. The disc takes its colour
+          from the name, so two spaces are told apart before either is read. */}
+      <div className="px-2 pb-1">
+        {group ? (
+          <Link
+            to={base ?? '/'}
+            className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface-hover"
           >
-            «
-          </button>
+            <InitialsDisc
+              name={space.metadata?.name ?? group.id}
+              className="size-7 text-[11px]"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-fg">
+                {space.metadata?.name ?? group.id}
+              </span>
+              <span className="block truncate font-mono text-[11px] text-fg-subtle">
+                {group.host}
+              </span>
+            </span>
+          </Link>
+        ) : (
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-subtle hover:bg-surface-hover"
+          >
+            <InitialsDisc name="? ?" className="size-7 text-[11px]" />
+            no space selected
+          </Link>
         )}
       </div>
 
       {base ? (
         <>
-          <NavLink to={base} end className={itemClass}>
-            Overview
-          </NavLink>
-          <NavLink to={`${base}/search`} className={itemClass}>
-            Search
-          </NavLink>
+          <div className="space-y-0.5 px-2">
+            <NavRow to={base} end icon={<HomeIcon />}>
+              Overview
+            </NavRow>
+            <NavRow to={`${base}/search`} icon={<SearchIcon />}>
+              Search
+            </NavRow>
+            <NavRow to={`${base}/new`} icon={<PlusIcon />}>
+              New page
+            </NavRow>
+          </div>
 
-          <div className="my-2 border-t border-line" />
+          {/* The tree gets a heading of its own with the "+" on it. The button
+              only appears on hover, so the bar is a list of pages at rest and
+              a set of controls the moment you reach for it — the tree is read
+              far more often than it is added to. */}
+          <div className="group/pages mt-5 flex h-7 items-center gap-2 px-4">
+            <SectionLabel className="flex-1">Pages</SectionLabel>
+            <Link
+              to={`${base}/new`}
+              aria-label="New page in this space"
+              title="New page in this space"
+              className="flex size-5 items-center justify-center rounded text-fg-subtle opacity-0 group-hover/pages:opacity-100 hover:bg-surface-selected hover:text-fg focus-visible:opacity-100"
+            >
+              <PlusIcon className="size-3.5" />
+            </Link>
+          </div>
 
-          {nodes.length === 0 ? (
-            <div className="px-2 text-xs text-fg-subtle">
-              {space.loading ? 'loading pages…' : 'no pages yet'}
-            </div>
-          ) : (
-            <TreeBranch
-              nodes={nodes}
-              base={base}
-              parentSlug={null}
-              collapsedBranches={collapsedBranches}
-              forcedOpen={forcedOpen}
-              onToggle={toggleBranch}
-              dnd={dnd}
-            />
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto scroll-slim px-2 pb-2">
+            {nodes.length === 0 ? (
+              <div className="px-2 py-1 text-xs text-fg-subtle">
+                {space.loading ? 'loading pages…' : 'no pages yet'}
+              </div>
+            ) : (
+              <TreeBranch
+                nodes={nodes}
+                base={base}
+                parentSlug={null}
+                collapsedBranches={collapsedBranches}
+                forcedOpen={forcedOpen}
+                onToggle={toggleBranch}
+                dnd={dnd}
+              />
+            )}
 
-          {busySlug ? <div className="px-2 py-1 text-xs text-fg-subtle">moving…</div> : null}
-          {error ? <div className="px-2 py-1 text-xs text-danger">{error}</div> : null}
-
-          <div className="flex-1" />
-          <Link
-            to={`${base}/new`}
-            className="block rounded-md px-2 py-1.5 text-xs font-medium text-accent-fg hover:bg-surface-2"
-          >
-            + New page
-          </Link>
+            {busySlug ? <div className="px-2 py-1 text-xs text-fg-subtle">moving…</div> : null}
+            {error ? <div className="px-2 py-1 text-xs text-danger">{error}</div> : null}
+          </div>
         </>
       ) : (
         <div className="flex-1" />
       )}
+
+      <div className="px-2 pb-1">
+        <NavRow to="/settings/profile" icon={<SettingsIcon />}>
+          Settings
+        </NavRow>
+      </div>
 
       <RelayStatusBadge snapshot={snapshot} info={info} />
     </nav>
   )
 }
 
-function treeItemClass({ isActive }: { isActive: boolean }): string {
-  const shared = 'flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-sm'
-  return isActive
-    ? `${shared} bg-accent-bg font-medium text-accent-fg`
-    : `${shared} text-fg-muted hover:bg-surface-2`
-}
-
 /**
- * Marks every row as a page. Decorative — the title already says which one, so
- * it is hidden from assistive technology. It inherits the row's colour instead
- * of fixing its own, so on the active row it follows into the accent colour
- * rather than sitting there grey.
- */
-function PageIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-      className="size-3.5 shrink-0 opacity-70"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-    >
-      <rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2.5" />
-      <path d="M5.75 6.5h4.5M5.75 9.5h3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-/**
- * One level of the page tree. A branch gets a triangle to fold it, a leaf a dot
+ * One level of the page tree. A branch gets a chevron to fold it, a leaf a dot
  * in the same slot — so titles stay on one vertical line instead of stepping in
  * and out depending on whether a sibling has children.
  */
@@ -455,10 +449,10 @@ function TreeBranch({
                 dnd.enabled ? 'cursor-grab select-none active:cursor-grabbing' : ''
               } ${
                 sameTarget(dnd.over, { kind: 'page', id: node.slug })
-                  ? 'ring-1 ring-accent-fg'
+                  ? 'ring-2 ring-accent ring-inset'
                   : ''
-              } ${dnd.dragging === node.slug || dnd.busySlug === node.slug ? 'opacity-50' : ''}`}
-              style={{ paddingLeft: `${node.depth * 12}px` }}
+              } ${dnd.dragging === node.slug || dnd.busySlug === node.slug ? 'opacity-40' : ''}`}
+              style={{ paddingLeft: `${node.depth * 14}px` }}
             >
               {hasChildren ? (
                 <button
@@ -467,13 +461,17 @@ function TreeBranch({
                   aria-expanded={open}
                   aria-label={`${open ? 'Collapse' : 'Expand'} ${node.title}`}
                   title={`${open ? 'Collapse' : 'Expand'} ${node.title}`}
-                  className="w-4 shrink-0 rounded text-xs text-fg-subtle hover:text-fg"
+                  className="flex size-5 shrink-0 items-center justify-center rounded text-fg-subtle hover:bg-surface-selected hover:text-fg"
                 >
-                  {open ? '▾' : '▸'}
+                  {open ? (
+                    <ChevronDownIcon className="size-3.5" />
+                  ) : (
+                    <ChevronRightIcon className="size-3.5" />
+                  )}
                 </button>
               ) : (
-                <span className="flex w-4 shrink-0 justify-center" aria-hidden="true">
-                  <span className="size-1 rounded-full bg-fg-subtle" />
+                <span className="flex size-5 shrink-0 justify-center" aria-hidden="true">
+                  <span className="mt-[11px] size-1 rounded-full bg-line-strong" />
                 </span>
               )}
               {/* A link is draggable by default and would become the drag
@@ -483,16 +481,23 @@ function TreeBranch({
               <NavLink
                 to={`${base}/${node.slug}`}
                 draggable={false}
-                className={treeItemClass}
+                className={({ isActive }) =>
+                  `flex h-7.5 min-w-0 flex-1 items-center gap-2 rounded-md pr-2 pl-1 text-sm ${
+                    isActive
+                      ? 'bg-surface-selected font-medium text-fg'
+                      : 'text-fg-muted hover:bg-surface-hover hover:text-fg'
+                  }`
+                }
               >
-                <PageIcon />
+                <PageIcon className="size-4 opacity-60" />
                 <span className="truncate">{node.title}</span>
                 {/* A forked page has more than one current version. Amber and
                     after the title, so it cannot be read as the leaf dot. */}
                 {node.leaves.length > 1 ? (
-                  <span className="text-warning" title="several open versions">
-                    ●
-                  </span>
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-warning"
+                    title="several open versions"
+                  />
                 ) : null}
               </NavLink>
             </div>
@@ -533,7 +538,7 @@ function TreeBranch({
 
 /**
  * The gap between two rows: dropping here makes the page a **sibling** at this
- * position, not a subpage. Only 7px tall and drawn as a line, like every tree
+ * position, not a subpage. Only 9px tall and drawn as a line, like every tree
  * that offers this — the row itself stays the target for "file it under".
  */
 function GapZone({
@@ -589,12 +594,12 @@ function GapZone({
       {/* Indented to the level it would file the page into, so "sibling here"
           is distinguishable from "subpage of the row above" — but only by that
           level's own indent: the line spans the whole row it belongs to,
-          including the slot the triangle and the leaf dot sit in. */}
+          including the slot the chevron and the leaf dot sit in. */}
       <div
         className={`h-full ${active ? 'flex items-center' : ''}`}
-        style={{ marginLeft: `${depth * 12}px` }}
+        style={{ marginLeft: `${depth * 14}px` }}
       >
-        {active ? <span className="h-0.5 w-full rounded-full bg-accent-fg" /> : null}
+        {active ? <span className="h-0.5 w-full rounded-full bg-accent" /> : null}
       </div>
     </div>
   )

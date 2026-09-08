@@ -1,15 +1,9 @@
 import { useSession } from '../session/session'
+import { Button } from './controls'
 import type { ReactNode } from 'react'
 
+/** `inline` is the odd one out: a word inside a sentence, not a control. */
 type Variant = 'primary' | 'quiet' | 'inline'
-
-const STYLES: Record<Variant, string> = {
-  primary:
-    'rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-60',
-  quiet:
-    'rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong disabled:opacity-60',
-  inline: 'text-accent-fg underline disabled:opacity-60',
-}
 
 /**
  * Signing in happens where the click happens — there is no sign-in page.
@@ -29,16 +23,30 @@ export function SignInButton({
 }) {
   const { session, login } = useSession()
   const busy = session.status === 'signing-in'
+  const label = busy ? 'signing in…' : children
+
+  if (variant === 'inline') {
+    return (
+      <button
+        type="button"
+        onClick={() => void login()}
+        disabled={busy}
+        title={title}
+        className="text-accent-fg underline underline-offset-2 disabled:opacity-60"
+      >
+        {label}
+      </button>
+    )
+  }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant={variant === 'primary' ? 'primary' : 'default'}
       onClick={() => void login()}
       disabled={busy}
       title={title}
-      className={STYLES[variant]}
     >
-      {busy ? 'signing in…' : children}
-    </button>
+      {label}
+    </Button>
   )
 }

@@ -51,14 +51,21 @@ export function DiffView({ before, after }: { before: string; after: string }) {
   const rows = collapseContext(lines.map((line, index) => ({ ...line, index })))
 
   if (added === 0 && removed === 0) {
-    return <p className="text-xs text-fg-subtle">No difference in the text.</p>
+    return <p className="text-sm text-fg-subtle">No difference in the text.</p>
   }
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-fg-subtle">
-        <span className="text-success">+{added}</span>{' '}
-        <span className="text-danger">−{removed}</span> lines
+      {/* The two counts as pills rather than a sentence: this line is read at
+          a glance before the table below it is read at all. */}
+      <div className="flex items-center gap-1.5 text-xs">
+        <span className="rounded-full bg-diff-add px-2 py-0.5 font-medium text-success">
+          +{added}
+        </span>
+        <span className="rounded-full bg-diff-del px-2 py-0.5 font-medium text-danger">
+          −{removed}
+        </span>
+        <span className="text-fg-subtle">lines</span>
       </div>
       <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full border-collapse font-mono text-xs">
@@ -66,19 +73,19 @@ export function DiffView({ before, after }: { before: string; after: string }) {
             {rows.map((row, index) =>
               row.type === 'gap' ? (
                 <tr key={`gap-${index}`}>
-                  <td colSpan={3} className="bg-surface-1 px-2 py-1 text-fg-subtle">
+                  <td colSpan={3} className="bg-surface-1 px-3 py-1.5 text-fg-subtle">
                     … {row.hidden} unchanged line{row.hidden === 1 ? '' : 's'}
                   </td>
                 </tr>
               ) : (
                 <tr key={`${row.type}-${index}`} className={LINE_STYLE[row.type]}>
-                  <td className="w-10 border-r border-line px-2 py-0.5 text-right text-fg-subtle select-none">
+                  <td className="w-10 px-2 py-0.5 text-right text-fg-subtle select-none">
                     {row.oldNumber ?? ''}
                   </td>
                   <td className="w-10 border-r border-line px-2 py-0.5 text-right text-fg-subtle select-none">
                     {row.newNumber ?? ''}
                   </td>
-                  <td className="px-2 py-0.5 whitespace-pre-wrap text-fg">
+                  <td className="px-3 py-0.5 whitespace-pre-wrap text-fg">
                     <span className="mr-1 text-fg-subtle select-none">{PREFIX[row.type]}</span>
                     <LineText text={row.text} parts={wordDiffs.get(row.index)} />
                   </td>

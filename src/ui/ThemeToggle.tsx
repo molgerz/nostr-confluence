@@ -1,38 +1,29 @@
 import { useTheme } from '../theme/theme'
 import type { ThemeMode } from '../theme/theme'
+import { Segmented } from './controls'
+import { MonitorIcon, MoonIcon, SunIcon } from './icons'
 
-const OPTIONS: { mode: ThemeMode; label: string }[] = [
-  { mode: 'system', label: 'System' },
-  { mode: 'light', label: 'Light' },
-  { mode: 'dark', label: 'Dark' },
+const OPTIONS: { value: ThemeMode; label: string; icon: React.ReactNode }[] = [
+  { value: 'system', label: 'System', icon: <MonitorIcon className="size-4" /> },
+  { value: 'light', label: 'Light', icon: <SunIcon className="size-4" /> },
+  { value: 'dark', label: 'Dark', icon: <MoonIcon className="size-4" /> },
 ]
 
+/**
+ * Three states, one track: system / light / dark. Icons rather than words —
+ * the switch sits in the narrowest strip of the layout, and "System / Light /
+ * Dark" spelled out was the widest thing in it. Each name stays as the tooltip
+ * and as the accessible name. docs/12-theming.md
+ */
 export function ThemeToggle() {
   const { mode, setMode } = useTheme()
   return (
-    <div
-      role="group"
-      aria-label="Colour mode"
-      className="flex items-center gap-0.5 rounded-md border border-line bg-surface-2 p-0.5"
-    >
-      {OPTIONS.map((option) => {
-        const active = mode === option.mode
-        return (
-          <button
-            key={option.mode}
-            type="button"
-            aria-pressed={active}
-            onClick={() => setMode(option.mode)}
-            className={
-              active
-                ? 'rounded-sm bg-accent-bg px-2 py-1 text-xs font-medium text-accent-fg'
-                : 'rounded-sm px-2 py-1 text-xs text-fg-muted hover:bg-surface-1'
-            }
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
+    <Segmented
+      compact
+      label="Colour mode"
+      value={mode}
+      options={OPTIONS}
+      onChange={setMode}
+    />
   )
 }

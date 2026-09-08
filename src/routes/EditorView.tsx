@@ -4,20 +4,31 @@ import { PageEditor } from '../ui/PageEditor'
 import { findCommonAncestor } from '../domain/pages'
 import { mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import { PageIcon } from '../ui/icons'
 
 export function EditorView() {
   const { group, space, base, slug } = useSpaceRoute()
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
-  if (!group || !base || !slug) return <p className="text-sm text-danger">Invalid address.</p>
+  if (!group || !base || !slug) {
+    return (
+      <PageFrame>
+        <p className="text-sm text-danger">Invalid address.</p>
+      </PageFrame>
+    )
+  }
 
+  const spaceName = space.metadata?.name ?? group.id
   const page = space.pages.find((entry) => entry.slug === slug)
   if (!page) {
     return (
-      <p className="text-sm text-fg-muted">
-        {space.loading ? 'loading…' : 'This page does not exist yet.'}
-      </p>
+      <PageFrame crumbs={[{ label: spaceName, to: base }, { label: slug }]}>
+        <p className="text-base text-fg-muted">
+          {space.loading ? 'loading…' : 'This page does not exist yet.'}
+        </p>
+      </PageFrame>
     )
   }
 
@@ -26,18 +37,35 @@ export function EditorView() {
   const mergeRequested = params.get('merge') === '1'
   const mergeMode = mergeRequested && page.leaves.length > 1
 
+  const frame = (children: React.ReactNode) => (
+    <PageFrame
+      width="wide"
+      crumbs={[
+        { label: spaceName, to: base },
+        {
+          label: page.title,
+          to: `${base}/${page.slug}`,
+          icon: <PageIcon className="size-3.5 text-fg-subtle" />,
+        },
+        { label: mergeMode ? 'Merge' : 'Edit' },
+      ]}
+    >
+      {children}
+    </PageFrame>
+  )
+
   // The editor freezes its initial content on mount, so wait here for the
   // load to finish. Two leaves alone are not enough: while the common base is
   // still in flight the merge would find no ancestor and report everything as
   // a conflict.
   if (mergeRequested && space.loading) {
-    return <p className="text-sm text-fg-muted">loading versions…</p>
+    return frame(<p className="text-base text-fg-muted">loading versions…</p>)
   }
   if (mergeRequested && !mergeMode) {
-    return (
-      <p className="text-sm text-fg-muted">
+    return frame(
+      <p className="text-base text-fg-muted">
         This page has only one version left — there is nothing to merge.
-      </p>
+      </p>,
     )
   }
   let mergeContent: string | undefined
@@ -65,16 +93,23 @@ export function EditorView() {
             'Please assemble the text by hand.'
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">{mergeMode ? 'merging' : 'editing'}</div>
-      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
-      {mergeMode ? null : (
-        <p className="text-xs text-fg-subtle">
-          Saving creates a new revision with predecessor {page.head.id.slice(0, 8)} — nothing
-          is overwritten.
-        </p>
-      )}
+  return frame(
+    <>
+      <PageTitle
+        kicker={mergeMode ? 'Merging versions' : 'Editing'}
+        below={
+          mergeMode ? null : (
+            <p className="text-sm text-fg-subtle">
+              Saving creates a new revision with predecessor{' '}
+              <span className="font-mono">{page.head.id.slice(0, 8)}</span> — nothing is
+              overwritten.
+            </p>
+          )
+        }
+      >
+        {page.title}
+      </PageTitle>
+
       <PageEditor
         // Rebuild when switching between editing and merging: the initial
         // content is only read on mount.
@@ -89,6 +124,6 @@ export function EditorView() {
         onSaved={(saved) => navigate(`${base}/${saved}`)}
         onCancel={() => navigate(`${base}/${page.slug}`)}
       />
-    </div>
+    </>,
   )
 }

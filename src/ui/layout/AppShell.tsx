@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Outlet, useLocation, useParams } from 'react-router-dom'
 import { Topbar } from './Topbar'
 import { SessionNotice } from '../SessionNotice'
@@ -17,6 +17,16 @@ export function AppShell() {
   )
 }
 
+const SIDEBAR_KEY = 'nc-sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function Shell() {
   const params = useParams<{ group?: string }>()
   const location = useLocation()
@@ -25,51 +35,79 @@ function Shell() {
   const { snapshot, info } = useRelay(relayUrl)
   const space = useSpace(relayUrl, group?.id ?? '')
   const tocMarkdown = useTocMarkdown()
-  const [menuOpen, setMenuOpen] = useState(false)
 
-  // On a phone the bar should not stay open after navigating
-  useEffect(() => setMenuOpen(false), [location.pathname])
+  // Two separate states for one button. On a wide screen the bar is a column
+  // that folds away and stays folded across reloads; on a phone it is an
+  // overlay that has to close again after every navigation. Storing one
+  // "open" flag for both would either remember an overlay as open on the next
+  // page or forget a folded column on the next reload.
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const [overlay, setOverlay] = useState(false)
+
+  useEffect(() => setOverlay(false), [location.pathname])
+
+  const toggleColumn = useCallback(() => {
+    setCollapsed((value) => {
+      try {
+        localStorage.setItem(SIDEBAR_KEY, value ? '0' : '1')
+      } catch {
+        /* then it only applies to this session */
+      }
+      return !value
+    })
+  }, [])
 
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
 
   return (
-    <div className="flex h-full flex-col bg-surface-0">
-      <Topbar groupBase={base} onToggleMenu={() => setMenuOpen((open) => !open)} />
+    <div className="flex h-full flex-col bg-surface-1">
+      <Topbar
+        groupBase={base}
+        snapshot={snapshot}
+        info={info}
+        columnHidden={collapsed}
+        onToggleColumn={toggleColumn}
+        overlayOpen={overlay}
+        onToggleOverlay={() => setOverlay((open) => !open)}
+      />
       <SessionNotice />
 
       <div className="relative flex min-h-0 flex-1">
-        <div className="hidden md:flex">
-          <Sidebar group={group} space={space} snapshot={snapshot} info={info} />
-        </div>
+        {/* Folded away entirely rather than down to a 40px rail of icons. The
+            rail had one thing in it that could not be reached elsewhere, the
+            relay status — that now sits in the top bar, where it is visible
+            whether the bar is open or not. A strip holding a single dot is
+            not a narrow sidebar, it is a margin.
+            docs/06-ui-information-architecture.md */}
+        {collapsed ? null : (
+          <div className="hidden md:flex">
+            <Sidebar group={group} space={space} snapshot={snapshot} info={info} />
+          </div>
+        )}
 
-        {menuOpen ? (
+        {overlay ? (
           <>
             <button
               type="button"
               aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
+              onClick={() => setOverlay(false)}
               className="fixed inset-0 z-20 bg-black/40 md:hidden"
             />
             <div className="fixed inset-y-0 left-0 z-30 flex md:hidden">
-              <Sidebar
-                group={group}
-                space={space}
-                snapshot={snapshot}
-                info={info}
-                alwaysExpanded
-              />
+              <Sidebar group={group} space={space} snapshot={snapshot} info={info} />
             </div>
           </>
         ) : null}
 
-        <main className="min-w-0 flex-1 overflow-auto bg-surface-2">
-          <div className="mx-auto flex w-full max-w-5xl gap-6 px-4 py-6 sm:px-6">
-            <div className="min-w-0 flex-1">
-              <Outlet />
-            </div>
-            <TableOfContents markdown={tocMarkdown} />
-          </div>
+        {/* The canvas. Rounded and inset on the left where it meets the bar, so
+            the document sits *on* the chrome instead of being walled off from
+            it by a hairline — the one detail that turns three panels into one
+            surface. */}
+        <main className="min-w-0 flex-1 overflow-auto scroll-slim border-t border-l border-line bg-surface-2 md:rounded-tl-xl">
+          <Outlet />
         </main>
+
+        <TableOfContents markdown={tocMarkdown} />
       </div>
     </div>
   )

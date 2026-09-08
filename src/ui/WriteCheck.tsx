@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { classifyRejection, client } from '../nostr/client'
 import { KINDS, TAGS } from '../nostr/kinds'
 import { useSession } from '../session/session'
+import { Button } from './controls'
 
 type Result = { ok: boolean; text: string }
 
@@ -79,16 +80,11 @@ export function WriteCheck({ relayUrl, groupId }: { relayUrl: string; groupId: s
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={() => void run()}
-        disabled={busy}
-        className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-60"
-      >
+      <Button onClick={() => void run()} disabled={busy}>
         {busy ? 'checking…' : 'Check write access'}
-      </button>
+      </Button>
       {result ? (
-        <p className={`text-xs ${result.ok ? 'text-success' : 'text-danger'}`}>{result.text}</p>
+        <p className={`text-sm ${result.ok ? 'text-success' : 'text-danger'}`}>{result.text}</p>
       ) : null}
     </div>
   )

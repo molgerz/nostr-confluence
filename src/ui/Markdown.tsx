@@ -44,15 +44,16 @@ type Scale = {
 
 const PAGE: Scale = {
   measure: 'max-w-[70ch]',
-  block: 'my-4 text-base leading-7 text-fg',
-  h1: 'mt-8 mb-3 text-2xl font-semibold tracking-tight text-fg',
-  h2: 'mt-8 mb-2 text-xl font-semibold tracking-tight text-fg',
-  h3: 'mt-6 mb-2 text-lg font-medium text-fg',
-  h4: 'mt-6 mb-1 text-base font-semibold text-fg',
-  h5: 'mt-4 mb-1 text-sm font-semibold uppercase tracking-wide text-fg-muted',
-  list: 'my-4 space-y-1.5 pl-6 text-base leading-7 text-fg',
+  block: 'my-[0.9em] text-[17px] leading-[1.75] text-fg',
+  h1: 'mt-10 mb-3 text-[26px] font-semibold tracking-[-0.02em] text-fg',
+  h2: 'mt-9 mb-2.5 text-[21px] font-semibold tracking-[-0.015em] text-fg',
+  h3: 'mt-7 mb-2 text-[18px] font-semibold text-fg',
+  h4: 'mt-6 mb-1.5 text-[17px] font-semibold text-fg',
+  h5: 'mt-5 mb-1 text-sm font-semibold uppercase tracking-wide text-fg-muted',
+  list: 'my-[0.9em] space-y-1.5 pl-6 text-[17px] leading-[1.75] text-fg',
   code: 'text-sm',
-  quote: 'my-4 border-l-2 border-line-strong pl-4 text-base leading-7 text-fg-muted',
+  quote:
+    'my-5 border-l-[3px] border-line-strong pl-4 text-[17px] leading-[1.75] text-fg-muted',
 }
 
 const COMPACT: Scale = {
@@ -86,7 +87,7 @@ function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: st
         alt={alt ?? ''}
         title={title}
         loading="lazy"
-        className="my-4 max-w-full rounded-lg border border-line"
+        className="my-6 max-w-full rounded-lg border border-line"
       />
     )
   }
@@ -102,7 +103,7 @@ function SafeImage({ src, alt, title }: { src?: string; alt?: string; title?: st
     <button
       type="button"
       onClick={() => setAllowed(true)}
-      className="my-4 block rounded-lg border border-dashed border-line px-3 py-2 text-left text-xs text-fg-muted hover:border-line-strong"
+      className="my-6 block rounded-lg border border-dashed border-line px-3.5 py-2.5 text-left text-xs text-fg-muted hover:border-line-strong"
     >
       Load image from {host}
       {alt ? <span className="block text-fg-subtle">{alt}</span> : null}
@@ -243,7 +244,7 @@ export function Markdown({
           del: ({ node: _node, className, ...props }) => (
             <del className={cx('text-fg-subtle', className)} {...props} />
           ),
-          hr: () => <hr className={`my-8 border-0 border-t border-line ${s.measure}`} />,
+          hr: () => <hr className={`my-10 border-0 border-t border-line ${s.measure}`} />,
           ul: ({ node: _node, className, ...props }) => (
             <ul className={cx('list-disc', s.list, s.measure, className)} {...props} />
           ),
@@ -300,7 +301,7 @@ export function Markdown({
           pre: ({ node: _node, className, ...props }) => (
             <pre
               className={cx(
-                'my-4 overflow-x-auto rounded-lg border border-code-line bg-code-bg p-3 font-mono',
+                'my-6 overflow-x-auto rounded-lg border border-code-line bg-code-bg p-4 font-mono leading-relaxed',
                 s.code,
                 '[&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit',
                 className,
@@ -317,21 +318,30 @@ export function Markdown({
           // A wide table may exceed the measure — but then it scrolls on its
           // own instead of stretching the page.
           table: ({ node: _node, className, ...props }) => (
-            <div className="my-4 overflow-x-auto">
-              <table className={cx('w-full border-collapse text-sm', className)} {...props} />
+            <div className="my-6 overflow-x-auto rounded-lg border border-line">
+              <table
+                className={cx('w-full border-collapse text-sm', className)}
+                {...props}
+              />
             </div>
           ),
+          // Rules between rows only. Vertical ones as well turn a table in a
+          // document into a spreadsheet, and the columns are already separated
+          // by the space between them.
           th: ({ node: _node, className, ...props }) => (
             <th
               className={cx(
-                'border border-line bg-surface-1 px-2 py-1 text-left font-medium text-fg',
+                'border-b border-line bg-surface-1 px-3 py-2 text-left font-semibold text-fg',
                 className,
               )}
               {...props}
             />
           ),
           td: ({ node: _node, className, ...props }) => (
-            <td className={cx('border border-line px-2 py-1 text-fg-muted', className)} {...props} />
+            <td
+              className={cx('border-b border-line px-3 py-2 text-fg-muted', className)}
+              {...props}
+            />
           ),
         }}
       >

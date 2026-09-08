@@ -1,21 +1,36 @@
-import { Link } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { blame } from '../domain/blame'
 import { shortNpub, toNpub } from '../nostr/profile'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import { Card, IconButtonLink } from '../ui/controls'
+import { BookIcon, HistoryIcon, PageIcon } from '../ui/icons'
 
 /**
  * Who wrote which line. The attribution is computed from the revision chain,
- * so every line carries an npub.
+ * so every line carries an npub — this is one of the screens somebody opens to
+ * decide whether to trust a change, and there the key belongs next to the name.
+ * docs/06-ui-information-architecture.md
  */
 export function BlameView() {
   const { group, space, base, slug } = useSpaceRoute()
 
-  if (!group || !base || !slug) return <p className="text-sm text-danger">Invalid address.</p>
+  if (!group || !base || !slug) {
+    return (
+      <PageFrame>
+        <p className="text-sm text-danger">Invalid address.</p>
+      </PageFrame>
+    )
+  }
 
+  const spaceName = space.metadata?.name ?? group.id
   const page = space.pages.find((entry) => entry.slug === slug)
   if (!page) {
     return (
-      <p className="text-sm text-fg-muted">{space.loading ? 'loading…' : 'Page not found.'}</p>
+      <PageFrame crumbs={[{ label: spaceName, to: base }, { label: 'Line origin' }]}>
+        <p className="text-base text-fg-muted">
+          {space.loading ? 'loading…' : 'Page not found.'}
+        </p>
+      </PageFrame>
     )
   }
 
@@ -25,19 +40,41 @@ export function BlameView() {
   let next = 0
 
   return (
-    <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">Zeilenherkunft</div>
-      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
-      <div className="flex gap-3 text-xs">
-        <Link to={`${base}/${page.slug}`} className="text-accent-fg underline">
-          back to the page
-        </Link>
-        <Link to={`${base}/${page.slug}/history`} className="text-accent-fg underline">
-          Historie
-        </Link>
-      </div>
+    <PageFrame
+      width="wide"
+      crumbs={[
+        { label: spaceName, to: base },
+        {
+          label: page.title,
+          to: `${base}/${page.slug}`,
+          icon: <PageIcon className="size-3.5 text-fg-subtle" />,
+        },
+        { label: 'Line origin' },
+      ]}
+      actions={
+        <>
+          <IconButtonLink to={`${base}/${page.slug}`} label="Back to the page">
+            <BookIcon className="size-4.5" />
+          </IconButtonLink>
+          <IconButtonLink to={`${base}/${page.slug}/history`} label="History">
+            <HistoryIcon className="size-4.5" />
+          </IconButtonLink>
+        </>
+      }
+    >
+      <PageTitle
+        kicker="Line origin"
+        below={
+          <p className="text-sm text-fg-subtle">
+            {lines.length} line{lines.length === 1 ? '' : 's'}, each attributed to the revision
+            that last touched it
+          </p>
+        }
+      >
+        {page.title}
+      </PageTitle>
 
-      <div className="overflow-x-auto rounded-lg border border-line">
+      <Card className="overflow-x-auto">
         <table className="w-full border-collapse font-mono text-xs">
           <tbody>
             {lines.map((line, index) => {
@@ -47,25 +84,25 @@ export function BlameView() {
                 next += 1
               }
               return (
-                <tr key={index} className="align-top">
+                <tr key={index} className="align-top hover:bg-surface-hover">
                   <td
-                    className={`w-32 border-r border-line px-2 py-0.5 whitespace-nowrap ${colorOf.get(line.revision.author)}`}
+                    className={`w-32 px-3 py-1 whitespace-nowrap ${colorOf.get(line.revision.author)}`}
                     title={`${npub} · ${new Date(line.revision.createdAt * 1000).toLocaleString()}`}
                   >
                     {shortNpub(npub)}
                   </td>
-                  <td className="w-10 border-r border-line px-2 py-0.5 text-right text-fg-subtle select-none">
+                  <td className="w-10 border-r border-line px-2 py-1 text-right text-fg-subtle select-none">
                     {index + 1}
                   </td>
-                  <td className="px-2 py-0.5 whitespace-pre-wrap text-fg">
-                    {line.text.length === 0 ? ' ' : line.text}
+                  <td className="px-3 py-1 whitespace-pre-wrap text-fg">
+                    {line.text.length === 0 ? ' ' : line.text}
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
-      </div>
-    </div>
+      </Card>
+    </PageFrame>
   )
 }

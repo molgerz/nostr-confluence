@@ -12,6 +12,15 @@ import {
   publishProfile,
 } from '../nostr/publish-profile'
 import type { ProfileDraft, RelayOutcome } from '../nostr/publish-profile'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import {
+  Button,
+  Callout,
+  Card,
+  INPUT,
+  SectionLabel,
+  TEXTAREA,
+} from '../ui/controls'
 
 const EMPTY: ProfileDraft = { name: '', about: '', picture: '' }
 
@@ -104,51 +113,64 @@ export function ProfileSettings() {
 
   if (session.status !== 'signed-in') {
     return (
-      <div className="space-y-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-fg">Profile</h1>
-        <p className="text-sm text-fg-muted">
-          A profile belongs to an npub, so it can only be edited while signed in.
-        </p>
+      <PageFrame crumbs={[{ label: 'Profile' }]}>
+        <PageTitle
+          below={
+            <p className="text-base text-fg-muted">
+              A profile belongs to an npub, so it can only be edited while signed in.
+            </p>
+          }
+        >
+          Profile
+        </PageTitle>
         <SignInButton>Sign in with Nostr</SignInButton>
-      </div>
+      </PageFrame>
     )
   }
 
   const noRelay = writeRelays.length === 0
 
   return (
-    <div className="max-w-2xl space-y-5">
-      <div className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight text-fg">Profile</h1>
-        <p className="text-sm text-fg-muted">
-          Your <code className="font-mono text-xs">kind 0</code> event — the name and picture
-          other people see in bylines here and in every other Nostr client.
-        </p>
-      </div>
+    <PageFrame crumbs={[{ label: 'Settings' }, { label: 'Profile' }]}>
+      <PageTitle
+        below={
+          <p className="max-w-[62ch] text-base text-fg-muted">
+            Your <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-sm">kind 0</code>{' '}
+            event — the name and picture other people see in bylines here and in every other
+            Nostr client.
+          </p>
+        }
+      >
+        Profile
+      </PageTitle>
 
-      <div className="rounded-xl border border-line bg-surface-1 p-4">
+      {/* The npub first and set apart: it is the one thing on this page that
+          cannot be edited, and everything below is a claim attached to it. */}
+      <Card className="mb-8 p-4">
         <div className="text-xs text-fg-subtle">This is the identity. It cannot be changed.</div>
         <div className="mt-1 font-mono text-xs break-all text-fg-muted">{session.npub}</div>
-      </div>
+      </Card>
 
       {noRelay ? (
-        <div className="space-y-2 rounded-xl border border-warning bg-warning-bg p-4">
-          <div className="text-sm font-medium text-fg">No relay for profiles configured</div>
-          <p className="text-sm text-fg-muted">
-            A NIP-29 relay rejects <code className="font-mono text-xs">kind 0</code>: it demands
-            an <code className="font-mono text-xs">h</code> tag on every event. The profile
+        <div className="mb-8">
+          <Callout tone="warning" title="No relay for profiles configured">
+            A NIP-29 relay rejects{' '}
+            <code className="font-mono text-xs">kind 0</code>: it demands an{' '}
+            <code className="font-mono text-xs">h</code> tag on every event. The profile
             therefore needs a relay of its own — set{' '}
             <code className="font-mono text-xs">VITE_PROFILE_RELAYS</code> and reload. Locally{' '}
             <code className="font-mono text-xs">nak serve --port 10577</code> does the job.
-          </p>
+          </Callout>
         </div>
       ) : null}
 
-      {loading ? <p className="text-sm text-fg-subtle">Reading the current profile…</p> : null}
+      {loading ? (
+        <p className="mb-4 text-sm text-fg-subtle">Reading the current profile…</p>
+      ) : null}
 
-      <div className="space-y-4">
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-fg">Name</span>
+      <div className="space-y-5">
+        <label className="block space-y-1.5">
+          <span className="block text-sm font-medium text-fg">Name</span>
           <span className="block text-xs text-fg-subtle">
             Freely chosen and not unique — the app always shows it next to the npub.
           </span>
@@ -156,113 +178,123 @@ export function ProfileSettings() {
             value={draft.name}
             onChange={(event) => field('name')(event.target.value)}
             placeholder="how you want to be called"
-            className="w-full rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-fg-subtle"
+            className={INPUT}
           />
         </label>
 
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-fg">About</span>
+        <label className="block space-y-1.5">
+          <span className="block text-sm font-medium text-fg">About</span>
           <span className="block text-xs text-fg-subtle">A short bio. Plain text.</span>
           <textarea
             value={draft.about}
             onChange={(event) => field('about')(event.target.value)}
             rows={4}
             placeholder="a few sentences about you"
-            className="w-full resize-y rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-fg-subtle"
+            className={`${TEXTAREA} resize-y`}
           />
         </label>
 
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-fg">Picture</span>
+        <label className="block space-y-1.5">
+          <span className="block text-sm font-medium text-fg">Picture</span>
           <span className="block text-xs text-fg-subtle">
             A URL. The image is loaded from wherever it lies — pick a host you trust.
           </span>
-          <div className="flex items-start gap-3">
+          <span className="flex items-center gap-3">
             <input
               value={draft.picture}
               onChange={(event) => field('picture')(event.target.value)}
               placeholder="https://…"
-              className="min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-xs text-fg placeholder:text-fg-subtle"
+              className={`${INPUT} min-w-0 flex-1 font-mono text-xs`}
             />
             <PicturePreview url={draft.picture} />
-          </div>
+          </span>
         </label>
       </div>
 
       {kept.length > 0 ? (
-        <p className="text-xs text-fg-subtle">
+        <p className="mt-4 text-xs text-fg-subtle">
           Kept unchanged, because this editor only writes the three NIP-01 fields:{' '}
           <span className="font-mono">{kept.join(', ')}</span>
         </p>
       ) : null}
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
+      <div className="mt-5 flex items-center gap-3">
+        <Button
+          variant="primary"
           onClick={() => void save()}
           disabled={saving || loading || noRelay}
-          className="rounded-md bg-accent-bg px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
         >
           {saving ? 'publishing…' : 'Save profile'}
-        </button>
+        </Button>
         <span className="text-xs text-fg-subtle">
-          {noRelay
-            ? 'nowhere to publish to'
-            : `publishes to ${writeRelays.join(', ')}`}
+          {noRelay ? 'nowhere to publish to' : `publishes to ${writeRelays.join(', ')}`}
         </span>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-danger bg-danger-bg p-3 text-sm text-fg">
-          {error}
+        <div className="mt-4">
+          <Callout tone="danger" title="Not published">
+            {error}
+          </Callout>
         </div>
       ) : null}
 
-      {saved ? <PublishReport saved={saved} /> : null}
+      {saved ? (
+        <div className="mt-4">
+          <PublishReport saved={saved} />
+        </div>
+      ) : null}
 
-      <div className="space-y-2 border-t border-line pt-5">
-        <div className="text-sm font-medium text-fg">Connection</div>
-        <p className="text-sm text-fg-muted">
+      <section className="mt-10 border-t border-line pt-6">
+        <SectionLabel className="mb-2">Connection</SectionLabel>
+        <p className="max-w-[62ch] text-sm text-fg-muted">
           What this session is actually talking to. Relevant when a save fails: without a relay
           nothing can be published, and without AUTH a relay may answer with nothing at all.
         </p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-          <dt className="text-fg-subtle">Signer</dt>
-          <dd className="text-fg-muted">{session.signer.kind}</dd>
-          <dt className="text-fg-subtle">Space relay</dt>
-          <dd className="text-fg-muted">
-            {info?.name ?? snapshot.url} — {snapshot.connection}
-          </dd>
-          <dt className="text-fg-subtle">NIP-42</dt>
-          <dd className="text-fg-muted">
-            {snapshot.auth}
-            {snapshot.authMessage ? ` (${snapshot.authMessage})` : ''}
-          </dd>
-          <dt className="text-fg-subtle">Profile relays</dt>
-          <dd className="font-mono text-fg-muted">
-            {writeRelays.length > 0 ? writeRelays.join(', ') : 'none configured'}
-          </dd>
-        </dl>
-      </div>
+        <Card className="mt-3 p-4">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
+            <dt className="text-fg-subtle">Signer</dt>
+            <dd className="text-fg-muted">{session.signer.kind}</dd>
+            <dt className="text-fg-subtle">Space relay</dt>
+            <dd className="text-fg-muted">
+              {info?.name ?? snapshot.url} — {snapshot.connection}
+            </dd>
+            <dt className="text-fg-subtle">NIP-42</dt>
+            <dd className="text-fg-muted">
+              {snapshot.auth}
+              {snapshot.authMessage ? ` (${snapshot.authMessage})` : ''}
+            </dd>
+            <dt className="text-fg-subtle">Profile relays</dt>
+            <dd className="font-mono text-fg-muted">
+              {writeRelays.length > 0 ? writeRelays.join(', ') : 'none configured'}
+            </dd>
+          </dl>
+        </Card>
+      </section>
 
-      <div className="space-y-2 border-t border-line pt-5">
-        <div className="text-sm font-medium text-fg">Sign out</div>
-        <p className="text-sm text-fg-muted">
+      {/* Last on the page and nowhere near the account chip in the top bar —
+          the outermost corner of the layout should not put a destructive
+          action next to a navigation target.
+          docs/06-ui-information-architecture.md */}
+      <section className="mt-10 border-t border-line pt-6">
+        <SectionLabel className="mb-2">Sign out</SectionLabel>
+        <p className="max-w-[62ch] text-sm text-fg-muted">
           Only forgets which npub is signed in here. Nothing is deleted: the key stays in your
           extension, and everything you have published stays on the relay.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            logout()
-            navigate('/', { replace: true })
-          }}
-          className="rounded-md border border-line px-3 py-1.5 text-sm text-fg-muted hover:border-line-strong"
-        >
-          Sign out
-        </button>
-      </div>
-    </div>
+        <div className="mt-3">
+          <Button
+            variant="danger"
+            onClick={() => {
+              logout()
+              navigate('/', { replace: true })
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
+      </section>
+    </PageFrame>
   )
 }
 
@@ -306,10 +338,8 @@ function PicturePreview({ url }: { url: string }) {
  */
 function PublishReport({ saved }: { saved: Saved }) {
   return (
-    <div
-      className={`space-y-2 rounded-xl border p-3 ${saved.ok ? 'border-success bg-success-bg' : 'border-danger bg-danger-bg'}`}
-    >
-      <div className="text-sm font-medium text-fg">
+    <div className={`space-y-2 rounded-lg p-3.5 ${saved.ok ? 'bg-success-bg' : 'bg-danger-bg'}`}>
+      <div className={`text-sm font-semibold ${saved.ok ? 'text-success' : 'text-danger'}`}>
         {saved.ok ? 'Profile published' : 'No relay stored the profile'}
       </div>
       <ul className="space-y-1">

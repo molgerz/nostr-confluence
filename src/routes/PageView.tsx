@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { Markdown } from '../ui/Markdown'
 import { Byline } from '../ui/Byline'
@@ -7,6 +7,31 @@ import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from '../ui/SignInButton'
 import { Comments } from '../ui/Comments'
 import { useTocSource } from '../ui/layout/toc-context'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import type { Crumb } from '../ui/layout/PageFrame'
+import { ButtonLink, Callout, IconButtonLink, Segmented } from '../ui/controls'
+import { BlameIcon, BookIcon, HistoryIcon, PageIcon, PencilIcon, SubpageIcon } from '../ui/icons'
+import type { Page } from '../domain/pages'
+
+/**
+ * The trail from the space down to this page. Walked upwards from the page and
+ * reversed, with a guard against a cycle: `page-parent` comes off the relay
+ * from an arbitrary key, and two pages naming each other as parent would
+ * otherwise loop here forever.
+ */
+function ancestors(pages: Page[], page: Page): Page[] {
+  const chain: Page[] = []
+  const seen = new Set<string>([page.slug])
+  let cursor = page.parentSlug
+  while (cursor && !seen.has(cursor)) {
+    seen.add(cursor)
+    const parent = pages.find((entry) => entry.slug === cursor)
+    if (!parent) break
+    chain.unshift(parent)
+    cursor = parent.parentSlug
+  }
+  return chain
+}
 
 export function PageView() {
   const { group, space, base, slug } = useSpaceRoute()
@@ -19,111 +44,117 @@ export function PageView() {
   useTocSource(page?.head.content ?? '')
 
   if (!group || !base || !slug) {
-    return <p className="text-sm text-danger">Invalid address.</p>
-  }
-
-  if (!page) {
     return (
-      <div className="space-y-4">
-        <div className="text-xs text-fg-subtle">{space.loading ? 'loading…' : 'not found'}</div>
-        <h1 className="text-3xl font-semibold tracking-tight text-fg">{slug}</h1>
-        {space.loading ? null : (
-          <div className="space-y-3">
-            <p className="text-sm text-fg-muted">
-              There is no revision for this slug in this space yet.
-            </p>
-            <Link
-              to={`${base}/new?slug=${encodeURIComponent(slug)}`}
-              className="inline-block rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
-            >
-              Create this page
-            </Link>
-          </div>
-        )}
-      </div>
+      <PageFrame>
+        <p className="text-sm text-danger">Invalid address.</p>
+      </PageFrame>
     )
   }
 
-  const parent = page.parentSlug
-    ? space.pages.find((entry) => entry.slug === page.parentSlug)
-    : undefined
+  const spaceCrumb: Crumb = { label: space.metadata?.name ?? group.id, to: base }
+
+  if (!page) {
+    return (
+      <PageFrame crumbs={[spaceCrumb, { label: slug }]}>
+        <PageTitle kicker={space.loading ? 'loading…' : 'not found'}>{slug}</PageTitle>
+        {space.loading ? null : (
+          <div className="space-y-4">
+            <p className="text-base text-fg-muted">
+              There is no revision for this slug in this space yet.
+            </p>
+            <ButtonLink variant="primary" to={`${base}/new?slug=${encodeURIComponent(slug)}`}>
+              Create this page
+            </ButtonLink>
+          </div>
+        )}
+      </PageFrame>
+    )
+  }
+
   const forked = page.leaves.length > 1
+  const crumbs: Crumb[] = [
+    spaceCrumb,
+    ...ancestors(space.pages, page).map((parent) => ({
+      label: parent.title,
+      to: `${base}/${parent.slug}`,
+      icon: <PageIcon className="size-3.5 text-fg-subtle" />,
+    })),
+    { label: page.title, icon: <PageIcon className="size-3.5 text-fg-subtle" /> },
+  ]
+
+  /**
+   * The page's own actions, right-aligned in the frame's bar. Reading and
+   * editing are two states of the same page and sit in one switch; the three
+   * that open a *different* view are icons, because four words in a row read
+   * as a sentence and stop being buttons.
+   */
+  const actions = (
+    <>
+      {session.status === 'signed-in' ? (
+        <Segmented
+          label="Reading or editing"
+          value="read"
+          options={[
+            { value: 'read', label: 'Read', icon: <BookIcon className="size-3.5" /> },
+            { value: 'edit', label: 'Edit', icon: <PencilIcon className="size-3.5" /> },
+          ]}
+          // There is no state to keep: "edit" is a different route, and coming
+          // back from it puts the switch on "read" again by itself.
+          onChange={(next) => {
+            if (next === 'edit') navigate(`${base}/${page.slug}/edit`)
+          }}
+        />
+      ) : (
+        <SignInButton
+          variant="quiet"
+          title="Reading works without signing in, editing does not"
+        >
+          Sign in to edit
+        </SignInButton>
+      )}
+
+      <IconButtonLink
+        to={`${base}/${page.slug}/history`}
+        label={`History — ${page.revisions.length} revision${page.revisions.length === 1 ? '' : 's'}`}
+      >
+        <HistoryIcon className="size-4.5" />
+      </IconButtonLink>
+      <IconButtonLink to={`${base}/${page.slug}/blame`} label="Line origin">
+        <BlameIcon className="size-4.5" />
+      </IconButtonLink>
+      <IconButtonLink
+        to={`${base}/new?parent=${encodeURIComponent(page.slug)}`}
+        label="New subpage"
+      >
+        <SubpageIcon className="size-4.5" />
+      </IconButtonLink>
+    </>
+  )
 
   return (
-    <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">
-        {parent ? (
-          <>
-            <Link to={`${base}/${parent.slug}`} className="hover:underline">
-              {parent.title}
-            </Link>
-            {' / '}
-          </>
-        ) : null}
-        {page.title}
-      </div>
-
-      <h1 className="text-3xl font-semibold tracking-tight text-fg">{page.title}</h1>
-      <Byline revision={page.head} />
+    <PageFrame crumbs={crumbs} actions={actions}>
+      <PageTitle below={<Byline revision={page.head} />}>{page.title}</PageTitle>
 
       {forked ? (
-        <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs">
-          <div className="font-medium text-fg">
-            This page has {page.leaves.length} open versions
-          </div>
-          <p className="mt-1 text-fg-muted">
+        <div className="mb-6">
+          <Callout
+            tone="warning"
+            title={`This page has ${page.leaves.length} open versions`}
+            actions={
+              session.status === 'signed-in' ? (
+                <ButtonLink to={`${base}/${page.slug}/edit?merge=1`} size="sm">
+                  Merge versions
+                </ButtonLink>
+              ) : null
+            }
+          >
             Several people saved at the same time. The newest one is shown (
             {shortNpub(toNpub(page.head.author))}); all versions are in the history.
-          </p>
-          {session.status === 'signed-in' ? (
-            <Link
-              to={`${base}/${page.slug}/edit?merge=1`}
-              className="mt-2 inline-block rounded-md border border-warning px-2 py-1 font-medium text-fg-muted"
-            >
-              Merge versions
-            </Link>
-          ) : null}
+          </Callout>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        {session.status === 'signed-in' ? (
-          <Link
-            to={`${base}/${page.slug}/edit`}
-            className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg"
-          >
-            Edit
-          </Link>
-        ) : (
-          <SignInButton
-            variant="quiet"
-            title="Reading works without signing in, editing does not"
-          >
-            Sign in to edit
-          </SignInButton>
-        )}
-        <Link
-          to={`${base}/${page.slug}/history`}
-          className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
-        >
-          History ({page.revisions.length})
-        </Link>
-        <Link
-          to={`${base}/${page.slug}/blame`}
-          className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
-        >
-          Line origin
-        </Link>
-        <button
-          type="button"
-          onClick={() => navigate(`${base}/new?parent=${encodeURIComponent(page.slug)}`)}
-          className="rounded-md border border-line px-3 py-1.5 text-xs text-fg-muted hover:border-line-strong"
-        >
-          New subpage
-        </button>
-      </div>
-
-      <article className="border-t border-line pt-4">
+      <article>
         <Markdown>{page.head.content}</Markdown>
       </article>
 
@@ -137,6 +168,7 @@ export function PageView() {
           space.admins.some((admin) => admin.pubkey === session.pubkey)
         }
       />
-    </div>
+    </PageFrame>
   )
 }
+
