@@ -25,7 +25,6 @@
 | `9021` / `9022` | User | Join / leave request |
 | `9` / `11` / `12` | User | Group chat and threads (space discussion, phase 6) |
 | **`1818`** | User | **Page revision — the actual content** |
-| `30818` | User | Page head as a NIP-54 wiki article (interop mirror, optional) |
 | `1111` | User | Comment (NIP-22) on a page |
 | `5` / `9005` | User / admin | Deletion request, or moderated deletion |
 
@@ -79,8 +78,11 @@ What the tags mean:
 
 - **`h`** — group id. Mandatory in NIP-29; the relay uses this tag to check
   whether the author may write. This is our entire permission mechanism.
-- **`d`** — the page's normalised slug (`lowercase-with-hyphens`). Single-letter
-  tags are indexed by relays, so they can be filtered with `#d`.
+- **`d`** — the page's normalised slug. Single-letter tags are indexed by
+  relays, so they can be filtered with `#d`. Normalised exactly as NIP-54
+  prescribes for a wiki article's `d` tag, because the same title has to yield
+  the same slug in every client — otherwise two people editing "Möbel für das
+  Büro" end up on two different pages. See below.
 - **`parent-rev`** — event id of the preceding revision. Absent = first
   revision. Present twice = merge revision.
 - **`content-hash`** — lets us recognise identical content (restore, no-op save)
@@ -129,16 +131,58 @@ needed — the tree is a projection of the revisions.
   Suggestion: an addressable admin event `30820` holding the order, not before
   phase 5.
 
-## Page head (`30818`) — deliberately only a mirror
+## The slug — NIP-54's rules
 
-Every save may additionally write a NIP-54 wiki article `30818` with
-`d = slug`, `h = group` and `rev = <revision id>`. The benefit: other Nostr wiki
-clients can read the page, and lists load quickly.
+A page is `(group, slug)`, so the slug is its identity and every client has to
+derive it from a title the same way. Rather than invent that, we take NIP-54's
+normalisation for the `d` tag of a wiki article (`normalizeSlug` in
+`src/nostr/kinds.ts`):
 
-**Important:** `30818` is unique per `(kind, pubkey, d)`, so it exists once *per
-author*. It is therefore never the truth about a page's content, only a hint.
-The truth is the revision chain. That separation is the reason "anyone may edit"
-works at all.
+- letters with case variants become lowercase,
+- whitespace becomes `-`, consecutive `-` collapse, leading and trailing `-` go,
+- punctuation and symbols are removed — *removed*, not replaced, so "What's Up?"
+  is `whats-up` and not `what-s-up`,
+- numbers are kept,
+- letters of every script are kept as UTF-8: `Москва` is `москва`, `日本語
+  Article` is `日本語-article`, `Möbel` is `möbel`.
+
+The last rule is the one that costs something. Slugs carry umlauts now, in the
+`d` tag and in the URL. The alternative — transliterating `ö` to `oe`, which
+this app used to do — is friendlier to a German eye but is a rule only we would
+apply: no other client would ever arrive at `moebel`, and a page whose slug
+nobody else can compute is a page nobody else can link to.
+
+Two deviations, both deliberate:
+
+- **Letters outside the basic multilingual plane are dropped** — historic
+  scripts, and the styled pseudo-fonts people paste out of the web. Each of them
+  is two UTF-16 units, and nothing in a slug is worth that. A title made only of
+  those normalises to nothing, and the editor then refuses to save and says why
+  (`src/ui/PageEditor.tsx`).
+- **The result is capped at 96 characters.** A slug is also a URL segment.
+
+## No NIP-54 mirror (`30818`) — decided against
+
+The idea was to write a NIP-54 wiki article alongside every revision, with
+`d = slug` and `rev = <revision id>`, so that other Nostr wiki clients could
+read a page. It is not going to happen, and not because of the effort.
+
+`30818` is addressable, and an addressable event is identified by
+`(kind, pubkey, d)`. The author is part of its identity, so a mirror exists once
+**per author**: on a page that two people edit there would be two events
+claiming to be the same page, and nothing but `created_at` to say which is
+current — a mirror written by somebody who has not edited in months looks just
+as authoritative as today's. The mirror would be structurally incapable of
+saying what the page *is*.
+
+That is the same reason `30818` cannot be the source of truth either
+([11](11-open-questions.md)): "one page, many editors" is not expressible as a
+replaceable event on Nostr at all, because every replaceable event's identity
+contains its author. Hence `(group, slug)` plus a revision chain.
+
+A wiki client that wants to read our pages can read this document instead. What
+we do take from NIP-54 is its slug normalisation, rule for rule
+(`src/nostr/kinds.ts`).
 
 ## Comments (`1111`) — implemented
 

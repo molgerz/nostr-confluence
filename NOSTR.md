@@ -73,7 +73,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) deletion request | ❌ | Deleting happens only through NIP-29 (`9005`), which a relay actually enforces | — |
 | [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md) bunker | ❌ | Planned as a second signer implementation behind the same interface | — |
 | [NIP-50](https://github.com/nostr-protocol/nips/blob/master/50.md) search | ❌ | Deliberately not: not every relay supports it, and a relay-dependent search would break offline. Search runs locally | `src/domain/search.ts` |
-| [NIP-54](https://github.com/nostr-protocol/nips/blob/master/54.md) wiki | ⚠️ | The model for slug normalisation; `30818` as an interop mirror is planned, not built | `src/nostr/kinds.ts` |
+| [NIP-54](https://github.com/nostr-protocol/nips/blob/master/54.md) wiki | ⚠️ | Its slug normalisation for the `d` tag, rule for rule. The wiki kinds themselves are deliberately unused — see below | `src/nostr/kinds.ts` |
 | [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md) git | ❌ | Evaluated and rejected: reading a page would require replaying patches. The Git semantics live in our own revision kind instead | [docs/05](docs/05-versioning-history.md) |
 | [NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md) file storage | ❌ | An alternative to Blossom, not implemented | — |
 
@@ -104,7 +104,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | **39001** admins | ✅ | Roles; controls who sees the moderation controls |
 | **39002** members | ✅ | Member list |
 | **39003** role definitions | ❌ | Not evaluated |
-| **30818** wiki article | ❌ | Planned as an interop mirror |
+| **30818** wiki article | ❌ | Deliberately not, see "Deviations and limits" |
 | **5** deletion request | ❌ | See NIP-09 above |
 | **9021** join | ❌ | Unnecessary in open groups: the relay adds the author on their first write. The fallback for stricter relays is still missing |
 
@@ -115,7 +115,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | Tag | Where | Meaning |
 |---|---|---|
 | `h` | everywhere | Group id. **This is the tag the relay checks write permission against** — it is our entire permission system |
-| `d` | 1818, 1111 | Normalised page slug. Single-letter, so relay-indexed and filterable |
+| `d` | 1818, 1111 | Normalised page slug, by NIP-54's rules for a wiki article's `d` tag: lowercase, whitespace to `-`, punctuation *removed*, letters of every script kept as UTF-8 (so `möbel`, not `moebel`). Single-letter, so relay-indexed and filterable |
 | `title` | 1818 | Display title |
 | `parent-rev` | 1818 | Preceding revision. None = first revision, two = a merge |
 | `page-parent` | 1818 | Slug of the parent page; the sidebar tree is built from it |
@@ -221,8 +221,14 @@ internal pool does not authenticate, and `info` hangs). Hence the raw `req`.
 Named honestly, because they matter when building on top of this:
 
 - ⚠️ **`1818` is not a standard kind.** The content is invisible to other Nostr
-  clients. The `alt` tag is the only consolation. A `30818` mirror for NIP-54
-  wiki clients is planned.
+  clients, and the `alt` tag is the only consolation. **Decided against changing
+  that:** a `30818` mirror per save was considered and dropped. An addressable
+  event is identified by `(kind, pubkey, d)`, so a mirror exists once *per
+  author* — on a page two people edit it would be two events claiming to be the
+  same page, one of them quietly stale. A wiki client that wants to read along
+  can read the data model here and in
+  [docs/02](docs/02-data-model-events.md) instead. What we do take from NIP-54
+  is its slug normalisation.
 - ⚠️ **Comments are anchored to `(h, d)`**, not to a root event via `A`/`E`. A
   reference to one revision would dangle after the next edit
   ([docs/02](docs/02-data-model-events.md)).

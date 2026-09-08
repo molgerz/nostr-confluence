@@ -25,8 +25,6 @@ export const KINDS = {
 
   /** Our own kind: an immutable page revision. The actual content. */
   PAGE_REVISION: 1818,
-  /** NIP-54: wiki article, here only an interop mirror (never the truth) */
-  PAGE_HEAD_MIRROR: 30818,
 
   /** NIP-29, produced by the relay */
   GROUP_METADATA: 39000,
@@ -83,24 +81,43 @@ export const TAGS = {
 
 export const MIME_MARKDOWN = 'text/markdown'
 
+/** Our own cap on a slug, not the NIP's: a slug is also a URL segment. */
+export const SLUG_MAX_LENGTH = 96
+
 /**
- * Slug normalisation modelled on NIP-54: lowercase, hyphens, only a-z0-9-.
- * The same input has to produce the same slug on every client, otherwise two
- * users end up pointing at two different pages.
+ * Slug normalisation as NIP-54 prescribes it for the `d` tag of a wiki
+ * article: lowercase, whitespace to `-`, punctuation and symbols removed,
+ * numbers kept, and letters of every script kept as UTF-8. The same input has
+ * to produce the same slug on every client, otherwise two users end up
+ * pointing at two different pages.
+ *
+ * Combining marks are kept and the input is composed first, so "Ñoño"
+ * becomes "ñoño" whether a tilde arrived precomposed or as its own code
+ * point. Transliterating it away — which this function used to do for umlauts,
+ * turning "Möbel" into "moebel" — produced a slug no other client would
+ * arrive at.
+ *
+ * Two deviations from the NIP, both deliberate:
+ * - Letters outside the basic multilingual plane are dropped: historic scripts,
+ *   and the styled pseudo-fonts people paste from the web. Each of them is two
+ *   UTF-16 units, and nothing in a slug is worth that.
+ * - The result is capped at `SLUG_MAX_LENGTH`.
  */
 export function normalizeSlug(input: string): string {
-  return input
-    .replace(/ä/g, 'ae')
-    .replace(/Ä/g, 'Ae')
-    .replace(/ö/g, 'oe')
-    .replace(/Ö/g, 'Oe')
-    .replace(/ü/g, 'ue')
-    .replace(/Ü/g, 'Ue')
-    .replace(/ß/g, 'ss')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 96)
+  return (
+    input
+      .normalize('NFC')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      // Everything that is neither a letter, a number, a mark belonging to one,
+      // nor our separator. Enclosing marks and variation selectors go as well,
+      // so a stripped emoji cannot leave an invisible remainder behind.
+      .replace(/[^\p{L}\p{N}\p{Mn}\p{Mc}-]|[\uFE00-\uFE0F]/gu, '')
+      .replace(/[\u{10000}-\u{10FFFF}]/gu, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, SLUG_MAX_LENGTH)
+      // The cap can land right behind a hyphen.
+      .replace(/-+$/, '')
+  )
 }
