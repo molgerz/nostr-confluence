@@ -1,11 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
 import type { GroupAddress } from '../../nostr/group-address'
 import { RelayStatusBadge } from '../RelayStatusBadge'
 import type { RelaySnapshot } from '../../nostr/client'
 import type { RelayInfo } from '../../nostr/relay-status'
 import type { SpaceSnapshot } from '../../nostr/space-store'
-import type { PageNode } from '../../domain/pages'
+import { descendantSlugs, orderKeyOf } from '../../domain/pages'
+import type { Page, PageNode } from '../../domain/pages'
+import { keyBetween } from '../../domain/order'
+import { useMovePage } from '../move-page'
 
 type Props = {
   group: GroupAddress | null
@@ -77,14 +80,127 @@ function pathToActive(nodes: PageNode[], slug: string | undefined): Set<string> 
   return path
 }
 
+/**
+ * Where a drag currently points. Two kinds, as in Confluence: **on** a row
+ * files the page under it, **into the gap** between two rows puts it at that
+ * position of *their* level, staying a sibling instead of becoming a subpage.
+ */
+type DropTarget = { kind: 'page' | 'gap'; id: string }
+
+function sameTarget(a: DropTarget | null, b: DropTarget): boolean {
+  return a !== null && a.kind === b.kind && a.id === b.id
+}
+
+/** Everything a tree row needs to be dragged, and to be dropped on. */
+type TreeDnd = {
+  enabled: boolean
+  dragging: string | null
+  over: DropTarget | null
+  busySlug: string | null
+  /** filing it under this page */
+  canDropOnPage: (slug: string) => boolean
+  /** putting it at some position of the level below this page (null = root) */
+  canDropInLevel: (parentSlug: string | null) => boolean
+  onDragStart: (slug: string) => void
+  onDragEnd: () => void
+  onOver: (target: DropTarget) => void
+  onLeave: (target: DropTarget) => void
+  onDropOnPage: (slug: string) => void
+  onDropInGap: (parentSlug: string | null, before: PageNode | null, after: PageNode | null) => void
+}
+
 export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = space.tree
   const { slug } = useParams<{ slug?: string }>()
   const [collapsedPreference, setCollapsed] = useState(readCollapsed)
   const [collapsedBranches, setCollapsedBranches] = useState(readCollapsedBranches)
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [over, setOver] = useState<DropTarget | null>(null)
+  const { move, busySlug, error, setError, signedIn } = useMovePage(
+    group?.relayUrl ?? '',
+    group?.id ?? '',
+    space.pages,
+  )
   const collapsed = alwaysExpanded ? false : collapsedPreference
   const forcedOpen = pathToActive(nodes, slug)
+
+  // Dragging a page onto another one files it there, dragging it into the gap
+  // between two rows puts it at that position of their level — the same two
+  // gestures Confluence has. In both cases the page's own subtree is barred:
+  // the branch would point into itself and drop out of the tree.
+  const draggedPage = dragging ? (space.pages.find((page) => page.slug === dragging) ?? null) : null
+  const blocked = dragging ? descendantSlugs(space.pages, dragging) : null
+  const pageBySlug = (slug: string | null): Page | null =>
+    slug ? (space.pages.find((entry) => entry.slug === slug) ?? null) : null
+
+  const canDropInLevel = (parentSlug: string | null): boolean => {
+    if (!draggedPage) return false
+    return parentSlug === null || !blocked!.has(parentSlug)
+  }
+
+  const canDropOnPage = (slug: string): boolean =>
+    // Its current parent is no target: it is already filed there, and a drop
+    // that publishes nothing should not light up as if it would.
+    canDropInLevel(slug) && draggedPage!.parentSlug !== slug
+
+  const dnd: TreeDnd = {
+    enabled: signedIn,
+    dragging,
+    over,
+    busySlug,
+    canDropOnPage,
+    canDropInLevel,
+    onDragStart: (dragged) => {
+      setError(null)
+      setDragging(dragged)
+    },
+    onDragEnd: () => {
+      setDragging(null)
+      setOver(null)
+    },
+    onOver: (target) => setOver((current) => (sameTarget(current, target) ? current : target)),
+    onLeave: (target) => setOver((current) => (sameTarget(current, target) ? null : current)),
+    onDropOnPage: (slug) => {
+      const page = draggedPage
+      const allowed = canDropOnPage(slug)
+      setDragging(null)
+      setOver(null)
+      // No position of its own: in its new level the page sorts by its title
+      // until somebody drags it into place. src/domain/order.ts
+      if (page && allowed) void move(page, { parent: pageBySlug(slug), order: null })
+    },
+    onDropInGap: (parentSlug, before, after) => {
+      const page = draggedPage
+      const allowed = canDropInLevel(parentSlug)
+      setDragging(null)
+      setOver(null)
+      if (!page || !allowed) return
+      void move(page, {
+        parent: pageBySlug(parentSlug),
+        order: keyBetween(before ? orderKeyOf(before) : null, after ? orderKeyOf(after) : null),
+      })
+    },
+  }
+
+  // A drag can end without the source seeing `dragend`: it is cancelled with
+  // Escape, dropped outside the window, or the row unmounts mid-drag because a
+  // relay event rebuilt the tree. The drag state would then stay set, and the
+  // gap zones would keep lying over the row edges swallowing clicks. Listening
+  // on the window closes that off for good.
+  useEffect(() => {
+    if (dragging === null) return
+    const clear = () => {
+      setDragging(null)
+      setOver(null)
+    }
+    window.addEventListener('dragend', clear)
+    window.addEventListener('drop', clear)
+    return () => {
+      window.removeEventListener('dragend', clear)
+      window.removeEventListener('drop', clear)
+    }
+  }, [dragging])
 
   const toggleBranch = (branchSlug: string) => {
     setCollapsedBranches((current) => {
@@ -181,11 +297,16 @@ export function Sidebar({ group, space, snapshot, info, alwaysExpanded = false }
             <TreeBranch
               nodes={nodes}
               base={base}
+              parentSlug={null}
               collapsedBranches={collapsedBranches}
               forcedOpen={forcedOpen}
               onToggle={toggleBranch}
+              dnd={dnd}
             />
           )}
+
+          {busySlug ? <div className="px-2 py-1 text-xs text-fg-subtle">moving…</div> : null}
+          {error ? <div className="px-2 py-1 text-xs text-danger">{error}</div> : null}
 
           <div className="flex-1" />
           <Link
@@ -241,26 +362,102 @@ function PageIcon() {
 function TreeBranch({
   nodes,
   base,
+  parentSlug,
   collapsedBranches,
   forcedOpen,
   onToggle,
+  dnd,
 }: {
   nodes: PageNode[]
   base: string
+  /** the page this level hangs under. null = the top level */
+  parentSlug: string | null
   collapsedBranches: Set<string>
   forcedOpen: Set<string>
   onToggle: (slug: string) => void
+  dnd: TreeDnd
 }) {
+  /**
+   * The two rows a gap sits between, with the dragged page skipped: it is
+   * about to leave its old place, so it must not be its own neighbour and set
+   * the position it is measured against.
+   */
+  const neighbours = (index: number): [PageNode | null, PageNode | null] => [
+    [...nodes.slice(0, index)].reverse().find((node) => node.slug !== dnd.dragging) ?? null,
+    nodes.slice(index).find((node) => node.slug !== dnd.dragging) ?? null,
+  ]
+
+  /** A gap directly above or below the dragged row changes nothing. */
+  const dropsInPlace = (index: number): boolean =>
+    nodes[index - 1]?.slug === dnd.dragging || nodes[index]?.slug === dnd.dragging
+
   return (
     <>
-      {nodes.map((node) => {
+      {nodes.map((node, index) => {
         const hasChildren = node.children.length > 0
         const open = hasChildren && (forcedOpen.has(node.slug) || !collapsedBranches.has(node.slug))
 
         return (
-          <div key={node.slug}>
+          // relative: the gap zones lie *over* the row edges instead of taking
+          // space of their own, so the tree does not shift under the cursor
+          // the moment a drag starts.
+          <div key={node.slug} className="relative">
+            <GapZone
+              dnd={dnd}
+              id={`${parentSlug ?? ''}#${index}`}
+              parentSlug={parentSlug}
+              neighbours={neighbours}
+              index={index}
+              depth={node.depth}
+              edge="top"
+              inPlace={dropsInPlace(index)}
+            />
             <div
-              className="flex items-center"
+              draggable={dnd.enabled}
+              onDragStart={(event) => {
+                // Firefox starts no drag at all without a payload.
+                event.dataTransfer.setData('text/plain', node.slug)
+                event.dataTransfer.effectAllowed = 'move'
+                dnd.onDragStart(node.slug)
+              }}
+              onDragEnd={dnd.onDragEnd}
+              // Both dragenter and dragover have to be prevented: a target
+              // that lets a single one of them through is not a drop target at
+              // that moment, and the drop is silently discarded.
+              onDragEnter={(event) => {
+                if (!dnd.canDropOnPage(node.slug)) return
+                event.preventDefault()
+                dnd.onOver({ kind: 'page', id: node.slug })
+              }}
+              onDragOver={(event) => {
+                if (!dnd.canDropOnPage(node.slug)) return
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+                dnd.onOver({ kind: 'page', id: node.slug })
+              }}
+              onDragLeave={(event) => {
+                // dragleave also fires when the cursor crosses from one child
+                // of the row to the next, and it bubbles. Without this the
+                // highlight flickers off and on while the pointer stands still.
+                if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+                dnd.onLeave({ kind: 'page', id: node.slug })
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                dnd.onDropOnPage(node.slug)
+              }}
+              title={
+                dnd.enabled
+                  ? 'Drag onto a page to file it under it, or between two rows to sort it there'
+                  : undefined
+              }
+              className={`flex items-center rounded-md ${
+                dnd.enabled ? 'cursor-grab select-none active:cursor-grabbing' : ''
+              } ${
+                sameTarget(dnd.over, { kind: 'page', id: node.slug })
+                  ? 'ring-1 ring-accent-fg'
+                  : ''
+              } ${dnd.dragging === node.slug || dnd.busySlug === node.slug ? 'opacity-50' : ''}`}
               style={{ paddingLeft: `${node.depth * 12}px` }}
             >
               {hasChildren ? (
@@ -279,7 +476,15 @@ function TreeBranch({
                   <span className="size-1 rounded-full bg-fg-subtle" />
                 </span>
               )}
-              <NavLink to={`${base}/${node.slug}`} className={treeItemClass}>
+              {/* A link is draggable by default and would become the drag
+                  source itself — as a *link* drag, whose effect is copy/link,
+                  so a drop asking for `move` is thrown away. The row is
+                  supposed to be the source, so the link declines. */}
+              <NavLink
+                to={`${base}/${node.slug}`}
+                draggable={false}
+                className={treeItemClass}
+              >
                 <PageIcon />
                 <span className="truncate">{node.title}</span>
                 {/* A forked page has more than one current version. Amber and
@@ -296,14 +501,101 @@ function TreeBranch({
               <TreeBranch
                 nodes={node.children}
                 base={base}
+                parentSlug={node.slug}
                 collapsedBranches={collapsedBranches}
                 forcedOpen={forcedOpen}
                 onToggle={onToggle}
+                dnd={dnd}
+              />
+            ) : null}
+
+            {/* The last row of a level closes it off. Pinned to the bottom of
+                this wrapper, which spans the row *and* its subtree, so the
+                line appears below the branch — where that position is. */}
+            {index === nodes.length - 1 ? (
+              <GapZone
+                dnd={dnd}
+                id={`${parentSlug ?? ''}#${nodes.length}`}
+                parentSlug={parentSlug}
+                neighbours={neighbours}
+                index={nodes.length}
+                depth={node.depth}
+                edge="bottom"
+                inPlace={dropsInPlace(nodes.length)}
               />
             ) : null}
           </div>
         )
       })}
     </>
+  )
+}
+
+/**
+ * The gap between two rows: dropping here makes the page a **sibling** at this
+ * position, not a subpage. Only 7px tall and drawn as a line, like every tree
+ * that offers this — the row itself stays the target for "file it under".
+ */
+function GapZone({
+  dnd,
+  id,
+  parentSlug,
+  neighbours,
+  index,
+  depth,
+  edge,
+  inPlace,
+}: {
+  dnd: TreeDnd
+  id: string
+  parentSlug: string | null
+  neighbours: (index: number) => [PageNode | null, PageNode | null]
+  index: number
+  depth: number
+  edge: 'top' | 'bottom'
+  inPlace: boolean
+}) {
+  // Without a drag running the zone must not exist: it would swallow clicks
+  // on the row edges underneath it.
+  if (dnd.dragging === null || inPlace || !dnd.canDropInLevel(parentSlug)) return null
+
+  const active = sameTarget(dnd.over, { kind: 'gap', id })
+  const accept = (event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    dnd.onOver({ kind: 'gap', id })
+  }
+
+  return (
+    <div
+      onDragEnter={accept}
+      onDragOver={(event) => {
+        accept(event)
+        event.dataTransfer.dropEffect = 'move'
+      }}
+      onDragLeave={() => dnd.onLeave({ kind: 'gap', id })}
+      onDrop={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const [before, after] = neighbours(index)
+        dnd.onDropInGap(parentSlug, before, after)
+      }}
+      // 9px straddling the row edge: enough to hit with a mouse, little
+      // enough that the row itself stays the target for "file it under".
+      className={`absolute inset-x-0 z-10 h-[9px] ${
+        edge === 'top' ? '-top-[4px]' : '-bottom-[4px]'
+      }`}
+    >
+      {/* Indented to the level it would file the page into, so "sibling here"
+          is distinguishable from "subpage of the row above" — but only by that
+          level's own indent: the line spans the whole row it belongs to,
+          including the slot the triangle and the leaf dot sit in. */}
+      <div
+        className={`h-full ${active ? 'flex items-center' : ''}`}
+        style={{ marginLeft: `${depth * 12}px` }}
+      >
+        {active ? <span className="h-0.5 w-full rounded-full bg-accent-fg" /> : null}
+      </div>
+    </div>
   )
 }

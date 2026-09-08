@@ -11,6 +11,7 @@ function rev(id: string, content: string, parents: string[] = [], author = 'alic
     slug: 'page',
     title: 'Page',
     parentSlug: null,
+    order: null,
     parentRevs: parents,
     summary: null,
     content,

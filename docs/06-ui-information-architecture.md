@@ -48,6 +48,45 @@ Four zones, top to bottom:
    stay hidden until somebody expanded its parent. The branch leading to the
    page being read is always drawn open, so a fold can never hide the very page
    you are on.
+
+   **Moving**, signed in, has the two gestures Confluence has:
+
+   - **onto a row** files the page under it, subpages included;
+   - **into the gap between two rows** puts it at that position of *their*
+     level, so it stays a sibling instead of becoming a subpage. The gap is a
+     9px band straddling the row edge, drawn as a line indented to the level it
+     would file into — that indent is what distinguishes "sibling here" from
+     "subpage of the row above". The last row of a level carries a second band
+     below its subtree, which is the "at the end of this level" position.
+
+   The bands lie *over* the row edges (absolutely positioned) rather than taking
+   space of their own, so the tree does not shift under the cursor the moment a
+   drag starts, and they only exist while a drag runs — otherwise they would
+   swallow clicks on the row edges. A page's own subtree is no target, and
+   neither is the parent it already has: those rows accept no drop instead of
+   reporting an error afterwards.
+
+   Two details that cost time if got wrong: the row itself has to be the drag
+   source, so the link inside it declines with `draggable={false}` — a link is
+   draggable by default, becomes the source itself, and a *link* drag carries
+   the effect copy/link, so the drop asking for `move` is silently thrown away
+   (it then works only when the grab happens to land in the 28px gutter). And
+   the drag state is cleared from a `window` listener, because a drag can end
+   without the source seeing `dragend` — cancelled with Escape, dropped outside
+   the window, or the row unmounting mid-drag when a relay event rebuilds the
+   tree.
+
+   Both gestures publish a **placement** (`31818`), not a revision
+   ([02](02-data-model-events.md)): the page's text, its history and its byline
+   stay untouched, and moving the same page again overwrites the placement
+   instead of piling up. A move is not an edit, and going back to an old
+   revision therefore cannot move a page either.
+
+   The page itself carries **no** move action any more: a picker on the page
+   was tried and dropped again — dragging in the tree says where a page ends up
+   far better than a list of slugs can. **Open:** moving therefore has no
+   keyboard path, and none on a touch screen either, where HTML5 drag & drop
+   does not fire.
 4. **Footer** — "+ new page" and the relay status (connected / AUTH / offline) —
    important, because nothing can be published without a relay.
 

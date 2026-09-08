@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
+import { publishPlacement } from '../nostr/publish-placement'
 import { useSession } from '../session/session'
 import { Markdown } from './Markdown'
 import { MarkdownEditor } from './MarkdownEditor'
@@ -156,6 +157,9 @@ export function PageEditor({
         // On a slug collision keep the existing page's parent instead of
         // silently lifting it to the top level.
         parentSlug: parentSlug.trim() || existing?.parentSlug || null,
+        // Carry the sidebar position over. Without this every save would drop
+        // the page back into alphabetical order. src/domain/order.ts
+        order: existing?.order ?? null,
         summary: summary.trim() || null,
         content,
         // New page: no predecessors. Merge: all leaves. Otherwise the current
@@ -163,6 +167,26 @@ export function PageEditor({
         parentRevs: overrideParents ?? (existing ? [existing.head.id] : []),
       })
       if (result.ok) {
+        // Where a page hangs lives in its placement event once it has one, so
+        // the tag alone would not move it. An existing page therefore gets a
+        // placement when this field changed. src/domain/placement.ts
+        const desiredParent = parentSlug.trim() || null
+        if (page && desiredParent !== page.parentSlug) {
+          const placed = await publishPlacement(session.signer, {
+            relayUrl,
+            groupId,
+            slug,
+            parentSlug: desiredParent,
+            order: page.order,
+          })
+          if (!placed.ok) {
+            setError(
+              `Saved, but the page was not moved: ${placed.reason}. It is still ` +
+                `filed under ${page.parentSlug ?? 'the top level'}.`,
+            )
+            return
+          }
+        }
         onSaved(slug)
         return
       }

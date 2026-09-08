@@ -78,17 +78,21 @@ What the tags mean:
 
 - **`h`** — group id. Mandatory in NIP-29; the relay uses this tag to check
   whether the author may write. This is our entire permission mechanism.
-- **`d`** — the page's normalised slug. Single-letter tags are indexed by
-  relays, so they can be filtered with `#d`. Normalised exactly as NIP-54
-  prescribes for a wiki article's `d` tag, because the same title has to yield
-  the same slug in every client — otherwise two people editing "Möbel für das
-  Büro" end up on two different pages. See below.
+- **`d`** — the page's normalised slug (`lowercase-with-hyphens`). Single-letter
+  tags are indexed by relays, so they can be filtered with `#d`. Normalised
+  exactly as NIP-54 prescribes for a wiki article's `d` tag, because the same
+  title has to yield the same slug in every client — otherwise two people
+  editing "Möbel für das Büro" end up on two different pages. See below.
 - **`parent-rev`** — event id of the preceding revision. Absent = first
   revision. Present twice = merge revision.
 - **`content-hash`** — lets us recognise identical content (restore, no-op save)
   without comparing full text.
-- **`page-parent`** — slug of the parent page. The sidebar builds its tree from
-  this.
+- **`page-parent`** — slug of the parent page, and **`page-order`** — the sort
+  key among its siblings. Together they say where the page hangs in the tree.
+  In a revision they are the **initial** placement, set when the page is
+  created; a page that is later moved gets a `31818` (see "Where a page hangs"
+  below), which takes precedence. Subpages always move with their parent,
+  because they name it by slug and the slug never changes.
 - **`previous`** — NIP-29 timeline references: short ids of recently seen group
   events. Prevents a relay from forging events or re-parenting them into a
   different group history. **Not implemented yet:** the app does not write the
@@ -127,10 +131,6 @@ needed — the tree is a projection of the revisions.
 - Cost: loading a space for the first time means loading many events.
   Mitigation: an IndexedDB cache plus subscribing only from the last known
   `created_at`.
-- **Open:** manual sorting of the sidebar (Confluence allows drag & drop).
-  Suggestion: an addressable admin event `30820` holding the order, not before
-  phase 5.
-
 ## The slug — NIP-54's rules
 
 A page is `(group, slug)`, so the slug is its identity and every client has to
@@ -155,11 +155,89 @@ nobody else can compute is a page nobody else can link to.
 Two deviations, both deliberate:
 
 - **Letters outside the basic multilingual plane are dropped** — historic
-  scripts, and the styled pseudo-fonts people paste out of the web. Each of them
-  is two UTF-16 units, and nothing in a slug is worth that. A title made only of
-  those normalises to nothing, and the editor then refuses to save and says why
-  (`src/ui/PageEditor.tsx`).
+  scripts, and the styled pseudo-fonts people paste out of the web. Each is two
+  UTF-16 units, and the order keys below do arithmetic on single units. A title
+  made only of those normalises to nothing, and the editor then refuses to save
+  and says why (`src/ui/PageEditor.tsx`).
 - **The result is capped at 96 characters.** A slug is also a URL segment.
+
+## Where a page hangs — kind `31818`
+
+Two gestures have to be expressible: filing a page **under** another one, and
+dropping it **between** two rows so that it stays a sibling at that position.
+The second one needs a stored order.
+
+**Decision: an addressable event per page** — `31818`, keyed by the page's slug
+(`h` = group, `d` = slug, tags `page-parent` and `page-order`, no content).
+Moving a page **replaces** it.
+
+The number avoids `30819`, which NIP-54 defines as a wiki redirect. An
+addressable event is identified by `(kind, pubkey, d)` alone, so the same
+person's redirect for a slug and our placement for it would be the *same event*
+and overwrite each other. `31818` is undefined in every NIP and echoes our
+`1818`.
+
+```json
+{
+  "kind": 31818,
+  "tags": [
+    ["h", "engineering"],
+    ["d", "onboarding"],
+    ["page-parent", "handbook"],
+    ["page-order", "am"],
+    ["alt", "Position of wiki page \"onboarding\" below \"handbook\""]
+  ],
+  "content": ""
+}
+```
+
+Why not in the revision, where the tree used to read it from:
+
+- **A move is not an edit.** With the placement inside the revision, dragging a
+  page in the sidebar appends to its history and moves its head — the byline
+  would then claim somebody edited the page when all they did was sort it.
+- **Restoring must not move a page.** A restore takes the content of an old
+  revision. If that revision also carried the placement, going back in time
+  would drag the page somewhere else as a side effect. Now it cannot: the
+  restored revision carries the placement the page has *now*, and for a page
+  with a `31818` those tags are only the fallback anyway.
+
+Why not one event holding the order of the whole space (the `30820` this
+document used to suggest): everybody who sorts anything would rewrite the same
+event, and the last writer would win over an order nobody chose. Per page,
+two people sorting two different pages never collide.
+
+What it costs, deliberately:
+
+- **There is no history of moves.** Only the current placement is signed and
+  visible; earlier ones are overwritten and gone.
+- Addressable events are replaced **per author**, so two people moving the same
+  page leave one event each. The newer one wins, with the id breaking a tie so
+  that every client agrees. A position has nothing to merge, so
+  last-writer-wins is the honest semantics — unlike text, where a fork is shown
+  and merged ([05](05-versioning-history.md)).
+- The tree is now a projection of the revisions **plus** the placements. Pages
+  that were never moved need no `31818` at all.
+
+**How an order key is found** (`src/domain/order.ts`): keys are compared as plain
+strings, and a page without a key is ordered by its **normalised title** — the
+implicit key. Both live in the same key space, which is what makes it possible
+to file a page between two neighbours *without touching their events*: the new
+key is simply a string that sorts between theirs. Two properties of string
+comparison carry it: every proper prefix of a key sorts before it, and every
+extension sorts after it — so a gap can always be subdivided, however often.
+
+Consequences worth knowing:
+
+- Dropping a page **onto** another one clears its key: in its new level it
+  sorts by title until somebody drags it into place. That is predictable, and
+  it avoids carrying a key from a level where it meant something else.
+- Two pages whose titles normalise identically compare equal; the slug breaks
+  the tie, so every client shows the same order.
+- **Open:** the order is per page, so a *level* cannot be sorted in one go, and
+  reordering needs a signature per page moved.
+- **Open:** nothing cleans up the placement of a deleted page. A `31818` whose
+  slug has no revisions is ignored, so it is inert rather than harmful.
 
 ## No NIP-54 mirror (`30818`) — decided against
 

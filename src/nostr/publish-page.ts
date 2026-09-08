@@ -10,6 +10,8 @@ export type RevisionInput = {
   slug: string
   title: string
   parentSlug: string | null
+  /** sort key among its siblings. null = ordered by title */
+  order: string | null
   summary: string | null
   content: string
   /** predecessor revisions: empty for a new page, two for a merge */
@@ -41,6 +43,9 @@ export async function publishRevision(
     [TAGS.ALT, `Wiki page "${input.title}" in space ${input.groupId}`],
   ]
   if (input.parentSlug) tags.push([TAGS.PAGE_PARENT, input.parentSlug])
+  // Absent rather than empty when there is none: the tree then falls back to
+  // the title, and an empty tag would be a third state to reason about.
+  if (input.order) tags.push([TAGS.PAGE_ORDER, input.order])
   if (input.summary) tags.push([TAGS.SUMMARY, input.summary])
   for (const parent of input.parentRevs) tags.push([TAGS.PARENT_REV, parent])
   // A restore deletes nothing: it creates a new revision with the old content

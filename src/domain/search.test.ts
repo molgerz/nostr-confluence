@@ -12,6 +12,7 @@ function rev(slug: string, title: string, content: string): Revision {
     slug,
     title,
     parentSlug: null,
+    order: null,
     parentRevs: [],
     summary: null,
     content,

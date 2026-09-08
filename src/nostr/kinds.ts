@@ -25,6 +25,17 @@ export const KINDS = {
 
   /** Our own kind: an immutable page revision. The actual content. */
   PAGE_REVISION: 1818,
+  /**
+   * Our own kind: where a page hangs in the tree. Addressable, so moving a
+   * page overwrites it instead of appending to the page's history.
+   *
+   * `31818` and deliberately not `30819`: NIP-54 defines that one as a wiki
+   * redirect, and an addressable event is identified by `(kind, pubkey, d)`
+   * alone — the same person's redirect for a slug and our placement for it
+   * would be the same event and overwrite each other.
+   * docs/02-data-model-events.md
+   */
+  PAGE_PLACEMENT: 31818,
 
   /** NIP-29, produced by the relay */
   GROUP_METADATA: 39000,
@@ -62,6 +73,12 @@ export const TAGS = {
   CONTENT_HASH: 'content-hash',
   /** Slug of the parent page — the sidebar builds its tree from it */
   PAGE_PARENT: 'page-parent',
+  /**
+   * Sort key among the siblings of a level. Absent = ordered by title. The key
+   * space is the same one titles normalise into, so a page can be filed
+   * between two siblings without touching their events. src/domain/order.ts
+   */
+  PAGE_ORDER: 'page-order',
   /** Change note, the equivalent of a commit message */
   SUMMARY: 'summary',
   /** Restore: id of the revision whose content was taken over */
@@ -99,8 +116,9 @@ export const SLUG_MAX_LENGTH = 96
  *
  * Two deviations from the NIP, both deliberate:
  * - Letters outside the basic multilingual plane are dropped: historic scripts,
- *   and the styled pseudo-fonts people paste from the web. Each of them is two
- *   UTF-16 units, and nothing in a slug is worth that.
+ *   and the styled pseudo-fonts people paste from the web. Each is two UTF-16
+ *   units, and the order keys in `src/domain/order.ts` do arithmetic on single
+ *   units.
  * - The result is capped at `SLUG_MAX_LENGTH`.
  */
 export function normalizeSlug(input: string): string {

@@ -96,9 +96,9 @@ echo "2) open the group and set its metadata (kind 9002)"
 OUT=$(run 25 nak event --fpa --sec "$ALICE_SEC" -k 9002 -h "$GROUP_ID" \
   -t "name=Engineering" -t "about=Team wiki on Nostr" \
   -t public= -t open= -t visible= -t nonbroadcast= \
-  -t "supported_kinds=1818;1111;9" -c '' "$RELAY") || true
+  -t "supported_kinds=1818;1111;9;31818" -c '' "$RELAY") || true
 grep -q success <<<"$OUT" || { echo "   ERROR: $(tail -1 <<<"$OUT")"; exit 1; }
-echo "   public, open, supported_kinds=1818;1111;9"
+echo "   public, open, supported_kinds=1818;1111;9;31818"
 
 echo "3) add bob as a member (nak group put-user)"
 OUT=$(run 25 nak group put-user "${NAK_AUTH[@]}" --pubkey "$BOB_PK" "$ADDRESS") || true

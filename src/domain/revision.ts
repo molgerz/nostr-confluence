@@ -17,6 +17,8 @@ export type Revision = {
   title: string
   /** slug of the parent page, for the sidebar tree */
   parentSlug: string | null
+  /** sort key among its siblings. null = ordered by title */
+  order: string | null
   /** predecessor revisions. Empty = first revision, two = a merge */
   parentRevs: string[]
   summary: string | null
@@ -48,6 +50,7 @@ export function parseRevision(event: Event, expectedGroup: string): Revision | n
     slug,
     title: firstTag(event, TAGS.TITLE) ?? slug,
     parentSlug: firstTag(event, TAGS.PAGE_PARENT),
+    order: firstTag(event, TAGS.PAGE_ORDER),
     parentRevs: event.tags
       .filter((tag) => tag[0] === TAGS.PARENT_REV && typeof tag[1] === 'string')
       .map((tag) => tag[1]),
