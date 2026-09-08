@@ -5,11 +5,25 @@ owner.
 
 ## 1. Our own kind `1818`, or existing NIPs?
 
+*Decided: A.*
+
 | Option | What it means |
 |---|---|
-| **A (recommended)** | Our own revision kind `1818`, full-text snapshots, `parent-rev` chain. Cleanly tailored to the use case |
-| B | NIP-54 wiki (`30818` + merge requests `818`) as the source of truth. Interop with wiki clients, but one event per author instead of one page |
+| **A (chosen)** | Our own revision kind `1818`, full-text snapshots, `parent-rev` chain. Cleanly tailored to the use case |
+| B (rejected) | NIP-54 wiki (`30818` + merge requests `818`) as the source of truth. Interop with wiki clients, but one event per author instead of one page |
 | C | NIP-34 patches (`1617`) like ngit. A real Git model, but reading requires replaying patches |
+
+B fails on two counts, and both are structural rather than a matter of effort.
+`30818` is addressable, so a save **overwrites** — no history, and with it no
+diff, no blame, no restore, which is most of why anyone trusts an open wiki. And
+its identity `(kind, pubkey, d)` contains the author, so there is no shared page:
+A's and B's edits are two different articles. NIP-54's own answer to that is
+fork plus a `818` merge request — a fork-based wiki where readers pick an author
+to trust. A sound model, a different product than a team space where everyone
+works on *one* page.
+
+Taken from NIP-54 anyway: the slug normalisation for the `d` tag
+([02](02-data-model-events.md)).
 
 ## 2. Snapshot or diff per revision?
 

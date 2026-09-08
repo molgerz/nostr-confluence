@@ -187,8 +187,8 @@ Done:
 | Syntax highlighting for code blocks (Shiki, dual themes, grammars lazy) | `src/ui/code-highlight.ts` |
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
-Open: the `30818` interop mirror, sidebar ordering (`30820`), real-time CRDT
-(simultaneous typing), NIP-46 sign-in, an editor toolbar.
+Open: sidebar ordering (`30820`), real-time CRDT (simultaneous typing),
+NIP-46 sign-in, an editor toolbar.
 
 ### Described in the docs but not built yet
 
@@ -204,7 +204,6 @@ As of 2026-09-07, found while comparing the docs against the code:
 | Writing `previous` timeline references | [02](02-data-model-events.md) |
 | Sidebar entries "all pages", "recently changed", "space settings" | [06](06-ui-information-architecture.md) |
 | Onboarding note that an npub is a permanent pseudonym | [09](09-security-privacy.md) |
-| `30818` interop mirror for NIP-54 clients | [02](02-data-model-events.md) |
 
 ### Deliberately solved differently than planned
 
@@ -221,6 +220,7 @@ decision was made:
 | A merge dialog with three buttons | the merge lands in the editor, the decision is made on the finished text | [05](05-versioning-history.md) |
 | A yellow "saved locally only" strip | the editor stays open and shows the relay's reason literally | [06](06-ui-information-architecture.md) |
 | A single `--diff-word-bg` token | separate tokens for added and removed | [12](12-theming.md) |
+| A `30818` interop mirror for NIP-54 wiki clients | no mirror; the data model is documented instead | [02](02-data-model-events.md) |
 
 **Also open and required for real use:** the group is so far created entirely
 outside the app through `nak` — there is no button to create a space (`9007`),
