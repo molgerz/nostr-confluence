@@ -32,26 +32,26 @@ describe('firstParentChain', () => {
   })
 
   it('stops when a predecessor is missing', () => {
-    const r2 = rev('r2', 'a', ['fehlt'])
+    const r2 = rev('r2', 'a', ['missing'])
     expect(firstParentChain([r2], r2).map((r) => r.id)).toEqual(['r2'])
   })
 })
 
 describe('blame', () => {
   it('attributes every line to the revision that introduced it', () => {
-    const r1 = rev('r1', 'eins\nzwei', [], 'alice')
-    const r2 = rev('r2', 'eins\nzwei\ndrei', ['r1'], 'bob')
+    const r1 = rev('r1', 'one\ntwo', [], 'alice')
+    const r2 = rev('r2', 'one\ntwo\nthree', ['r1'], 'bob')
     const result = blame([r1, r2], r2)
     expect(result.map((line) => [line.text, line.revision.author])).toEqual([
-      ['eins', 'alice'],
-      ['zwei', 'alice'],
-      ['drei', 'bob'],
+      ['one', 'alice'],
+      ['two', 'alice'],
+      ['three', 'bob'],
     ])
   })
 
   it('attributes a changed line to the revision that changed it', () => {
-    const r1 = rev('r1', 'eins\nzwei', [], 'alice')
-    const r2 = rev('r2', 'eins\nZWEI', ['r1'], 'bob')
+    const r1 = rev('r1', 'one\ntwo', [], 'alice')
+    const r2 = rev('r2', 'one\nTWO', ['r1'], 'bob')
     const result = blame([r1, r2], r2)
     expect(result[0].revision.author).toBe('alice')
     expect(result[1].revision.author).toBe('bob')

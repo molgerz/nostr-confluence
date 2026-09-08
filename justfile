@@ -1,16 +1,16 @@
-# Entwicklungsaufgaben. `just` allein zeigt die Liste.
+# Development tasks. `just` on its own lists them.
 default:
     @just --list
 
-# echtes NIP-29-Relay (verse-pbc/groups_relay) auf ws://localhost:8080
+# real NIP-29 relay (verse-pbc/groups_relay) on ws://localhost:8080
 relay:
     ./scripts/dev-relay-up.sh
 
-# Space, Mitglieder und Beispielseiten anlegen — ausschliesslich via nak group
+# create the space, its members and sample pages — via nak group only
 seed:
     ./scripts/dev-group-seed.sh
 
-# Gruppenzustand nachsehen
+# inspect the group state
 group-info:
     #!/usr/bin/env bash
     source scripts/.dev-keys
@@ -19,11 +19,11 @@ group-info:
     nak group info --sec "$ALICE_SEC" --auth "$ADDR"
     nak group members --sec "$ALICE_SEC" --auth "$ADDR"
 
-# Blossom-Server fuer Anhaenge (nur Entwicklung)
+# Blossom server for attachments (development only)
 blossom:
     node scripts/dev-blossom.mjs
 
-# Relay fuer Profile (Kind 0) — ein NIP-29-Relay nimmt die nicht an
+# relay for profiles (kind 0) — a NIP-29 relay will not accept them
 profile-relay:
     nak serve --port 10577
 

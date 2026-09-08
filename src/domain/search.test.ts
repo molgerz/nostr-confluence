@@ -38,7 +38,7 @@ describe('searchPages', () => {
 
   it('requires every search term', () => {
     expect(searchPages(pages, 'vpn laptop').map((hit) => hit.page.slug)).toEqual(['onboarding'])
-    expect(searchPages(pages, 'vpn gibtsnicht')).toEqual([])
+    expect(searchPages(pages, 'vpn nonexistent')).toEqual([])
   })
 
   it('ignores case', () => {

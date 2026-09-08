@@ -44,7 +44,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
         setInput('')
         return
       }
-      const reason = result.reason ?? 'unbekannt'
+      const reason = result.reason ?? 'unknown'
       setMessage({
         ok: false,
         text:

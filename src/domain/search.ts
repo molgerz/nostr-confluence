@@ -65,7 +65,7 @@ export function searchPages(pages: Page[], query: string, maxSnippets = 3): Sear
     hits.push({ page, score, titleMatch, snippets })
   }
 
-  return hits.sort((a, b) => b.score - a.score || a.page.title.localeCompare(b.page.title, 'de'))
+  return hits.sort((a, b) => b.score - a.score || a.page.title.localeCompare(b.page.title))
 }
 
 /** Marks the hits inside a text without building HTML. */

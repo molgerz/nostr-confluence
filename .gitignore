@@ -1,4 +1,4 @@
-# Wegwerf-Schlüssel für lokale Testrelays — nie committen
+# Throwaway keys for local test relays — never commit
 scripts/.dev-keys
 
 node_modules/
@@ -7,11 +7,11 @@ dist/
 .env.local
 db/
 
-# lokale Claude-Code-Einstellungen
+# local Claude Code settings
 .claude/settings.local.json
 
 # macOS
 .DS_Store
 
-# lokal geklonte Fremd-Repos (Relay-Quelle)
+# third-party repos cloned locally (relay source)
 .local/

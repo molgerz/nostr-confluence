@@ -12,9 +12,9 @@ import { ProfileSettings } from './ProfileSettings'
 import { NotFound } from './NotFound'
 
 /**
- * Routen nach docs/06-ui-information-architecture.md. Der :group-Parameter
+ * Routes per docs/06-ui-information-architecture.md. The :group parameter
  * carries the full NIP-29 address (host'group), URL-encoded, so that a link
- * ein Link ohne Zusatzwissen funktioniert.
+ * works without any extra knowledge.
  */
 export const router = createBrowserRouter([
   {

@@ -50,7 +50,7 @@ export function BlameView() {
                 <tr key={index} className="align-top">
                   <td
                     className={`w-32 border-r border-line px-2 py-0.5 whitespace-nowrap ${colorOf.get(line.revision.author)}`}
-                    title={`${npub} · ${new Date(line.revision.createdAt * 1000).toLocaleString('de-DE')}`}
+                    title={`${npub} · ${new Date(line.revision.createdAt * 1000).toLocaleString()}`}
                   >
                     {shortNpub(npub)}
                   </td>

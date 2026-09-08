@@ -15,9 +15,9 @@ export type SpaceRoute = {
 }
 
 /**
- * Reads the group address from the route and returns the matching space
- * holen. Der Store ist pro (Relay, Gruppe) geteilt, mehrfaches Aufrufen
- * calling it several times creates no extra subscriptions.
+ * Reads the group address from the route and returns the matching space.
+ * The store is shared per (relay, group), so calling this several times
+ * creates no extra subscriptions.
  */
 export function useSpaceRoute(): SpaceRoute {
   const params = useParams<{ group?: string; slug?: string }>()

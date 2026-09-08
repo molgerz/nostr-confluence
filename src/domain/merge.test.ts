@@ -51,7 +51,7 @@ describe('mergeThreeWay', () => {
   })
 
   it('merges an append at the end with a change at the start', () => {
-    const mine = `${base}\n\n## Kontakt\n\nteam@example.org`
+    const mine = `${base}\n\n## Contact\n\nteam@example.org`
     const theirs = base.replace('# Onboarding', '# Onboarding for new colleagues')
     const result = mergeThreeWay(base, mine, theirs)
     expect(result.status).toBe('clean')
@@ -76,7 +76,7 @@ describe('mergeThreeWay', () => {
     const mine = `${base}\n\nfrom alice`
     const theirs = `${base}\n\nfrom bob`
     const result = mergeThreeWay(base, mine, theirs)
-    // Gleiche Stelle, unterschiedlicher Text: Konflikt, aber beide Texte sind da
+    // Same spot, different text: a conflict, but both texts are there
     expect(result.content).toContain('from alice')
     expect(result.content).toContain('from bob')
   })

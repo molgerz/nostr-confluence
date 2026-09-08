@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Winziger Blossom-Server für die Entwicklung (BUD-01/02).
+ * Tiny Blossom server for development (BUD-01/02).
  *
- * Nostr speichert keine Dateien — Bilder liegen auf einem Blossom- oder
- * NIP-96-Server und werden über ihre URL in den Markdown-Text eingebettet.
- * Dieser Server ist bewusst klein und NUR für die lokale Entwicklung: er
- * prüft die Upload-Autorisierung (Kind 24242) und legt Dateien unter ihrem
- * sha256 ab. Produktiv gehört ein richtiger Blossom-Server hin.
+ * Nostr stores no files — images live on a Blossom or NIP-96 server and are
+ * embedded into the markdown text by their URL. This server is deliberately
+ * small and ONLY for local development: it checks the upload authorization
+ * (kind 24242) and stores files under their sha256. In production a real
+ * Blossom server belongs here.
  *
  *   node scripts/dev-blossom.mjs [--port 3355]
  */
@@ -35,22 +35,22 @@ function json(res, status, body) {
   res.end(JSON.stringify(body))
 }
 
-/** Autorisierung nach BUD-01: Kind 24242, t=upload, x=<hash>, gültige Signatur. */
+/** Authorization per BUD-01: kind 24242, t=upload, x=<hash>, valid signature. */
 function checkAuth(header, hash) {
-  if (!header?.startsWith('Nostr ')) return 'Authorization-Header fehlt'
+  if (!header?.startsWith('Nostr ')) return 'Authorization header is missing'
   let event
   try {
     event = JSON.parse(Buffer.from(header.slice(6), 'base64').toString('utf8'))
   } catch {
-    return 'Authorization ist kein gültiges base64-JSON'
+    return 'Authorization is not valid base64 JSON'
   }
-  if (event.kind !== 24242) return 'falscher Kind, erwartet 24242'
-  if (!verifyEvent(event)) return 'Signatur ungültig'
+  if (event.kind !== 24242) return 'wrong kind, expected 24242'
+  if (!verifyEvent(event)) return 'invalid signature'
   const tag = (name) => event.tags.find((t) => t[0] === name)?.[1]
-  if (tag('t') !== 'upload') return 't-Tag muss upload sein'
-  if (tag('x') && tag('x') !== hash) return 'x-Tag passt nicht zum Inhalt'
+  if (tag('t') !== 'upload') return 't tag must be upload'
+  if (tag('x') && tag('x') !== hash) return 'x tag does not match the content'
   const expiration = Number(tag('expiration') ?? 0)
-  if (!expiration || expiration < Math.floor(Date.now() / 1000)) return 'expiration fehlt oder ist abgelaufen'
+  if (!expiration || expiration < Math.floor(Date.now() / 1000)) return 'expiration is missing or has passed'
   return null
 }
 
@@ -67,7 +67,7 @@ const server = createServer(async (req, res) => {
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
     const body = Buffer.concat(chunks)
-    if (body.length === 0) return json(res, 400, { message: 'leerer Upload' })
+    if (body.length === 0) return json(res, 400, { message: 'empty upload' })
 
     const hash = createHash('sha256').update(body).digest('hex')
     const problem = checkAuth(req.headers.authorization, hash)
@@ -93,25 +93,25 @@ const server = createServer(async (req, res) => {
     try {
       await access(join(store, hash))
     } catch {
-      return json(res, 404, { message: 'nicht gefunden' })
+      return json(res, 404, { message: 'not found' })
     }
     const body = await readFile(join(store, hash))
     let type = 'application/octet-stream'
     try {
       type = (await readFile(join(store, `${hash}.type`), 'utf8')).trim()
     } catch {
-      /* Typ unbekannt */
+      /* type unknown */
     }
     res.writeHead(200, { 'Content-Type': type, 'Content-Length': body.length, ...CORS })
     res.end(req.method === 'HEAD' ? undefined : body)
     return
   }
 
-  json(res, 404, { message: 'Blossom-Entwicklungsserver: PUT /upload oder GET /<sha256>' })
+  json(res, 404, { message: 'Blossom development server: PUT /upload or GET /<sha256>' })
 })
 
 server.listen(port, () => {
-  console.log(`Blossom-Entwicklungsserver auf http://localhost:${port}`)
-  console.log(`Dateien landen in ${store}`)
-  console.log('In .env.local eintragen:  VITE_BLOSSOM_SERVER=http://localhost:' + port)
+  console.log(`Blossom development server on http://localhost:${port}`)
+  console.log(`files end up in ${store}`)
+  console.log('add to .env.local:  VITE_BLOSSOM_SERVER=http://localhost:' + port)
 })
