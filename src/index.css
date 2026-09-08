@@ -10,73 +10,88 @@
      docs/12-theming.md */
   color-scheme: light;
 
-  --surface-0: #f1f2f4;
-  --surface-1: #f7f8f9;
+  --surface-0: #f1f3f5;
+  --surface-1: #f8f9fa;
   --surface-2: #ffffff;
 
-  --fg: #172b4d;
-  --fg-muted: #44546f;
-  --fg-subtle: #6b778c;
+  /* Rows in the chrome — sidebar entries, menu items, list rows. Neutral, not
+     tinted: the accent is kept for links and the one primary action per view,
+     so a highlighted row does not read as a button. docs/12-theming.md */
+  --surface-hover: #eceef1;
+  --surface-selected: #e3e6ea;
 
-  --line: #dcdfe4;
-  --line-strong: #b3b9c4;
+  --fg: #212529;
+  --fg-muted: #495057;
+  --fg-subtle: #868e96;
 
-  --accent: #0c66e4;
-  --accent-bg: #e9f2ff;
-  --accent-fg: #0055cc;
+  --line: #e9ecef;
+  --line-strong: #ced4da;
 
-  --danger: #c9372c;
-  --danger-bg: #ffeceb;
-  --warning: #a54800;
-  --warning-bg: #fff7d6;
-  --success: #216e4e;
-  --success-bg: #dcfff1;
+  --accent: #228be6;
+  --accent-bg: #e7f5ff;
+  --accent-fg: #1971c2;
+  /* Text on a solid --accent fill. Not simply white: in dark mode the accent
+     is a light blue, and white on it falls under 3:1. docs/12-theming.md */
+  --accent-contrast: #ffffff;
 
-  --diff-add-bg: #dcfff1;
-  --diff-del-bg: #ffeceb;
-  --diff-word-add-bg: #a6ecc7;
-  --diff-word-del-bg: #ffcfcb;
-  --code-bg: #f1f2f4;
-  --code-line: #dcdfe4;
+  --danger: #e03131;
+  --danger-bg: #fff5f5;
+  --warning: #e8590c;
+  --warning-bg: #fff4e6;
+  --success: #2f9e44;
+  --success-bg: #ebfbee;
+
+  --diff-add-bg: #ebfbee;
+  --diff-del-bg: #fff5f5;
+  --diff-word-add-bg: #b2f2bb;
+  --diff-word-del-bg: #ffc9c9;
+  --code-bg: #f8f9fa;
+  --code-line: #e9ecef;
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --surface-0: #1d2125;
-  --surface-1: #22272b;
-  --surface-2: #282e33;
+  --surface-0: #131416;
+  --surface-1: #191a1d;
+  --surface-2: #202124;
 
-  --fg: #dee4ea;
-  --fg-muted: #9fadbc;
-  --fg-subtle: #8c9bab;
+  --surface-hover: #26282c;
+  --surface-selected: #2f3237;
 
-  --line: #38414a;
-  --line-strong: #596773;
+  --fg: #e6e7e9;
+  --fg-muted: #a1a6ad;
+  --fg-subtle: #7f858d;
 
-  --accent: #579dff;
-  --accent-bg: #1c2b41;
-  --accent-fg: #85b8ff;
+  --line: #2c2e33;
+  --line-strong: #43464d;
 
-  --danger: #f87168;
-  --danger-bg: #42221f;
-  --warning: #f5cd47;
-  --warning-bg: #332e1b;
-  --success: #7ee2b8;
-  --success-bg: #1c3329;
+  --accent: #4dabf7;
+  --accent-bg: #1b2b3d;
+  --accent-fg: #74c0fc;
+  --accent-contrast: #131416;
 
-  --diff-add-bg: #1c3329;
-  --diff-del-bg: #42221f;
-  --diff-word-add-bg: #2f5f47;
+  --danger: #ff8787;
+  --danger-bg: #3a1f20;
+  --warning: #ffa94d;
+  --warning-bg: #3a2a18;
+  --success: #69db7c;
+  --success-bg: #1a3324;
+
+  --diff-add-bg: #1a3324;
+  --diff-del-bg: #3a1f20;
+  --diff-word-add-bg: #2b6041;
   --diff-word-del-bg: #6b3733;
-  --code-bg: #1d2125;
-  --code-line: #38414a;
+  --code-bg: #1a1b1e;
+  --code-line: #2c2e33;
 }
 
 @theme inline {
   --color-surface-0: var(--surface-0);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
 
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
@@ -88,6 +103,7 @@
   --color-accent: var(--accent);
   --color-accent-bg: var(--accent-bg);
   --color-accent-fg: var(--accent-fg);
+  --color-accent-contrast: var(--accent-contrast);
 
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
@@ -130,4 +146,22 @@ body {
   color: var(--fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* The sidebar and the right-hand rail scroll behind the content. A default
+   scrollbar draws a light grey trough over the chrome that is wider than the
+   indent of the tree, which is loud for a bar you are meant to read past. */
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Every focusable control gets the same ring, once, instead of each component
+   inventing its own. `:focus-visible` and not `:focus`, so a click does not
+   leave a ring behind on a button that was only pressed. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
 }

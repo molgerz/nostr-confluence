@@ -11,6 +11,8 @@ import { attachmentMarkdown, attachmentsEnabled, uploadAttachment } from '../nos
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from './SignInButton'
+import { Button, Callout, INPUT, Segmented } from './controls'
+import { PencilIcon, BookIcon, PlusIcon } from './icons'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -64,8 +66,8 @@ export function PageEditor({
 
   if (session.status !== 'signed-in') {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-fg-muted">
+      <div className="space-y-4 rounded-lg border border-dashed border-line-strong p-6">
+        <p className="max-w-[56ch] text-sm text-fg-muted">
           Editing requires signing in, reading does not. The revision is signed with your key,
           so it cannot be done anonymously.
         </p>
@@ -206,101 +208,112 @@ export function PageEditor({
   }
 
   return (
-    <div className="space-y-4">
-      {notice ? (
-        <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs text-fg-muted">
-          {notice}
-        </div>
-      ) : null}
+    <div className="space-y-5">
+      {notice ? <Callout tone="warning">{notice}</Callout> : null}
 
-      <div className="space-y-1">
-        <label htmlFor="title" className="text-xs font-medium text-fg-subtle">
+      {/* The title is the page's own heading, so it is edited at the size it
+          will be read at — a borderless field the width of the column, not a
+          32px box labelled "Title". The slug it derives sits under it in the
+          same place the byline will. */}
+      <div>
+        <label htmlFor="title" className="sr-only">
           Title
         </label>
         <input
           id="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Page title"
-          className="w-full rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
+          placeholder="Untitled page"
+          className="w-full bg-transparent text-[30px] leading-tight font-semibold tracking-[-0.02em] text-fg placeholder:text-fg-subtle/60 focus:outline-none"
         />
-        <p className="font-mono text-xs text-fg-subtle">
-          Slug: {slug || '—'}
-          {page ? ' (immutable)' : ''}
+        <p className="mt-2 font-mono text-xs text-fg-subtle">
+          /{slug || '…'}
+          {page ? ' · fixed for the life of the page' : ''}
         </p>
         {collision ? (
-          <p className="text-xs text-warning">
+          <p className="mt-1 text-xs text-warning">
             “{existing?.title}” already uses this slug. Saving appends another revision to that
             page instead of creating a second one.
           </p>
         ) : null}
       </div>
 
-      <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-2 border-y border-line py-2.5">
         <label htmlFor="parent" className="text-xs font-medium text-fg-subtle">
-          Parent page (slug, optional)
+          Filed under
         </label>
         <input
           id="parent"
           value={parentSlug}
           onChange={(event) => setParentSlug(event.target.value)}
-          placeholder="e.g. handbook"
-          className="w-full rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-xs text-fg"
+          placeholder="the top level"
+          list="nc-parent-slugs"
+          className={`${INPUT} w-56 font-mono text-xs`}
         />
-      </div>
+        {/* The slugs of the space, so the field can be picked from rather than
+            typed from memory — a wrong slug here files the page nowhere. */}
+        <datalist id="nc-parent-slugs">
+          {pages
+            .filter((entry) => entry.slug !== page?.slug)
+            .map((entry) => (
+              <option key={entry.slug} value={entry.slug}>
+                {entry.title}
+              </option>
+            ))}
+        </datalist>
 
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-fg-subtle">Content (Markdown)</span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={!attachmentsEnabled() || uploading}
-              title={
-                attachmentsEnabled()
-                  ? 'Attach an image or file — it goes to the Blossom server, not into the event'
-                  : 'No Blossom server configured (VITE_BLOSSOM_SERVER)'
-              }
-              onClick={() => fileInput.current?.click()}
-              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted disabled:opacity-60"
-            >
-              {uploading ? 'uploading…' : 'Attach'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowPreview((value) => !value)}
-              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
-            >
-              {showPreview ? 'Source' : 'Preview'}
-            </button>
-          </div>
-        </div>
-        {showPreview ? (
-          <div className="min-h-64 rounded-md border border-line bg-surface-2 p-3">
-            <Markdown>{content || '_still empty_'}</Markdown>
-          </div>
-        ) : (
-          <MarkdownEditor
-            value={content}
-            onChange={setContent}
-            ariaLabel="Content in Markdown"
-            handleRef={editorHandle}
-            onDropFiles={(files) => void upload(files)}
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button
+            size="sm"
+            disabled={!attachmentsEnabled() || uploading}
+            title={
+              attachmentsEnabled()
+                ? 'Attach an image or file — it goes to the Blossom server, not into the event'
+                : 'No Blossom server configured (VITE_BLOSSOM_SERVER)'
+            }
+            onClick={() => fileInput.current?.click()}
+          >
+            <PlusIcon className="size-3.5" />
+            {uploading ? 'uploading…' : 'Attach'}
+          </Button>
+          <Segmented
+            label="Source or preview"
+            value={showPreview ? 'preview' : 'source'}
+            options={[
+              { value: 'source', label: 'Write', icon: <PencilIcon className="size-3.5" /> },
+              { value: 'preview', label: 'Preview', icon: <BookIcon className="size-3.5" /> },
+            ]}
+            onChange={(next) => setShowPreview(next === 'preview')}
           />
-        )}
+        </div>
       </div>
 
-      <div className="space-y-1">
-        <label htmlFor="summary" className="text-xs font-medium text-fg-subtle">
-          What did you change? (shown in the history)
+      {showPreview ? (
+        <div className="min-h-64 rounded-lg border border-line p-4">
+          <Markdown>{content || '_still empty_'}</Markdown>
+        </div>
+      ) : (
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          ariaLabel="Content in Markdown"
+          handleRef={editorHandle}
+          onDropFiles={(files) => void upload(files)}
+        />
+      )}
+
+      <div className="space-y-1.5">
+        <label htmlFor="summary" className="block text-xs font-medium text-fg-muted">
+          What did you change?
         </label>
         <input
           id="summary"
           value={summary}
           onChange={(event) => setSummary(event.target.value)}
           placeholder={page ? 'e.g. added a deployment section' : 'created the page'}
-          className="w-full rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg"
+          className={INPUT}
         />
+        <p className="text-xs text-fg-subtle">Shown in the history next to this revision.</p>
       </div>
 
       <input
@@ -316,24 +329,19 @@ export function PageEditor({
       />
       {uploadNote ? <p className="text-xs text-fg-subtle">{uploadNote}</p> : null}
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {/* The relay's own words, never a paraphrase: with distributed storage
+          "saved" must not be claimed before an OK came back, and when it did
+          not, the reason is the only thing that helps.
+          docs/06-ui-information-architecture.md */}
+      {error ? <Callout tone="danger" title="Not saved">{error}</Callout> : null}
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={busy}
-          className="rounded-md bg-accent-bg px-4 py-2 text-sm font-medium text-accent-fg disabled:opacity-60"
-        >
+      {/* Pinned to the bottom of the viewport: on a long page the save button
+          was two screens below the paragraph being written. */}
+      <div className="sticky bottom-0 -mx-1 flex gap-2 border-t border-line bg-surface-2/90 px-1 py-3 backdrop-blur-sm">
+        <Button variant="primary" onClick={() => void save()} disabled={busy}>
           {busy ? 'saving…' : 'Save'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-line px-4 py-2 text-sm text-fg-muted"
-        >
-          Cancel
-        </button>
+        </Button>
+        <Button onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   )

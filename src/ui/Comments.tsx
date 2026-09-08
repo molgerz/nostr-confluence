@@ -9,6 +9,8 @@ import { useSession } from '../session/session'
 import { SignInButton } from './SignInButton'
 import { Author } from './Author'
 import { Markdown } from './Markdown'
+import { Button, SectionLabel, TEXTAREA } from './controls'
+import { CommentIcon } from './icons'
 
 type Props = {
   relayUrl: string
@@ -31,6 +33,15 @@ function timeLabel(seconds: number): string {
  * Comments on a page, like the discussion below a Confluence page. Anchored to
  * (group, slug), not to a single revision — otherwise the thread would be
  * orphaned after the next edit.
+ *
+ * Each comment is a bordered card, and a reply is a card indented behind a
+ * rule that runs down the thread it belongs to. The rule is what makes a
+ * three-deep thread readable: at 16px of indent alone the second and third
+ * level are told apart by counting pixels.
+ *
+ * Reply and delete only appear on the card the pointer is over. A column of
+ * cards each carrying two buttons is a form; the same column with the buttons
+ * held back is a conversation.
  */
 export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }: Props) {
   const { session, ensureSamePubkey } = useSession()
@@ -103,69 +114,69 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
   }
 
   const renderNode = (node: CommentNode) => (
-    <li key={node.id} style={{ marginLeft: `${node.depth * 16}px` }} className="space-y-1">
-      <div className="rounded-xl border border-line bg-surface-1 p-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
+    <li key={node.id}>
+      <div className="group/comment rounded-lg border border-line bg-surface-2 p-3.5">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <Author pubkey={node.author} avatar showNpub={false} />
-          <span>· {timeLabel(node.createdAt)}</span>
+          <span className="text-fg-subtle">{timeLabel(node.createdAt)}</span>
+
+          {session.status === 'signed-in' ? (
+            <span className="ml-auto flex gap-1 opacity-0 transition-opacity group-hover/comment:opacity-100 focus-within:opacity-100">
+              <Button size="sm" variant="subtle" onClick={() => setReplyTo(node)}>
+                Reply
+              </Button>
+              {isAdmin ? (
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  className="text-danger hover:bg-danger-bg"
+                  disabled={busy}
+                  onClick={() => void remove(node)}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </span>
+          ) : null}
         </div>
-        <div className="mt-1">
+        <div className="mt-1.5">
           <Markdown density="compact">{node.content}</Markdown>
         </div>
-        {session.status === 'signed-in' ? (
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setReplyTo(node)}
-              className="rounded-md border border-line px-2 py-1 text-xs text-fg-muted"
-            >
-              Reply
-            </button>
-            {isAdmin ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void remove(node)}
-                className="rounded-md border border-danger px-2 py-1 text-xs text-danger disabled:opacity-60"
-              >
-                Delete (admin)
-              </button>
-            ) : null}
-          </div>
-        ) : null}
       </div>
+
       {node.replies.length > 0 ? (
-        <ul className="space-y-1">{node.replies.map(renderNode)}</ul>
+        // The rule sits in the margin the replies are indented by, so it runs
+        // the exact height of the thread hanging off this comment.
+        <ul className="mt-2 space-y-2 border-l-2 border-line pl-4">
+          {node.replies.map(renderNode)}
+        </ul>
       ) : null}
     </li>
   )
 
   return (
-    <section className="space-y-3 border-t border-line pt-5">
-      <h2 className="text-sm font-medium text-fg">
-        Comments{total > 0 ? ` (${total})` : ''}
-      </h2>
+    <section className="mt-12 border-t border-line pt-6">
+      <div className="flex items-center gap-2">
+        <CommentIcon className="size-4 text-fg-subtle" />
+        <SectionLabel>Comments{total > 0 ? ` · ${total}` : ''}</SectionLabel>
+      </div>
 
       {tree.length === 0 ? (
-        <p className="text-xs text-fg-subtle">No comments yet.</p>
+        <p className="mt-3 text-sm text-fg-subtle">No comments yet.</p>
       ) : (
-        <ul className="space-y-2">{tree.map(renderNode)}</ul>
+        <ul className="mt-4 space-y-2">{tree.map(renderNode)}</ul>
       )}
 
       {session.status === 'signed-in' ? (
-        <div className="space-y-2">
+        <div className="mt-5 space-y-2">
           {replyTo ? (
             <div className="flex items-center gap-2 text-xs text-fg-subtle">
               <span className="inline-flex items-center gap-1.5">
                 Replying to <Author pubkey={replyTo.author} showNpub={false} />
               </span>
-              <button
-                type="button"
-                onClick={() => setReplyTo(null)}
-                className="rounded-md border border-line px-2 py-0.5 text-fg-muted"
-              >
+              <Button size="sm" variant="subtle" onClick={() => setReplyTo(null)}>
                 cancel
-              </button>
+              </Button>
             </div>
           ) : null}
           <textarea
@@ -174,20 +185,15 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
             rows={3}
             aria-label="Write a comment"
             placeholder="Write a comment — Markdown allowed"
-            className="w-full rounded-md border border-line bg-surface-2 p-2 text-sm text-fg"
+            className={TEXTAREA}
           />
           {error ? <p className="text-xs text-danger">{error}</p> : null}
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={busy}
-            className="rounded-md bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-60"
-          >
+          <Button variant="primary" onClick={() => void send()} disabled={busy}>
             {busy ? 'sending…' : replyTo ? 'Send reply' : 'Send comment'}
-          </button>
+          </Button>
         </div>
       ) : (
-        <p className="text-xs text-fg-subtle">
+        <p className="mt-4 text-sm text-fg-subtle">
           <SignInButton variant="inline">Sign in</SignInButton> to comment — reading works
           without.
         </p>

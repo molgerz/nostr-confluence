@@ -24,15 +24,16 @@ set to light.
 ## Token layers
 
 Components **never** use raw colours, only semantic tokens. Exactly one file
-defines both palettes:
+defines both palettes, `src/index.css`:
 
 | Token | Meaning |
 |---|---|
-| `--surface-0/1/2` | Page background, sidebar/cards, foreground surfaces |
-| `--text-primary/secondary/muted` | Body text, secondary text, hints |
-| `--border`, `--border-strong` | Dividers, hover borders |
-| `--accent`, `--bg-accent`, `--text-accent` | Actions, active sidebar row, buttons |
-| `--danger`, `--warning`, `--success` (+ `bg-`/`text-`) | Conflict banner, publish errors, "saved" |
+| `--surface-0/1/2` | Sunken (segmented tracks, pills), chrome (global bar, left bar, right rail), the document canvas |
+| `--surface-hover`, `--surface-selected` | A row under the pointer, a row that is the current one |
+| `--fg`, `--fg-muted`, `--fg-subtle` | Body text, secondary text, hints |
+| `--line`, `--line-strong` | Dividers, hover borders |
+| `--accent`, `--accent-bg`, `--accent-fg`, `--accent-contrast` | A solid primary button, a tinted info block, a link, text *on* a solid accent fill |
+| `--danger`, `--warning`, `--success` (+ `-bg`) | Conflict banner, publish errors, "saved" |
 | `--diff-add-bg`, `--diff-del-bg` | Diff view: added and removed lines |
 | `--diff-word-add-bg`, `--diff-word-del-bg` | Word-level highlighting inside a changed line (instead of a single `--diff-word-bg`: added and removed need different colours) |
 | `--code-bg`, `--code-line` | Code blocks in Markdown |
@@ -40,6 +41,26 @@ defines both palettes:
 Rule: if a component needs a colour that does not exist as a token, add the
 token — do not write the colour inline. That is the only way the second mode
 stays maintainable at all.
+
+### The palette is a neutral grey scale
+
+Cool, light greys rather than the blue-tinted Atlassian ones this started with,
+and — the part that actually changed how the app reads — **state is neutral and
+only action is accent**. A selected sidebar row, a pressed segment, a hovered
+list row all take `--surface-hover` / `--surface-selected`. The accent is left
+meaning one thing.
+
+Before this the accent was doing two jobs, "this is where you are" and "this
+does something", and the page tree was a column of blue pills that all looked
+clickable in the same way as the Save button. Two tokens fixed a problem that
+had looked like a layout problem.
+
+### Two accent tokens, not one
+
+`--accent` is a solid fill and `--accent-contrast` is the text on it. The second
+one is **not** simply white: in dark mode the accent is a light blue (`#4dabf7`)
+and white on it falls under 3:1, so there it is the near-black surface colour
+instead. A single "on-accent = white" would have been legible in one mode only.
 
 In dark mode, no pure black as a surface (too harsh a contrast, halation around
 text) and no pure white as text. Contrast at least 4.5:1 for body text
@@ -88,6 +109,17 @@ Shiki, as suggested above, with two decisions that are not obvious:
 Grammars and the highlighter itself are dynamic imports, so nothing of Shiki
 sits in the main bundle — somebody who never opens a page with a code block
 never downloads it.
+
+## Two things every mode gets for free
+
+- **One focus ring, defined once.** `:focus-visible` in a base layer, a 2px
+  accent outline with 1px offset, for everything focusable. Per-component rings
+  drift, and half of them get forgotten. `:focus-visible` and not `:focus`, so
+  a click does not leave a ring on a button that was only pressed.
+- **Slim scrollbars on the chrome** (`scroll-slim`). The left bar and the right
+  rail scroll behind the content, and a default scrollbar draws a grey trough
+  over the chrome wider than the tree's own indent — loud, for a bar you are
+  meant to read past.
 
 ## No flash on load
 

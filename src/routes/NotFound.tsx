@@ -1,12 +1,13 @@
-import { Link } from 'react-router-dom'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import { ButtonLink } from '../ui/controls'
 
 export function NotFound() {
   return (
-    <div className="space-y-3">
-      <h1 className="text-3xl font-semibold tracking-tight text-fg">Not found</h1>
-      <Link to="/" className="text-sm text-accent-fg underline">
-        back to the space list
-      </Link>
-    </div>
+    <PageFrame crumbs={[{ label: 'Not found' }]}>
+      <PageTitle below={<p className="text-base text-fg-muted">This address leads nowhere.</p>}>
+        Not found
+      </PageTitle>
+      <ButtonLink to="/">Back to the space list</ButtonLink>
+    </PageFrame>
   )
 }

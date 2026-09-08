@@ -4,6 +4,8 @@ import { classifyRejection } from '../nostr/client'
 import { parsePubkeyInput } from '../nostr/profile'
 import { Author } from './Author'
 import { useSession } from '../session/session'
+import { Button, Card, INPUT, SectionLabel } from './controls'
+import { UsersIcon } from './icons'
 import type { Admin } from '../domain/group-state'
 
 type Props = {
@@ -60,62 +62,76 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
   }
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-medium text-fg">Members ({members.length})</h2>
+    <section>
+      <div className="mb-3 flex items-center gap-2">
+        <UsersIcon className="size-4 text-fg-subtle" />
+        <SectionLabel>Members · {members.length}</SectionLabel>
+      </div>
 
-      <ul className="space-y-1 text-xs">
-        {members.map((pubkey) => {
-          const roles = admins.find((admin) => admin.pubkey === pubkey)?.roles ?? []
-          return (
-            <li key={pubkey} className="flex flex-wrap items-center gap-2">
-              <Author pubkey={pubkey} avatar />
-              {roles.length > 0 ? (
-                <span className="rounded bg-surface-1 px-1.5 py-0.5 text-fg-subtle">
-                  {roles.join(', ')}
-                </span>
-              ) : null}
-              {session.status === 'signed-in' && pubkey === session.pubkey ? (
-                <span className="text-fg-subtle">(you)</span>
-              ) : null}
-              {isAdmin && session.status === 'signed-in' && pubkey !== session.pubkey ? (
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() =>
-                    void run(pubkey, () =>
-                      removeMember(session.signer, { relayUrl, groupId, pubkey }),
-                    )
-                  }
-                  className="rounded-md border border-line px-2 py-0.5 text-fg-muted disabled:opacity-60"
-                >
-                  {busy === pubkey ? '…' : 'remove'}
-                </button>
-              ) : null}
+      {/* One row per member, and the row is where the key is shown in full-ish
+          form: this is a list somebody reads to decide who is allowed to write
+          here, so the npub sits next to the name rather than in a tooltip.
+          docs/06-ui-information-architecture.md */}
+      <Card>
+        <ul className="divide-y divide-line">
+          {members.map((pubkey) => {
+            const roles = admins.find((admin) => admin.pubkey === pubkey)?.roles ?? []
+            const self = session.status === 'signed-in' && pubkey === session.pubkey
+            return (
+              <li
+                key={pubkey}
+                className="group/member flex flex-wrap items-center gap-2 px-3.5 py-2.5 text-xs"
+              >
+                <Author pubkey={pubkey} avatar />
+                {roles.length > 0 ? (
+                  <span className="rounded-full bg-surface-0 px-2 py-0.5 font-medium text-fg-muted">
+                    {roles.join(', ')}
+                  </span>
+                ) : null}
+                {self ? <span className="text-fg-subtle">you</span> : null}
+                {isAdmin && session.status === 'signed-in' && !self ? (
+                  <span className="ml-auto opacity-0 transition-opacity group-hover/member:opacity-100 focus-within:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      className="text-danger hover:bg-danger-bg"
+                      disabled={busy !== null}
+                      onClick={() =>
+                        void run(pubkey, () =>
+                          removeMember(session.signer, { relayUrl, groupId, pubkey }),
+                        )
+                      }
+                    >
+                      {busy === pubkey ? '…' : 'Remove'}
+                    </Button>
+                  </span>
+                ) : null}
+              </li>
+            )
+          })}
+          {members.length === 0 ? (
+            <li className="px-3.5 py-2.5 text-xs text-fg-subtle">
+              {loading ? 'loading…' : 'The relay reports no member list.'}
             </li>
-          )
-        })}
-        {members.length === 0 ? (
-          <li className="text-fg-subtle">
-            {loading ? 'loading…' : 'The relay reports no member list.'}
-          </li>
-        ) : null}
-      </ul>
+          ) : null}
+        </ul>
+      </Card>
 
       {isAdmin && session.status === 'signed-in' ? (
-        <div className="space-y-2 rounded-xl border border-line bg-surface-1 p-3">
-          <label htmlFor="member" className="text-xs font-medium text-fg-subtle">
-            Add a member (npub or hex)
+        <div className="mt-3 space-y-2">
+          <label htmlFor="member" className="block text-xs font-medium text-fg-muted">
+            Add a member
           </label>
           <div className="flex flex-wrap gap-2">
             <input
               id="member"
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="npub1…"
-              className="min-w-0 flex-1 rounded-md border border-line bg-surface-2 px-2 py-1 font-mono text-xs text-fg"
+              placeholder="npub1… or a hex key"
+              className={`${INPUT} min-w-0 flex-1 font-mono text-xs`}
             />
-            <button
-              type="button"
+            <Button
+              variant="primary"
               disabled={busy !== null}
               onClick={() => {
                 const pubkey = parsePubkeyInput(input)
@@ -125,10 +141,9 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
                 }
                 void run('add', () => addMember(session.signer, { relayUrl, groupId, pubkey }))
               }}
-              className="rounded-md bg-accent-bg px-3 py-1 text-xs font-medium text-accent-fg disabled:opacity-60"
             >
-              {busy === 'add' ? 'sending…' : 'add'}
-            </button>
+              {busy === 'add' ? 'sending…' : 'Add'}
+            </Button>
           </div>
           <p className="text-xs text-fg-subtle">
             In an open group this is unnecessary: whoever writes is added by the relay
@@ -138,7 +153,9 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
       ) : null}
 
       {message ? (
-        <p className={`text-xs ${message.ok ? 'text-success' : 'text-danger'}`}>{message.text}</p>
+        <p className={`mt-3 text-xs ${message.ok ? 'text-success' : 'text-danger'}`}>
+          {message.text}
+        </p>
       ) : null}
     </section>
   )

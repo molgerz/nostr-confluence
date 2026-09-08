@@ -13,14 +13,21 @@ function relativeTime(seconds: number): string {
  * Who last touched the page. Only the name here, not the key: this line is a
  * byline, and the place to check who actually signed which revision is the
  * history, where every entry carries its npub.
+ *
+ * The change note follows on a line of its own rather than after another dot.
+ * It is a sentence somebody wrote, and strung onto the end of the metadata it
+ * read as a fourth field.
  */
 export function Byline({ revision }: { revision: Revision }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
-      <span>last edited</span>
-      <Author pubkey={revision.author} avatar showNpub={false} />
-      <span>· {relativeTime(revision.createdAt)}</span>
-      {revision.summary ? <span>· {revision.summary}</span> : null}
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-1.5 text-sm text-fg-subtle">
+        <Author pubkey={revision.author} avatar showNpub={false} />
+        <span>edited {relativeTime(revision.createdAt)}</span>
+      </div>
+      {revision.summary ? (
+        <div className="text-xs text-fg-subtle italic">“{revision.summary}”</div>
+      ) : null}
     </div>
   )
 }

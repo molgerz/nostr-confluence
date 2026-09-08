@@ -1,47 +1,154 @@
 # 06 — UI & information architecture
 
-## Layout (modelled on Confluence)
+## What the surface is after
+
+The layout is Confluence's — left bar, document, right rail. The *surface* was
+reworked to read more quietly: chrome that recedes, neutral greys where
+Confluence uses tinted ones, icon-led navigation, and a document that sits on
+the chrome rather than in a boxed panel. The icon set, the tokens and the
+components are all drawn and written here, for this app.
+
+Three rules came out of that rework, and they are what the rest of this file
+applies:
+
+1. **Neutral for state, accent for action.** A selected sidebar row, a pressed
+   segment and a hovered list row are grey (`--surface-hover`,
+   `--surface-selected`). Blue is left meaning one thing: "this does something."
+   The tree used to be a column of blue pills, which made every page look like
+   a button.
+2. **Global bar for what is always true, page bar for what this page can do.**
+   Two bars, not one growing one. See below.
+3. **One control vocabulary.** `src/ui/controls.tsx` defines each kind of button
+   and notice once, `src/ui/icons.tsx` draws every icon on one grid in one
+   stroke weight. Views compose those instead of spelling their own Tailwind.
+
+## Layout
 
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│ Logo        Search…  [+ Create]              Theme   Account     │  top bar 48px
-├──────────────┬────────────────────────────────────┬───────────────┤
-│ Space header │ Breadcrumb: Handbook / Onboarding  │ On this page  │
-│ Engineering  │                                    │               │
-│ public       │ # Onboarding                       │  · Goal       │
-│              │                                    │  · Access     │
-│ Overview     │ last edited by carol · 11:40       │  · Contact    │
-│ Search       │ [Edit][History][Line origin]       │               │
-│              │                                    │               │
-│ ▾ Handbook   │ Markdown content …                 │               │
-│   · Onboard. │                                    │               │
-│   · Tooling  │                                    │               │
-│ ▸ Processes  │                                    │               │
-│              │                                    │               │
-│ + New page   │                                    │               │
-└──────────────┴────────────────────────────────────┴───────────────┘
-   224px                 flexible, max 5xl              176px
+┌────────────────────────────────────────────────────────────────────┐
+│ ▣  nostr confluence      🔍 Search pages   ⌘K      ● relay ☼ (M)  │ global bar 52px
+├──────────────┬──────────────────────────────────────┬─────────────┤
+│ (E) Engineer.│ Engineering / Handbook / Onboarding  │ ON THIS PAGE│ page bar 48px
+│     localhos.│              [Read|Edit] ⟲  ≡  ⊞     │             │
+│              │                                      │  — Goal     │
+│ ⌂ Overview   │  Onboarding                          │  — Access   │
+│ 🔍 Search    │  (c) carol · edited 2 h ago          │  — Contact  │
+│ + New page   │                                      │             │
+│              │  Markdown content …                  │             │
+│ PAGES     +  │                                      │             │
+│ ▾ ▤ Handbook │  ─────────────────────────           │             │
+│   · ▤ Onboa. │  COMMENTS · 3                        │             │
+│   · ▤ Tooling│  ┌────────────────────────┐          │             │
+│ ▸ ▤ Processes│  │ (b) bob · 1 h ago      │          │             │
+│              │  └────────────────────────┘          │             │
+│ ⚙ Settings   │                                      │             │
+│ ● relay/AUTH │                                      │             │
+└──────────────┴──────────────────────────────────────┴─────────────┘
+   264px            flexible, max-w-3xl / max-w-4xl      240px
 ```
+
+The content area is a **raised surface**: `--surface-2`, with a 12px radius on
+its top-left corner and a hairline on its top and left edges. The bar and the
+global bar share `--surface-1` and carry no dividers of their own, so the
+chrome is one continuous field and that one rounded edge is the whole of the
+separation. It is a small thing and it is most of the difference: with a border
+between three equal-coloured panels the document reads as a pane in a tool,
+and without one it reads as a page lying on a desk.
+
+## The global bar
+
+Everything in it is true on every page: the app, the search, the relay, the
+colour mode, your account. Three columns rather than a row — the two outer ones
+share the remaining width equally, so **the search sits on the centre line of
+the window** whatever the wordmark or the account chip are doing. In a plain
+flex row it would drift off centre the moment one side grew, and a display name
+is exactly the kind of thing that grows.
+
+- **The panel toggle** is two buttons in one slot, one per breakpoint. What it
+  toggles is not the same thing at both widths — a column that stays folded
+  across reloads, or an overlay that closes on the next navigation — and a
+  single button would have to guess the viewport to name what it does. For a
+  bare icon the label *is* what it says. (Watch the cascade: `IconButton` is
+  already `inline-flex`, Tailwind emits that after `hidden`, so the responsive
+  `hidden` has to sit on a wrapper or both buttons show at once.)
+- **Search** is a pill with the shortcut printed in it, and the shortcut works —
+  ⌘K/Ctrl-K focuses and selects the field. A printed shortcut that does nothing
+  is worse than none. It is still a field rather than a command palette: the
+  palette is worth building, but not before there is more than one space to
+  search across.
+- **The relay** moved here from the foot of the left bar, because the left bar
+  now folds away entirely and "nothing can be published right now" is not a
+  state to hide behind a fold. Quiet while it is fine (a dot and the relay's
+  name), coloured and worded the moment it is not (`offline`, `AUTH failed`).
+  The full state — url, connection, attempts, AUTH message, NIP-29 support — is
+  in the tooltip and spelled out in the left bar's footer.
+- **The colour mode** is three icons in one track (system/light/dark,
+  [12](12-theming.md)) rather than three words. Spelled out, "System Light Dark"
+  was the widest thing in the narrowest strip of the layout; each name stays as
+  the tooltip and the accessible name.
+- **The account** is the picture alone at the very edge — see *How identity is
+  displayed* below.
+
+**"+ Create" is gone from here.** It moved into the left bar next to the page
+tree: creating a page is something you do *to a place in the tree*, and next to
+the tree it can say which place. In the middle of the top bar it could only ever
+mean "somewhere in this space". What replaced it in that slot is nothing — the
+search got the room.
+
+## The page bar
+
+A second, thinner bar, **sticky at the top of the content area**, carrying the
+breadcrumb on the left and the page's own actions on the right.
+
+Two reasons it is not part of the global bar. It scrolls with nothing, so where
+you are and what you can do here stay reachable at the bottom of a long page.
+And it keeps the global bar global: search and account do not change when you
+navigate, while "Edit" and "History" mean nothing outside a page. Mixing the two
+is what makes a top bar grow until it has to be redesigned.
+
+- **The breadcrumb** is the full chain from the space down to the page, walked
+  up through `page-parent`. Beyond four steps the *middle* ones collapse to `…`,
+  never the ends: the space you are in and the page you are reading are the two
+  you need. The walk is guarded against a cycle — `page-parent` comes off the
+  relay from an arbitrary key, and two pages naming each other as parent would
+  otherwise loop forever.
+- **Reading and editing** are two states of one page and sit in one segmented
+  switch. The three actions that open a *different* view — history, line origin,
+  new subpage — are icon buttons, because four words in a row read as a sentence
+  and stop being buttons. Each carries its label as tooltip and accessible name.
+- The bar is translucent with a blur, so text scrolling under it is blurred
+  away rather than cut off on the pixel it reaches the edge.
+
+`PageFrame` has exactly one knob, `width`: a page is read line by line and gets
+`max-w-3xl`; a list of pages or revisions is scanned in two dimensions and
+suffocates in a column that narrow, so it gets `max-w-4xl`.
 
 ## The left bar — requirement 2 in detail
 
-Four zones, top to bottom:
+264px, five zones top to bottom:
 
-1. **Space header** — name and picture from `39000`, a `public`/`private`
-   badge. **Open:** a space switcher and a "join" button for non-members.
-2. **Fixed entries** — *Overview* and *Search* are implemented. The member list
-   and moderation live on the overview page rather than in the bar.
-   **Open:** dedicated entries for "all pages", "recently changed" and "space
-   settings".
-3. **Page tree** — projected from `page-parent`
-   ([02](02-data-model-events.md)). Every row carries a page icon; the active
-   row is highlighted.
+1. **Space header** — the initials disc, the space name from `39000`, the relay
+   host under it in mono. The disc's colour is derived from the name, so the
+   same space is the same colour on every machine without anybody storing one,
+   and two spaces in a list are told apart before either is read. The host stays
+   visible rather than moving into a tooltip: relay host plus group id *is* the
+   identity of a space here. **Open:** a space switcher and a "join" button for
+   non-members.
+2. **Fixed entries** — *Overview*, *Search*, *New page*, each with an icon.
+   The member list and moderation live on the overview page rather than in the
+   bar. **Open:** entries for "all pages" and "recently changed".
+3. **Page tree**, under a `PAGES` section heading that carries a **+** button.
+   The button only appears on hover: the bar is a list of pages at rest and a
+   set of controls the moment you reach for it, and the tree is read far more
+   often than it is added to.
 
-   A branch with children folds away behind a triangle, a leaf shows a dot in
-   that same slot. Both occupy it, so titles stay on one vertical line instead
-   of stepping in and out depending on whether a sibling happens to have
-   children. A forked page keeps its own marker, but amber and *after* the
-   title — otherwise it would read as the leaf dot.
+   Every row carries a page icon; the active row is filled with
+   `--surface-selected` and set in medium weight. A branch with children folds
+   behind a chevron, a leaf shows a dot in that same slot. Both occupy it, so
+   titles stay on one vertical line instead of stepping in and out depending on
+   whether a sibling happens to have children. A forked page keeps its own
+   marker, but amber and *after* the title — otherwise it would read as the leaf
+   dot. Each level indents by 14px.
 
    Which branches are folded is kept in `localStorage`. Deliberately the
    *folded* ones rather than the open ones, otherwise a page created later would
@@ -70,8 +177,8 @@ Four zones, top to bottom:
    source, so the link inside it declines with `draggable={false}` — a link is
    draggable by default, becomes the source itself, and a *link* drag carries
    the effect copy/link, so the drop asking for `move` is silently thrown away
-   (it then works only when the grab happens to land in the 28px gutter). And
-   the drag state is cleared from a `window` listener, because a drag can end
+   (it then works only when the grab happens to land in the gutter). And the
+   drag state is cleared from a `window` listener, because a drag can end
    without the source seeing `dragend` — cancelled with Escape, dropped outside
    the window, or the row unmounting mid-drag when a relay event rebuilds the
    tree.
@@ -87,48 +194,56 @@ Four zones, top to bottom:
    far better than a list of slugs can. **Open:** moving therefore has no
    keyboard path, and none on a touch screen either, where HTML5 drag & drop
    does not fire.
-4. **Footer** — "+ new page" and the relay status (connected / AUTH / offline) —
-   important, because nothing can be published without a relay.
+4. **Settings** — one row to `/settings/profile`.
+5. **Footer** — the relay state spelled out: name, connection, AUTH, and a
+   NIP-29 line only when NIP-29 is *missing*. A relay that speaks it is the
+   expected case and the footer has four other things to say.
 
-Behaviour: collapsible to 40px, state kept in `localStorage`. Below 768px width
-the bar disappears entirely and is shown as an overlay via a menu in the top
-bar; after navigating it closes again.
+Behaviour: the bar **folds away entirely** rather than down to a 40px rail of
+icons, and stays folded across reloads. The rail held exactly one thing that
+could not be reached elsewhere — the relay status — and that now lives in the
+global bar. A strip holding a single dot is not a narrow sidebar, it is a
+margin. Below 768px the bar is an overlay instead, opened from the same slot in
+the global bar, closing again after every navigation.
 
-The right-hand bar ("on this page") is derived from the headings of the
-displayed Markdown and appears from 1280px width once there are at least two
-headings. Headings inside code blocks do not count — a `# comment` in a shell
-example is not a heading.
-
-## Top bar
-
-Three columns, not a row: the two outer ones share the remaining width equally,
-so **search and "+ create" sit on the centre line of the window** whatever the
-logo or the account chip happen to be doing. In a plain flex row they would
-drift off centre the moment one side grew — and a display name is exactly the
-kind of thing that grows. The two belong next to each other because one finds a
-page and the other makes the one that was not found.
-
-Logo, search, "+ create", the **theme switch (system/light/dark,
-[12](12-theming.md))** and, when signed out, a **sign-in button that calls the
-extension directly** — there is no sign-in page. Signed in it becomes the
-account chip: the picture alone at the very edge, with name and npub in the
-tooltip. The whole chip is one link to `/settings/profile`. Signing out is
-**not** in the bar but at the bottom of that page — the outermost corner of the
-layout should not put a destructive action right next to a navigation target.
+The right-hand rail ("on this page") is a **rail of its own** — full height,
+scrolling separately, `--surface-1` like the rest of the chrome — rather than a
+column inside the document. The trail of headings is about the page but is not
+part of it, and pinned to the window it still says where you are two screens
+down. It is derived from the headings of the displayed Markdown and appears from
+1280px width once there are at least two of them; headings inside code blocks do
+not count, because a `# comment` in a shell example is not a heading. Each entry
+carries a short rule at its indent level: at three levels of nesting and 12px
+type the indent alone is hard to read.
 
 ## The reading surface
 
-A page is a document, not a dialogue box, and is sized like one: 16px body text
-in `--text-primary` (not the muted grey the surrounding UI uses), a heading
-scale that steps down visibly, and a line length capped at 70 characters.
-The cap matters because the content column is far wider than that — without it
-a line runs to about 100 characters and the eye loses the start of the next one.
-Tables and code blocks are exempt: they may exceed the measure and scroll
-instead of squeezing.
+A page is a document, not a dialogue box, and is sized like one: **17px** body
+text at 1.75 line height in `--fg` (not the muted grey the surrounding UI uses),
+a heading scale that steps down visibly, and a line length capped at 70
+characters. The cap matters because the content column is wider than that —
+without it a line runs to about 100 characters and the eye loses the start of
+the next one. 16px was tried first and read as UI text sitting in a document;
+one step up is the whole difference. Tables and code blocks are exempt: they may
+exceed the measure and scroll instead of squeezing. Tables get rules between
+rows only — vertical ones as well turn a table in a document into a spreadsheet.
 
 The same renderer serves comments, but at a second density: a comment sits
 inside somebody else's page and stays at the 14px of the surrounding UI rather
 than competing with the page it hangs under.
+
+**Comments** are bordered cards, and a reply is a card indented behind a rule
+running down the thread it belongs to. The rule is what makes a three-deep
+thread readable; at 16px of indent alone the second and third level are told
+apart by counting pixels. Reply and delete appear only on the card the pointer
+is over: a column of cards each carrying two buttons is a form, the same column
+with the buttons held back is a conversation. The same hover rule governs the
+per-revision actions in the history and the "remove" in the member list.
+
+**The history** is a timeline — one rule down the left with a marker per
+revision, the current one in the accent colour. A stack of separate cards said
+nothing about the order things happened in, and order is the whole point of a
+history.
 
 ## Page states
 
@@ -152,10 +267,19 @@ local cache that has not been built yet.
 
 ## Editor
 
-- **Implemented**: CodeMirror 6 with Markdown highlighting and a preview
-  toggle, a field for the change note, an automatically derived slug and a
-  selectable parent page. The colour mode is swapped through a `Compartment` so
-  that cursor and undo history survive the switch.
+The **title is edited at the size it will be read at** — a borderless field the
+width of the column, with the derived slug under it in the place the byline will
+occupy. A 32px box labelled "Title" above the editor made writing a page feel
+like filling in a record; this way the top of the editor and the top of the page
+are the same shape. Save and Cancel are pinned to the bottom of the viewport,
+because on a long page they were two screens below the paragraph being written.
+
+- **Implemented**: CodeMirror 6 with Markdown highlighting and a Write/Preview
+  switch, a field for the change note, an automatically derived slug and a
+  parent-page field backed by a `datalist` of the space's slugs — a wrong slug
+  there files the page nowhere, so it can be picked from rather than typed from
+  memory. The colour mode is swapped through a `Compartment` so that cursor and
+  undo history survive the switch.
 - **Planned**: a toolbar for headings/lists/links/code blocks. Images can
   already be attached via button or drag & drop (Blossom).
 - **Later**: WYSIWYG (TipTap) producing Markdown. Deliberately not first,

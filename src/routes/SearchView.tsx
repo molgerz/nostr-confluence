@@ -1,7 +1,10 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { highlightParts, searchPages } from '../domain/search'
-import { shortNpub, toNpub } from '../nostr/profile'
+import { Author } from '../ui/Author'
+import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import { Card } from '../ui/controls'
+import { PageIcon, SearchIcon } from '../ui/icons'
 
 function Highlighted({ text, query }: { text: string; query: string }) {
   return (
@@ -24,62 +27,86 @@ export function SearchView() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
 
-  if (!group || !base) return <p className="text-sm text-danger">Invalid address.</p>
+  if (!group || !base) {
+    return (
+      <PageFrame>
+        <p className="text-sm text-danger">Invalid address.</p>
+      </PageFrame>
+    )
+  }
 
+  const spaceName = space.metadata?.name ?? group.id
+  const empty = query.trim().length === 0
   const hits = searchPages(space.pages, query)
 
   return (
-    <div className="space-y-4">
-      <div className="text-xs text-fg-subtle">Search in {group.id}</div>
-      <h1 className="text-3xl font-semibold tracking-tight text-fg">
-        {query.trim().length === 0 ? 'Search' : `“${query}”`}
-      </h1>
+    <PageFrame
+      width="wide"
+      crumbs={[{ label: spaceName, to: base }, { label: 'Search' }]}
+    >
+      <PageTitle
+        below={
+          empty ? null : (
+            <p className="text-sm text-fg-subtle">
+              {hits.length} of {space.pages.length} pages
+            </p>
+          )
+        }
+      >
+        {empty ? 'Search' : `“${query}”`}
+      </PageTitle>
 
-      {query.trim().length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          Type a search term above. Search runs locally over the loaded pages of this space —
-          titles and content, and every word has to appear.
-        </p>
+      {empty ? (
+        // Nothing found yet is not an error, so it gets the shape of an empty
+        // state rather than a paragraph: the icon says which field to go to.
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-line py-14 text-center">
+          <SearchIcon className="size-7 text-fg-subtle" />
+          <p className="max-w-[46ch] text-sm text-fg-muted">
+            Type a search term in the field at the top. Search runs locally over the loaded pages
+            of this space — titles and content, and every word has to appear.
+          </p>
+        </div>
       ) : hits.length === 0 ? (
-        <p className="text-sm text-fg-muted">
-          {space.loading
-            ? 'loading pages…'
-            : `Nothing found in ${space.pages.length} pages.`}
+        <p className="text-base text-fg-muted">
+          {space.loading ? 'loading pages…' : `Nothing found in ${space.pages.length} pages.`}
         </p>
       ) : (
-        <>
-          <p className="text-xs text-fg-subtle">
-            {hits.length} of {space.pages.length} pages
-          </p>
-          <ul className="space-y-3">
-            {hits.map((hit) => (
-              <li key={hit.page.slug} className="rounded-xl border border-line bg-surface-1 p-3">
-                <Link
-                  to={`${base}/${hit.page.slug}`}
-                  className="text-sm font-medium text-fg hover:underline"
-                >
-                  <Highlighted text={hit.page.title} query={query} />
-                </Link>
-                <div className="mt-0.5 text-xs text-fg-subtle">
-                  {hit.page.revisions.length} revision
-                  {hit.page.revisions.length === 1 ? '' : 's'} ·{' '}
-                  <span className="font-mono">{shortNpub(toNpub(hit.page.head.author))}</span>
+        <ul className="space-y-2.5">
+          {hits.map((hit) => (
+            <li key={hit.page.slug}>
+              <Card className="p-3.5 hover:border-line-strong">
+                <div className="flex items-center gap-2">
+                  <PageIcon className="size-4 text-fg-subtle" />
+                  <Link
+                    to={`${base}/${hit.page.slug}`}
+                    className="min-w-0 flex-1 truncate text-sm font-medium text-fg hover:text-accent-fg"
+                  >
+                    <Highlighted text={hit.page.title} query={query} />
+                  </Link>
+                  <span className="shrink-0 text-xs">
+                    <Author pubkey={hit.page.head.author} showNpub={false} />
+                  </span>
                 </div>
-                <ul className="mt-2 space-y-1">
+
+                {/* The matching lines, each with its line number: the number is
+                    what turns "it is in there somewhere" into a place. */}
+                <ul className="mt-2.5 space-y-1 border-l-2 border-line pl-3">
                   {hit.snippets.map((snippet) => (
-                    <li key={snippet.line} className="flex gap-2 text-xs">
-                      <span className="shrink-0 font-mono text-fg-subtle">L{snippet.line}</span>
-                      <span className="text-fg-muted">
+                    <li key={snippet.line} className="flex gap-2.5 text-xs">
+                      <span className="w-8 shrink-0 text-right font-mono text-fg-subtle">
+                        {snippet.line}
+                      </span>
+                      <span className="min-w-0 text-fg-muted">
                         <Highlighted text={snippet.text} query={query} />
                       </span>
                     </li>
                   ))}
                 </ul>
-              </li>
-            ))}
-          </ul>
-        </>
+              </Card>
+            </li>
+          ))}
+        </ul>
       )}
-    </div>
+    </PageFrame>
   )
 }
