@@ -10,6 +10,8 @@ import {
 import type { Admin, GroupMetadata } from '../domain/group-state'
 import { parseRevision } from '../domain/revision'
 import type { Revision } from '../domain/revision'
+import { newerPlacement, parsePlacement } from '../domain/placement'
+import type { Placement } from '../domain/placement'
 import { buildPages, buildTree } from '../domain/pages'
 import type { Page, PageNode } from '../domain/pages'
 import { parseComment } from '../domain/comment'
@@ -46,6 +48,8 @@ class SpaceStore {
   private snapshot: SpaceSnapshot = EMPTY
   private listeners = new Set<() => void>()
   private revisions = new Map<string, Revision>()
+  /** the winning placement per slug — src/domain/placement.ts */
+  private placements = new Map<string, Placement>()
   private comments = new Map<string, Comment>()
   private metadataEvent: Event | null = null
   private stop: (() => void)[] = []
@@ -84,11 +88,13 @@ class SpaceStore {
   forget(eventId: string): void {
     const hadRevision = this.revisions.delete(eventId)
     const hadComment = this.comments.delete(eventId)
-    if (hadRevision) {
-      const pages = buildPages([...this.revisions.values()])
-      this.emit({ pages, tree: buildTree(pages) })
-    }
+    if (hadRevision) this.rebuildPages()
     if (hadComment) this.emit({ comments: [...this.comments.values()] })
+  }
+
+  private rebuildPages(): void {
+    const pages = buildPages([...this.revisions.values()], this.placements)
+    this.emit({ pages, tree: buildTree(pages) })
   }
 
   /**
@@ -116,7 +122,7 @@ class SpaceStore {
 
     const onEose = () => {
       this.eoseSeen += 1
-      if (this.eoseSeen >= 3) this.emit({ loading: false })
+      if (this.eoseSeen >= 4) this.emit({ loading: false })
     }
 
     this.stop.push(
@@ -136,6 +142,12 @@ class SpaceStore {
         this.relayUrl,
         { kinds: [KINDS.COMMENT], '#h': [this.groupId] },
         (event) => this.applyComment(event),
+        onEose,
+      ),
+      client.subscribe(
+        this.relayUrl,
+        { kinds: [KINDS.PAGE_PLACEMENT], '#h': [this.groupId] },
+        (event) => this.applyPlacement(event),
         onEose,
       ),
     )
@@ -176,8 +188,22 @@ class SpaceStore {
     const revision = parseRevision(event, this.groupId)
     if (!revision) return
     this.revisions.set(event.id, revision)
-    const pages = buildPages([...this.revisions.values()])
-    this.emit({ pages, tree: buildTree(pages) })
+    this.rebuildPages()
+  }
+
+  /**
+   * Addressable events are replaced per author, so a page can have one
+   * placement per pubkey. Keep the one that counts instead of whichever
+   * arrived last — relays deliver in no particular order.
+   */
+  private applyPlacement(event: Event): void {
+    const placement = parsePlacement(event, this.groupId)
+    if (!placement) return
+    const current = this.placements.get(placement.slug)
+    const winner = current ? newerPlacement(current, placement) : placement
+    if (current && winner.id === current.id) return
+    this.placements.set(placement.slug, winner)
+    this.rebuildPages()
   }
 
   private applyComment(event: Event): void {

@@ -17,8 +17,15 @@ export function SpaceOverview() {
   const isAdmin =
     session.status === 'signed-in' &&
     space.admins.some((admin) => admin.pubkey === session.pubkey)
-  const revisionKindMissing =
-    meta !== null && meta.supportedKinds.length > 0 && !meta.supportedKinds.includes(KINDS.PAGE_REVISION)
+  // Every kind the app writes as content. A group that does not declare one of
+  // them will have those events rejected — silently, as far as the relay's
+  // metadata is concerned, so it is worth saying before somebody tries.
+  const missingKinds =
+    meta !== null && meta.supportedKinds.length > 0
+      ? [KINDS.PAGE_REVISION, KINDS.PAGE_PLACEMENT].filter(
+          (kind) => !meta.supportedKinds.includes(kind),
+        )
+      : []
 
   return (
     <div className="space-y-6">
@@ -55,14 +62,18 @@ export function SpaceOverview() {
         </div>
       </div>
 
-      {revisionKindMissing ? (
+      {missingKinds.length > 0 ? (
         <div className="rounded-xl border border-warning bg-warning-bg p-3 text-xs">
           <div className="font-medium text-fg">
-            According to the relay this space does not accept kind 1818
+            According to the relay this space does not accept kind{' '}
+            {missingKinds.join(' and ')}
           </div>
           <p className="mt-1 text-fg-muted">
-            The group metadata lists {meta?.supportedKinds.join(', ')}. Saving pages will most
-            likely be rejected by the relay.
+            The group metadata lists {meta?.supportedKinds.join(', ')}.{' '}
+            {missingKinds.includes(KINDS.PAGE_REVISION)
+              ? 'Saving pages'
+              : 'Moving pages in the sidebar'}{' '}
+            will most likely be rejected by the relay.
           </p>
         </div>
       ) : null}

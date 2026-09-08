@@ -1,3 +1,5 @@
+import { effectiveOrderKey } from './order'
+import type { Placement } from './placement'
 import type { Revision } from './revision'
 
 /**
@@ -8,6 +10,8 @@ export type Page = {
   slug: string
   title: string
   parentSlug: string | null
+  /** sort key among its siblings. null = ordered by title */
+  order: string | null
   /** the revision being displayed */
   head: Revision
   /** all revisions, newest first */
@@ -30,8 +34,15 @@ function sortNewestFirst(a: Revision, b: Revision): number {
  * `parent-rev`. With several leaves (concurrent editing) the newest is
  * displayed, but the fork is not hidden — `leaves` keeps all of them.
  * docs/05-versioning-history.md
+ *
+ * Where a page hangs comes from its placement event when there is one, and
+ * from the tags of its first revision otherwise — a page that has never been
+ * moved needs no placement event of its own. src/domain/placement.ts
  */
-export function buildPages(revisions: Revision[]): Page[] {
+export function buildPages(
+  revisions: Revision[],
+  placements: Map<string, Placement> = new Map(),
+): Page[] {
   const bySlug = new Map<string, Revision[]>()
   for (const revision of revisions) {
     const list = bySlug.get(revision.slug)
@@ -48,17 +59,35 @@ export function buildPages(revisions: Revision[]): Page[] {
     }
     const leaves = sorted.filter((revision) => !referenced.has(revision.id))
     const head = leaves[0] ?? sorted[0]
+    // A placement replaces both fields together, because a move sets both.
+    const placement = placements.get(slug)
     pages.push({
       slug,
       title: head.title,
-      parentSlug: head.parentSlug,
+      parentSlug: placement ? placement.parentSlug : head.parentSlug,
+      order: placement ? placement.order : head.order,
       head,
       revisions: sorted,
       leaves,
     })
   }
 
-  return pages.sort((a, b) => a.title.localeCompare(b.title, 'de'))
+  // Sorting by the order key, not by the title: a page dragged between two
+  // siblings carries a key that sorts between theirs, and a page without one
+  // is ordered by its title anyway. The slug breaks a tie between two pages
+  // whose titles normalise identically, so every client shows one order.
+  // src/domain/order.ts
+  return pages.sort((a, b) => {
+    const left = orderKeyOf(a)
+    const right = orderKeyOf(b)
+    if (left !== right) return left < right ? -1 : 1
+    return a.slug < b.slug ? -1 : 1
+  })
+}
+
+/** The key a page sorts by among its siblings. */
+export function orderKeyOf(page: Pick<Page, 'order' | 'title' | 'slug'>): string {
+  return effectiveOrderKey(page.order, page.title, page.slug)
 }
 
 export type PageNode = Page & { children: PageNode[]; depth: number }
@@ -128,4 +157,35 @@ export function findCommonAncestor(
     if (revision) search.push(...revision.parentRevs)
   }
   return null
+}
+
+/**
+ * `slug` and everything below it. A page cannot be moved into its own subtree:
+ * the branch would point at itself and drop out of the tree. The visited set
+ * also stops a cycle that is already in the data from spinning here.
+ */
+export function descendantSlugs(pages: Page[], slug: string): Set<string> {
+  const childrenOf = new Map<string, string[]>()
+  for (const page of pages) {
+    if (!page.parentSlug) continue
+    const list = childrenOf.get(page.parentSlug)
+    if (list) list.push(page.slug)
+    else childrenOf.set(page.parentSlug, [page.slug])
+  }
+
+  const found = new Set<string>()
+  const queue = [slug]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    if (found.has(current)) continue
+    found.add(current)
+    queue.push(...(childrenOf.get(current) ?? []))
+  }
+  return found
+}
+
+/** Whether `slug` may become a child of `targetSlug`. null = top level. */
+export function canMoveUnder(pages: Page[], slug: string, targetSlug: string | null): boolean {
+  if (targetSlug === null) return true
+  return !descendantSlugs(pages, slug).has(targetSlug)
 }

@@ -80,7 +80,13 @@ export function HistoryView() {
         groupId: group.id,
         slug: page.slug,
         title: revision.title,
-        parentSlug: revision.parentSlug,
+        // Where the page hangs is not part of the text being restored, so the
+        // restored revision carries the placement the page has *now* — going
+        // back to an old version must not move the page. For a page with a
+        // placement event these tags are only the fallback anyway.
+        // src/domain/placement.ts
+        parentSlug: page.parentSlug,
+        order: page.order,
         summary: `restored the version from ${new Date(revision.createdAt * 1000).toLocaleString()}`,
         content: revision.content,
         // A restore attaches to the current head — the history stays complete

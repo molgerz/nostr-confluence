@@ -50,7 +50,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | A space can only be created with `nak` | Anyone without terminal access cannot create a space. There is no path through the UI |
 | Local only, no TLS | A browser will not allow `ws://` from an HTTPS page — outside `localhost` this does not run at all |
 | Throwaway keys in the seed | `scripts/.dev-keys` are test keys, not identities |
-| Our own kind `1818` | The data model is not set in stone. If a tag changes, existing events would need migrating — and there is no tool for that yet |
+| Our own kinds `1818` and `31818` | The data model is not set in stone. If a tag changes, existing events would need migrating — and there is no tool for that yet |
 | No E2EE | The relay operator reads everything in plaintext. A deliberate decision, but it has to fit the content |
 | Deletion is relative | `9005` takes effect on this relay; copies elsewhere remain |
 | No backup procedure | An event export is possible and verifiable, but not set up |
@@ -86,6 +86,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | Kind | Status | Meaning |
 |---|---|---|
 | **1818** page revision | ⚠️ our own kind | The actual content. Immutable, chained via `parent-rev`, a full-text snapshot. **Not a standard** — other clients will not render it |
+| **31818** page placement | ⚠️ our own kind | Where a page hangs in the tree: `page-parent` and `page-order`. Addressable on `(pubkey, 31818, d)`, so moving a page **overwrites** it — a move is not an edit and appends nothing to the page's history. Not `30819`, which is NIP-54's wiki redirect |
 | **1111** comment | ⚠️ | NIP-22, but anchored to `(h, d)` instead of a root event |
 | **20817** diagnostic ping | ⚠️ our own kind | Ephemeral (20000–29999), not stored. Only answers "may I write here?" |
 | **24242** Blossom upload | ✅ | Authorises a file upload. Not a relay event; it goes to the Blossom server over HTTP |
@@ -115,15 +116,16 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | Tag | Where | Meaning |
 |---|---|---|
 | `h` | everywhere | Group id. **This is the tag the relay checks write permission against** — it is our entire permission system |
-| `d` | 1818, 1111 | Normalised page slug, by NIP-54's rules for a wiki article's `d` tag: lowercase, whitespace to `-`, punctuation *removed*, letters of every script kept as UTF-8 (so `möbel`, not `moebel`). Single-letter, so relay-indexed and filterable |
+| `d` | 1818, 1111, 31818 | Normalised page slug, by NIP-54's rules for a wiki article's `d` tag: lowercase, whitespace to `-`, punctuation *removed*, letters of every script kept as UTF-8 (so `möbel`, not `moebel`). Single-letter, so relay-indexed and filterable. In `31818` it is also the addressable identifier |
 | `title` | 1818 | Display title |
 | `parent-rev` | 1818 | Preceding revision. None = first revision, two = a merge |
-| `page-parent` | 1818 | Slug of the parent page; the sidebar tree is built from it |
+| `page-parent` | 1818, 31818 | Slug of the parent page. In `1818` the **initial** placement, set when the page is created; a `31818` for the same slug takes precedence |
+| `page-order` | 1818, 31818 | Sort key among the siblings of a level, compared as a plain string. Absent = the level orders the page by its title. Same precedence as `page-parent` (`src/domain/order.ts`) |
 | `summary` | 1818 | Change note, the equivalent of a commit message |
 | `content-hash` | 1818 | sha256 of the content |
 | `restore-of` | 1818 | A restore points at the revision it copied |
 | `m` | 1818 | Always `text/markdown` |
-| `alt` | 1818, 1111 | NIP-31 fallback for foreign clients |
+| `alt` | 1818, 1111, 31818 | NIP-31 fallback for foreign clients |
 | `K` / `k` / `e` / `p` | 1111 | NIP-22: kind of the root object, kind of the direct parent, parent comment, its author |
 | `supported_kinds` | 39000 (read) | Kinds the group accepts. If `1818` is missing, the app warns **before** publishing |
 | `previous` | — | ❌ NIP-29 timeline references are **not** written. `groups_relay` does not check them anyway |
@@ -154,6 +156,32 @@ chain of its revisions. Why it has to be that way: addressable events (`30xxx`)
 always belong to exactly one key pair — two people could not otherwise edit the
 same page. In detail in [docs/02](docs/02-data-model-events.md).
 
+### Example: a page placement
+
+```json
+{
+  "kind": 31818,
+  "pubkey": "<whoever moved the page, hex>",
+  "content": "",
+  "tags": [
+    ["h", "engineering"],
+    ["d", "onboarding"],
+    ["page-parent", "handbook"],
+    ["page-order", "am"],
+    ["alt", "Position of wiki page \"onboarding\" below \"handbook\""]
+  ]
+}
+```
+
+Here being addressable is exactly what is wanted: dragging a page in the sidebar
+must not append to its history nor move its head, or the byline would claim
+somebody edited the page when all they did was sort it. And a restore cannot
+drag a page somewhere, because the placement is not part of the text being
+restored. The price is that it is addressable **per author** — two people moving
+the same page leave one event each, and the newer one wins (ties broken by id).
+A position has nothing to merge, so last-writer-wins is honest here, unlike text
+([docs/02](docs/02-data-model-events.md)).
+
 * * *
 
 ## What the relay has to support
@@ -162,7 +190,7 @@ same page. In detail in [docs/02](docs/02-data-model-events.md).
 |---|---|
 | NIP-29 (`supported_nips` contains 29) | Without real group logic, membership and permissions are a stand-in |
 | NIP-42 | Private groups and write access depend on it |
-| `1818` and `1111` in the group's `supported_kinds` | Otherwise the relay rejects pages even though the person is a member |
+| `1818`, `1111` and `31818` in the group's `supported_kinds` | Otherwise the relay rejects pages, comments or moves even though the person is a member. `groups_relay` does not currently enforce the list, but a relay is allowed to |
 | The group set to `public` + `open` (no `private`, no `closed`) | So that reading works without signing in and anyone may write |
 
 Verified and recommended: [`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay).
@@ -196,6 +224,9 @@ nak req --fpa --sec "$ALICE_SEC" -k 39000 -k 39001 -k 39002 ws://localhost:8080
 # comments
 nak req --fpa --sec "$ALICE_SEC" -k 1111 -t h=engineering ws://localhost:8080
 
+# where the pages hang (one event per moved page, addressable)
+nak req --fpa --sec "$ALICE_SEC" -k 31818 -t h=engineering ws://localhost:8080
+
 # write a page by hand
 nak event --fpa --sec "$ALICE_SEC" -k 1818 -h engineering -d notes \
   -t title=Notes -t m=text/markdown -c '# Notes' ws://localhost:8080
@@ -220,15 +251,19 @@ internal pool does not authenticate, and `info` hangs). Hence the raw `req`.
 
 Named honestly, because they matter when building on top of this:
 
-- ⚠️ **`1818` is not a standard kind.** The content is invisible to other Nostr
-  clients, and the `alt` tag is the only consolation. **Decided against changing
-  that:** a `30818` mirror per save was considered and dropped. An addressable
-  event is identified by `(kind, pubkey, d)`, so a mirror exists once *per
-  author* — on a page two people edit it would be two events claiming to be the
-  same page, one of them quietly stale. A wiki client that wants to read along
-  can read the data model here and in
+- ⚠️ **`1818` is not a standard kind**, and neither is `31818`. The content is
+  invisible to other Nostr clients, and the `alt` tag is the only consolation.
+  **Decided against changing that:** a `30818` mirror per save was considered
+  and dropped. An addressable event is identified by `(kind, pubkey, d)`, so a
+  mirror exists once *per author* — on a page two people edit it would be two
+  events claiming to be the same page, one of them quietly stale. A wiki client
+  that wants to read along can read the data model here and in
   [docs/02](docs/02-data-model-events.md) instead. What we do take from NIP-54
   is its slug normalisation.
+- ⚠️ **There is no history of moves.** Only the current `31818` per page is
+  signed and visible; earlier placements are overwritten and gone. Nothing
+  cleans up the placement of a deleted page either — it is inert, because a
+  placement whose slug has no revisions is ignored.
 - ⚠️ **Comments are anchored to `(h, d)`**, not to a root event via `A`/`E`. A
   reference to one revision would dangle after the next edit
   ([docs/02](docs/02-data-model-events.md)).
@@ -259,6 +294,7 @@ Named honestly, because they matter when building on top of this:
 | Relay connection, NIP-42, publish with retry | `src/nostr/client.ts` |
 | Signer interface (NIP-07, NIP-46 later) | `src/nostr/signer.ts` |
 | Reading revisions, head resolution, page tree | `src/domain/revision.ts`, `src/domain/pages.ts` |
+| Where a page hangs, and the sibling order | `src/domain/placement.ts`, `src/domain/order.ts`, `src/nostr/publish-placement.ts` |
 | Three-way merge | `src/domain/merge.ts` |
 | Group state and moderation | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
 | Attachments | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
