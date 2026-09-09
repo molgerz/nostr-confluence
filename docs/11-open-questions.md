@@ -57,9 +57,22 @@ leave the space switcher in the UI for phase 6.
 
 ## 6. Name and domain
 
-The working title is `nostr confluence`. "Confluence" is a registered trademark
-of Atlassian — for anything published widely, an own name would be advisable.
-For an internal project or prototype the working title is uncritical.
+*Decided (2026-09-09): the working title is `Akasha`.*
+
+"Confluence" is a registered trademark of Atlassian, and it is held for
+collaboration software — the very category this project sits in. The old working
+title therefore had to go, along with any near variant of it.
+
+*Akasha* is the Sanskrit word for the all-pervading ether; the *akashic record*
+is the idea of a register in which every event is kept permanently. That is what
+a chain of signed revisions is — nothing overwritten, everything attributable
+([05](05-versioning-history.md)).
+
+Known and accepted: [AKASHA](https://akasha.org) is an existing decentralised
+social network by Mihai Alisie, a co-founder of Ethereum — the same category
+rather than a distant one — and `akasha.org`, `.wiki` and `.dev` are all taken.
+Acceptable for a working title; to be revisited before anything is published
+widely, together with a real trademark search and the domain question.
 
 ## 7. Attachments and images
 

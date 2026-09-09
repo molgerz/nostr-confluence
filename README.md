@@ -1,6 +1,6 @@
-# nostr confluence
+# Akasha
 
-[![CI](https://github.com/molgerz/nostr-confluence/actions/workflows/ci.yml/badge.svg)](https://github.com/molgerz/nostr-confluence/actions/workflows/ci.yml)
+[![CI](https://github.com/molgerz/akasha/actions/workflows/ci.yml/badge.svg)](https://github.com/molgerz/akasha/actions/workflows/ci.yml)
 
 A Confluence-like wiki that runs entirely on Nostr: sign in with NIP-07, spaces
 are NIP-29 groups, pages are Markdown events, and the version history is a chain

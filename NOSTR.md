@@ -1,6 +1,6 @@
 # What this project uses from Nostr
 
-nostr confluence is a wiki with no server of its own: identity is an npub,
+Akasha is a wiki with no server of its own: identity is an npub,
 storage is relay events, permissions come from a NIP-29 group. This file lists
 which NIPs, event kinds and tags are actually involved — including everything
 that deliberately does **not** follow the spec.
