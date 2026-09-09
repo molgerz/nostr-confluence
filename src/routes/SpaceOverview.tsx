@@ -4,6 +4,8 @@ import { Author } from '../ui/Author'
 import { WriteCheck } from '../ui/WriteCheck'
 import { MemberAdmin } from '../ui/MemberAdmin'
 import { useSession } from '../session/session'
+import { SignInButton } from '../ui/SignInButton'
+import { spaceAccess } from '../domain/space-access'
 import { KINDS } from '../nostr/kinds'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { ButtonLink, Callout, Card, InitialsDisc, SectionLabel } from '../ui/controls'
@@ -41,6 +43,7 @@ export function SpaceOverview() {
 
   const meta = space.metadata
   const name = meta?.name ?? group.id
+  const access = spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space)
   const isMember = session.status === 'signed-in' && space.members.includes(session.pubkey)
   const isAdmin =
     session.status === 'signed-in' &&
@@ -54,6 +57,52 @@ export function SpaceOverview() {
           (kind) => !meta.supportedKinds.includes(kind),
         )
       : []
+
+  // The relay answered with nothing at all. Showing the normal overview here
+  // would invent a space out of the group id and then report it as empty —
+  // which reads as "there is nothing in here" when it means "you cannot see
+  // in". docs/04-permissions-nip29.md
+  if (access.state === 'hidden') {
+    return (
+      <PageFrame crumbs={[{ label: group.id }]}>
+        <PageTitle
+          kicker={
+            <span className="font-mono">
+              {group.host}&#39;{group.id}
+            </span>
+          }
+        >
+          Nothing to see here
+        </PageTitle>
+        {access.signedIn ? (
+          <Callout tone="info" title="This space is not showing you anything">
+            <p>
+              The relay answered every request empty — so either you are not a member of this
+              space, or it does not exist. It deliberately does not say which: telling you
+              would already confirm that the space is there.
+            </p>
+            <p className="mt-2">
+              If you expect to have access, send an admin the npub you are signed in with and
+              ask them to add you:
+            </p>
+            <p className="mt-2 font-mono text-xs break-all text-fg">
+              {session.status === 'signed-in' ? session.npub : null}
+            </p>
+          </Callout>
+        ) : (
+          <Callout
+            tone="info"
+            title="This space is private"
+            actions={<SignInButton>Sign in</SignInButton>}
+          >
+            Its content is readable by members only, and the relay checks that against the npub
+            you sign in with. Without signing in there is nothing to show — not even the name of
+            the space.
+          </Callout>
+        )}
+      </PageFrame>
+    )
+  }
 
   return (
     <PageFrame
