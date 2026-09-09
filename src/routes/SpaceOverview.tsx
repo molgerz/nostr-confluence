@@ -4,7 +4,7 @@ import { Author } from '../ui/Author'
 import { WriteCheck } from '../ui/WriteCheck'
 import { MemberAdmin } from '../ui/MemberAdmin'
 import { useSession } from '../session/session'
-import { SignInButton } from '../ui/SignInButton'
+import { SpaceHiddenNotice } from '../ui/SpaceHiddenNotice'
 import { spaceAccess } from '../domain/space-access'
 import { KINDS } from '../nostr/kinds'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
@@ -74,32 +74,7 @@ export function SpaceOverview() {
         >
           Nothing to see here
         </PageTitle>
-        {access.signedIn ? (
-          <Callout tone="info" title="This space is not showing you anything">
-            <p>
-              The relay answered every request empty — so either you are not a member of this
-              space, or it does not exist. It deliberately does not say which: telling you
-              would already confirm that the space is there.
-            </p>
-            <p className="mt-2">
-              If you expect to have access, send an admin the npub you are signed in with and
-              ask them to add you:
-            </p>
-            <p className="mt-2 font-mono text-xs break-all text-fg">
-              {session.status === 'signed-in' ? session.npub : null}
-            </p>
-          </Callout>
-        ) : (
-          <Callout
-            tone="info"
-            title="This space is private"
-            actions={<SignInButton>Sign in</SignInButton>}
-          >
-            Its content is readable by members only, and the relay checks that against the npub
-            you sign in with. Without signing in there is nothing to show — not even the name of
-            the space.
-          </Callout>
-        )}
+        <SpaceHiddenNotice />
       </PageFrame>
     )
   }

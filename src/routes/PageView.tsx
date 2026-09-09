@@ -6,6 +6,8 @@ import { useSession } from '../session/session'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from '../ui/SignInButton'
 import { Comments } from '../ui/Comments'
+import { SpaceHiddenNotice } from '../ui/SpaceHiddenNotice'
+import { spaceAccess } from '../domain/space-access'
 import { useTocSource } from '../ui/layout/toc-context'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import type { Crumb } from '../ui/layout/PageFrame'
@@ -52,6 +54,27 @@ export function PageView() {
   }
 
   const spaceCrumb: Crumb = { label: space.metadata?.name ?? group.id, to: base }
+
+  // A page URL in a space the relay is withholding: without this, "not found"
+  // would blame the slug for what is really a question of access — and offer a
+  // "create this page" button that the relay is going to reject.
+  // docs/04-permissions-nip29.md
+  if (spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden') {
+    return (
+      <PageFrame crumbs={[spaceCrumb, { label: slug }]}>
+        <PageTitle
+          kicker={
+            <span className="font-mono">
+              {group.host}&#39;{group.id}
+            </span>
+          }
+        >
+          Nothing to see here
+        </PageTitle>
+        <SpaceHiddenNotice />
+      </PageFrame>
+    )
+  }
 
   if (!page) {
     return (

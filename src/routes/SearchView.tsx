@@ -2,6 +2,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { highlightParts, searchPages } from '../domain/search'
 import { Author } from '../ui/Author'
+import { SpaceHiddenNotice } from '../ui/SpaceHiddenNotice'
+import { spaceAccess } from '../domain/space-access'
+import { useSession } from '../session/session'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { Card } from '../ui/controls'
 import { PageIcon, SearchIcon } from '../ui/icons'
@@ -24,6 +27,7 @@ function Highlighted({ text, query }: { text: string; query: string }) {
 
 export function SearchView() {
   const { group, space, base } = useSpaceRoute()
+  const { session } = useSession()
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
 
@@ -38,6 +42,11 @@ export function SearchView() {
   const spaceName = space.metadata?.name ?? group.id
   const empty = query.trim().length === 0
   const hits = searchPages(space.pages, query)
+  // Search runs over the pages the store holds. In a space the relay is
+  // withholding that is none, so "Nothing found in 0 pages" would be true and
+  // useless — it sounds like the search failed, not like the door is shut.
+  const hidden =
+    spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden'
 
   return (
     <PageFrame
@@ -46,7 +55,7 @@ export function SearchView() {
     >
       <PageTitle
         below={
-          empty ? null : (
+          empty || hidden ? null : (
             <p className="text-sm text-fg-subtle">
               {hits.length} of {space.pages.length} pages
             </p>
@@ -56,7 +65,9 @@ export function SearchView() {
         {empty ? 'Search' : `“${query}”`}
       </PageTitle>
 
-      {empty ? (
+      {hidden ? (
+        <SpaceHiddenNotice />
+      ) : empty ? (
         // Nothing found yet is not an error, so it gets the shape of an empty
         // state rather than a paragraph: the icon says which field to go to.
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-line py-14 text-center">
