@@ -247,6 +247,24 @@ for. Both places carry a comment saying so.
 The editor also grows with its text instead of scrolling inside a 60vh box: a
 page is a document, and a document does not have a window in it.
 
+### A trap while developing
+
+The CodeMirror instance is built once, in an effect that does not depend on
+`markdown-live.ts`, and it keeps the extensions it was built with. A hot update
+to the decorations therefore replaces the module while the editor on screen goes
+on using the old ones — the change looks like it simply did not work, and no
+amount of further editing makes it land. Worse, the rendered page *does* update,
+because that is an ordinary React render: the two views appear to disagree, and
+the disagreement is a ghost.
+
+Both files therefore ask Vite for a reload instead of accepting a hot update:
+
+```ts
+if (import.meta.hot) {
+  import.meta.hot.accept(() => import.meta.hot?.invalidate())
+}
+```
+
 ### Empty lines
 
 Markdown collapses them: `a`, three empty lines, `b` parses to exactly the same
