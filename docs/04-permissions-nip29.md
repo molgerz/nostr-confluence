@@ -60,9 +60,10 @@ Measured against a running `groups_relay` on 2026-09-07:
   unauthenticated readers at all (log: "User is not authenticated, cannot see
   event … kind 39000") — no error, simply empty.
 - Once it is `public`, the relay code says "Public groups are always visible":
-  reading without signing in works. That keeps the promise from
-  [06](06-ui-information-architecture.md) that reading needs no login — but only
-  for public spaces.
+  reading without signing in works. Worth knowing as a property of the relay,
+  not as a mode on offer — Akasha is for closed teams, so a space that ends up
+  `public` is a misconfiguration, and the overview says so
+  ([06](06-ui-information-architecture.md)).
 
 The important part for us: **leaving a flag out** is the open variant. Since the
 space is invite-only, all three closing tags are therefore sent explicitly —
