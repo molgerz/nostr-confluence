@@ -48,6 +48,14 @@ export function SpaceOverview() {
   const isAdmin =
     session.status === 'signed-in' &&
     space.admins.some((admin) => admin.pubkey === session.pubkey)
+  // Akasha is for closed teams, so `public` and `open` are not options a space
+  // may pick — they are a misconfiguration that leaks the team's pages, and the
+  // relay is the only thing enforcing it. Worth saying loudly on the one page
+  // that shows the group's settings.
+  const tooOpen = [
+    meta?.isPublic ? 'readable without membership' : null,
+    meta?.isOpen ? 'joinable without an invitation' : null,
+  ].filter((flag): flag is string => flag !== null)
   // Every kind the app writes as content. A group that does not declare one of
   // them will have those events rejected — silently, as far as the relay's
   // metadata is concerned, so it is worth saying before somebody tries.
@@ -105,8 +113,11 @@ export function SpaceOverview() {
               <div className="flex flex-wrap items-center gap-1.5">
                 {meta ? (
                   <>
-                    <Pill>{meta.isPublic ? 'publicly readable' : 'members only'}</Pill>
-                    <Pill>{meta.isOpen ? 'open to everyone' : 'joining by invitation'}</Pill>
+                    {/* Stated as facts, not judged here — the callout below
+                        does the judging, and a row of red pills next to the
+                        space name would shout before it explains. */}
+                    <Pill>{meta.isPublic ? 'readable by anyone' : 'members only'}</Pill>
+                    <Pill>{meta.isOpen ? 'anyone may join' : 'joining by invitation'}</Pill>
                     {isAdmin ? (
                       <Pill tone="accent">you are an admin</Pill>
                     ) : isMember ? (
@@ -126,6 +137,19 @@ export function SpaceOverview() {
           {meta?.about ? <p className="-mt-3 text-base text-fg-muted">{meta.about}</p> : null}
         </div>
       </div>
+
+      {tooOpen.length > 0 ? (
+        <div className="mb-8">
+          <Callout tone="warning" title="This space is more open than it should be">
+            Akasha is for closed teams: reading needs a signed-in npub <em>and</em> membership.
+            According to the relay this space is {tooOpen.join(' and ')}. An admin can close it
+            by sending a <span className="font-mono">9002</span> carrying{' '}
+            <span className="font-mono">private</span>, <span className="font-mono">closed</span>{' '}
+            and <span className="font-mono">restricted</span> — the flags only change when their
+            tag is present, so all three have to be in it.
+          </Callout>
+        </div>
+      ) : null}
 
       {missingKinds.length > 0 ? (
         <div className="mb-8">

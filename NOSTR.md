@@ -206,7 +206,7 @@ A position has nothing to merge, so last-writer-wins is honest here, unlike text
 | NIP-29 (`supported_nips` contains 29) | Without real group logic, membership and permissions are a stand-in |
 | NIP-42 | Private groups and write access depend on it |
 | `1818`, `1111` and `31818` in the group's `supported_kinds` | Otherwise the relay rejects pages, comments or moves even though the person is a member. `groups_relay` does not currently enforce the list, but a relay is allowed to |
-| The group set to `public` + `open` (no `private`, no `closed`) | So that reading works without signing in and anyone may write |
+| The group set to `private` + `closed` + `restricted` | Akasha is for closed teams: only npubs an admin added may read, and only they may write. All three tags have to be sent — the relay changes a flag only when its tag is present |
 
 Verified and recommended: [`verse-pbc/groups_relay`](https://github.com/verse-pbc/groups_relay).
 `nak serve` is **not** a NIP-29 relay — details and pitfalls are in
