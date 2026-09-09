@@ -87,18 +87,19 @@ echo "1) create the group (nak group create-group)"
 OUT=$(run 25 nak group create-group --sec "$ALICE_SEC" "$ADDRESS") || true
 if grep -q "already exists" <<<"$OUT"; then echo "   already there"; else echo "   created"; fi
 
-# The relay creates groups as private+closed. `nak group edit-metadata` cannot
-# undo that: it omits public/open when they are false, while this relay only
-# sets flags when the tag is present (apply_tags in src/group.rs is additive).
-# Hence a regular 9002 moderation event with explicit tags here — that is the
-# intended NIP-29 way, not a self-signed 39000.
-echo "2) open the group and set its metadata (kind 9002)"
+# The space is invite-only: only members read, only members write, and joining
+# happens by an admin adding the npub. The relay already creates groups as
+# private+closed, but the tags are sent explicitly all the same — apply_tags in
+# src/group.rs is additive, so a group that an earlier run opened stays open
+# until the closing tags arrive. `restricted` is the one that is easy to miss:
+# without it NIP-29 lets non-members publish into the group.
+echo "2) close the group and set its metadata (kind 9002)"
 OUT=$(run 25 nak event --fpa --sec "$ALICE_SEC" -k 9002 -h "$GROUP_ID" \
   -t "name=Engineering" -t "about=Team wiki on Nostr" \
-  -t public= -t open= -t visible= -t nonbroadcast= \
+  -t private= -t closed= -t restricted= -t visible= -t nonbroadcast= \
   -t "supported_kinds=1818;1111;9;31818" -c '' "$RELAY") || true
 grep -q success <<<"$OUT" || { echo "   ERROR: $(tail -1 <<<"$OUT")"; exit 1; }
-echo "   public, open, supported_kinds=1818;1111;9;31818"
+echo "   private, closed, restricted, supported_kinds=1818;1111;9;31818"
 
 echo "3) add bob as a member (nak group put-user)"
 OUT=$(run 25 nak group put-user "${NAK_AUTH[@]}" --pubkey "$BOB_PK" "$ADDRESS") || true

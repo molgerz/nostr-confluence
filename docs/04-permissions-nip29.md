@@ -64,39 +64,62 @@ Measured against a running `groups_relay` on 2026-09-07:
   [06](06-ui-information-architecture.md) that reading needs no login — but only
   for public spaces.
 
-The important part for us: **leaving a flag out** is the open variant. So for
-requirement 4 we set neither `restricted` nor `closed` nor `private`. And
-`supported_kinds` should contain `1818` — the app reads the tag and warns
-otherwise.
+The important part for us: **leaving a flag out** is the open variant. Since the
+space is invite-only, all three closing tags are therefore sent explicitly —
+leaving one out would silently open that dimension. And `supported_kinds` should
+contain `1818` — the app reads the tag and warns otherwise.
 
 `parent`/`child` allow nested groups. That is a possible alternative to our
 page-based tree should spaces ever need sub-spaces. **Open**, deliberately not
 in the MVP.
 
-## Requirement 4: "anyone may edit, in principle"
+## Requirement 4: "anyone may edit" — inside the space
 
-In the NIP-29 model this is a combination of flags:
+**Decision (2026-09-09): the space is invite-only.** Only npubs an admin has
+added get access at all — to the content *and* to the fact that the space
+exists. Requirement 4 holds within that circle: every member may edit every
+page, and no admin approves individual edits.
 
-- **`open`** — join requests (`9021`) are accepted automatically. Whoever knows
-  the group becomes a member and may therefore write.
-- **`public`** — the group's content is readable without membership.
+Three flags carry it, and all three are needed:
 
-**MVP decision:** the space is `public` + `open`. The effect: anyone with an
-npub can read, and can write after a single click ("join this space"). No admin
-has to approve anything.
+- **`closed`** — joining requires being added; join requests are not accepted
+  automatically.
+- **`private`** — content is readable by members only, checked after NIP-42
+  AUTH.
+- **`restricted`** — only members may publish. Easy to miss: without it,
+  NIP-29 lets non-members write into the group.
 
-**Checked against the source of `verse-pbc/groups_relay` (2026-09-07):** in an
-`open` group the author is added as a member when posting ("Open groups
-auto-join the author when posting"), and `39002` is updated in the process. An
-explicit `9021` join is therefore unnecessary there — writing is enough.
+Joining happens by an admin adding the npub (`9000`), the way
+[block/buzz](https://github.com/block/buzz) does it — there, `9009` invite
+codes are accepted but their handler is deferred, and `9021` join requests are
+rejected outright in private channels.
 
-Only the auto-join case is implemented so far: the app publishes directly, and
-in an open group the relay adds the author while doing so. A rejection is shown
-with the relay's own reason.
+**Measured against the running `groups_relay` (2026-09-09)**, after the seed set
+the three flags:
 
-**Open** for relays without auto-join: on a rejection citing membership, send a
-`9021`, wait for the new `39002` and publish again — including the UI states
-"joining" and "join rejected".
+| Test | Result |
+|---|---|
+| Stranger, no AUTH, reads `39000` | 0 events — empty, no error |
+| Stranger, no AUTH, reads `1818` | 0 events |
+| Stranger **with** valid NIP-42 AUTH, not a member, reads `1818` | 0 events |
+| Stranger with AUTH publishes `1818` | rejected: `restricted: User … is not a member of this group` |
+| Member with AUTH reads `1818` | 17 events |
+
+The third row is the one that matters: the relay checks **membership**, not
+merely authentication. Signing the AUTH challenge correctly is not enough.
+
+Worth knowing, because the flags alone do not prove it — Buzz notes that
+`closed` "reflects the membership model, not access enforcement", and their open
+channels stay readable for non-members at runtime. What a flag means is decided
+by the relay implementation, so it has to be measured, not assumed.
+
+**What this does not cover:** attachments. They live on a Blossom server outside
+the group model, and its read path checks nothing — see
+[09](09-security-privacy.md).
+
+**Superseded:** an earlier version of this document chose `public` + `open` with
+auto-join ("Open groups auto-join the author when posting"). That path is gone
+with the invite-only decision.
 
 ## What is implemented in the app
 

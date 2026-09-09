@@ -22,9 +22,10 @@ this way**:
 - **The app can neither create a space nor change group metadata.** Both happen
   exclusively on the command line with `nak`, bundled in
   [`scripts/dev-group-seed.sh`](scripts/dev-group-seed.sh):
-  `nak group create-group` creates the group, a `9002` event opens it
-  (`public`, `open`, `supported_kinds`), and `nak group put-user` adds people.
-  The app has not a single button for any of it.
+  `nak group create-group` creates the group, a `9002` event sets its flags
+  (`private`, `closed`, `restricted`, `supported_kinds`), and
+  `nak group put-user` adds people. The app has not a single button for any of
+  it.
 - **The sample content also comes from the seed script**, not from real usage:
   two pages, a second revision, two throwaway keys.
 - **Everything runs locally.** Relay on `localhost:8080`, attachments on

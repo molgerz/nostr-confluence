@@ -33,14 +33,23 @@ Only relevant for pages beyond roughly 100 kB.
 
 ## 3. How open should "open" be?
 
-*Partly decided: running our own relay is settled, and the relay operator may
-read along.*
+*Decided (2026-09-09): invite-only.*
 
-`public` + `open` means any npub in the world can join and write. For an
-internal team wiki that is a spam risk. The alternative: `public` (anyone can
-read) + `closed` (joining only via invite code `9009`). Requirement 4 sounds
-like `open`; the recommendation would be `open` for the prototype and `closed`
-plus an invite link once it is used for real.
+`public` + `open` would mean any npub in the world can join and write — for an
+internal team wiki, a spam risk. The space is therefore `private` + `closed` +
+`restricted`: only npubs an admin has added can read, write, or even see that
+the space exists. Requirement 4 holds inside that circle — every member edits
+every page.
+
+Joining is an admin adding the npub (`9000`), not an invite code: `9009` is
+specified but thinly implemented in practice (in `block/buzz` its handler is a
+deferred no-op), and `9021` join requests are rejected in private groups anyway.
+
+Measured against the running relay, including the case of a stranger who
+authenticates correctly but is not a member — see
+[04](04-permissions-nip29.md). Unchanged: the relay operator can read along,
+and attachments sit outside this boundary
+([09](09-security-privacy.md)).
 
 ## 4. Which relay is the authority?
 
