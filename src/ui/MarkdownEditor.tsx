@@ -10,7 +10,11 @@ import {
 import type { Command } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands'
 import { autocompletion } from '@codemirror/autocomplete'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import {
+  markdown,
+  markdownLanguage,
+  insertNewlineContinueMarkupCommand,
+} from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { syntaxTree, syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
@@ -312,6 +316,50 @@ function toggleWrap(marker: string): Command {
   }
 }
 
+const continueMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false })
+
+/**
+ * Enter: the next line, with the same marker — and on an empty item, the end of
+ * the list. One press either way, and never a blank line nobody asked for.
+ *
+ * `@codemirror/lang-markdown` binds Enter to `insertNewlineContinueMarkup`
+ * already, but it looks after CommonMark's distinction between a *tight* list
+ * and a *loose* one — a list with a blank line in it — and that costs a press
+ * in both directions:
+ *
+ * 1. **Ending it.** On the empty item of a list that has only one entry so far,
+ *    the default does not remove the marker: it inserts a blank line and writes
+ *    the marker again, keeping the option of a loose list open. The marker goes
+ *    only on the press after that — and only in the one-entry case, so the key
+ *    behaves differently depending on how much has been typed already, which is
+ *    not something anybody can learn. `nonTightLists: false` says: end it.
+ * 2. **Continuing it.** Once a list *is* loose, every Enter puts a blank line in
+ *    front of the new item to keep it that way, so the cursor lands two lines
+ *    down with an empty line above it. That is not configurable, so the blank
+ *    line is taken out again below.
+ *
+ * Both come down to one rule: **an empty line is something the writer types,
+ * never something a key leaves behind.** Enter lands on the next line. Whether
+ * the list ends up tight or loose is then what the text says, not what the
+ * editor guessed — and (1) is what made lists loose by accident in the first
+ * place, so the two fixes are the same fix.
+ */
+export const continueList: Command = (view) => {
+  const before = view.state.doc.lineAt(view.state.selection.main.head).number
+  if (!continueMarkup(view)) return false
+
+  const landed = view.state.doc.lineAt(view.state.selection.main.head).number
+  if (landed !== before + 2) return true
+
+  // Two lines down: the line skipped over is the one the command inserted to
+  // keep the list loose. Only if it really is empty — in a quoted list it
+  // carries the `>` that holds the quote together, and that has to stay.
+  const skipped = view.state.doc.line(landed - 1)
+  if (/\S/.test(skipped.text)) return true
+  view.dispatch({ changes: { from: skipped.from, to: skipped.to + 1 } })
+  return true
+}
+
 function inList(view: EditorView): boolean {
   const node = syntaxTree(view.state).resolveInner(view.state.selection.main.head, -1)
   for (let parent: typeof node | null = node; parent; parent = parent.parent) {
@@ -384,6 +432,8 @@ export function MarkdownEditor({
             { key: 'Mod-i', run: toggleWrap('*') },
             { key: 'Mod-Shift-x', run: toggleWrap('~~') },
             { key: 'Mod-e', run: toggleWrap('`') },
+            // Above the language's own Enter — see continueList.
+            { key: 'Enter', run: continueList },
             { key: 'Tab', run: indentInList },
             { key: 'Shift-Tab', run: outdentInList },
           ]),

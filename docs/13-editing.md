@@ -94,8 +94,32 @@ same goes for the marker itself: it is replaced together with the space behind
 it, so the gap to the text is the width of the gutter and not a character.
 
 `Enter` continues a list and a quote, and on an empty item it removes the marker
-instead of nesting another one — that is `insertNewlineContinueMarkup` from
-`@codemirror/lang-markdown`. `Tab` and `Shift-Tab` indent and outdent, **but
+instead of nesting another one — one press, whether the item is a bullet, a
+number or a task.
+
+That last part is `continueList` in `src/ui/MarkdownEditor.tsx`, bound above the
+Enter the Markdown language brings. The language uses the same command but with
+its default `nonTightLists`, and on the empty item of a list that still has only
+one entry that default does not remove the marker: it inserts a blank line and
+writes the marker again, because a blank line inside a list is what makes the
+list *loose* in CommonMark, and the command keeps that option open. The marker
+then only goes on the press after that — and only in the one-entry case, so the
+key behaves differently depending on how much has been typed already, which is
+not something anybody can learn. Ending the list wins over keeping it loose: a
+list is written tight, and the empty line, if it is really wanted, is one
+keystroke away afterwards.
+
+The same rule cuts the other way when a list is already *loose* — has a blank
+line in it. There the command puts a blank line in front of every new item to
+keep it loose, so the cursor lands two lines down with an empty one above it.
+That is not configurable, so `continueList` takes the blank line out again. One
+rule underneath both halves: **an empty line is something the writer types,
+never something a key leaves behind.** And since the first half is what made
+lists loose by accident to begin with, the two are the same fix.
+
+A quote still takes two presses: an empty quoted line is a paragraph break
+inside the quote, which is a thing people want, so it is only the second one in
+a row that ends the quote. `Tab` and `Shift-Tab` indent and outdent, **but
 only inside a list**: everywhere else `Tab` has to keep moving focus out of the
 editor, or the page cannot be operated from the keyboard at all.
 
