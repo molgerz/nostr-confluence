@@ -26,7 +26,7 @@ applies:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ ▣  nostr confluence      🔍 Search pages   ⌘K      ● relay ☼ (M)  │ global bar 52px
+│ ▣  Akasha                🔍 Search pages   ⌘K      ● relay ☼ (M)  │ global bar 52px
 ├──────────────┬──────────────────────────────────────┬─────────────┤
 │ (E) Engineer.│ Engineering / Handbook / Onboarding  │ ON THIS PAGE│ page bar 48px
 │     localhos.│              [Read|Edit] ⟲  ≡  ⊞     │             │

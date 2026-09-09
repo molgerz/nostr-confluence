@@ -98,8 +98,7 @@ export function Topbar({
           to="/"
           className="truncate rounded-md px-1.5 py-1 text-sm font-semibold tracking-[-0.01em] text-fg hover:bg-surface-hover"
         >
-          <span className="hidden sm:inline">nostr confluence</span>
-          <span className="sm:hidden">nc</span>
+          Akasha
         </Link>
       </div>
 
