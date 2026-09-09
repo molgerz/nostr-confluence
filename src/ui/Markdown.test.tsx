@@ -48,6 +48,16 @@ describe('Markdown', () => {
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['https://example.com', null])
   })
 
+  it('keeps the empty lines the writer left, which Markdown itself collapses', () => {
+    const page = render('Para A\n\n\n\nPara B\n\nPara C\n\n\n')
+    const spacers = [...page.querySelectorAll('div[aria-hidden]')]
+    // One before B — three empty lines, one of which separates the paragraphs
+    // — and none before C or at the end. 59.5px is two lines at the page's
+    // 17px over 1.75, so the gap is as tall here as it is in the editor.
+    expect(spacers.map((s) => (s as HTMLElement).style.height)).toEqual(['calc(59.5px)'])
+    expect(spacers[0].nextElementSibling?.textContent).toBe('Para B')
+  })
+
   it('gives a nested list its own bullet shape, the way the editor does', () => {
     const page = render('- outer\n  - inner\n    - deep')
     const lists = [...page.querySelectorAll('ul')]

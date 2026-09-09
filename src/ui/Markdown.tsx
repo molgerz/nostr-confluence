@@ -10,6 +10,7 @@ import { mentionPubkey } from '../nostr/mentions'
 import { useProfile } from '../nostr/profile-store'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { remarkMentions } from './markdown-mentions'
+import { rehypeBlankLines } from './markdown-blank-lines'
 
 /**
  * Sanitising is mandatory, not optional: content comes from arbitrary keys.
@@ -65,6 +66,13 @@ type Scale = {
   list: string
   code: string
   quote: string
+  /**
+   * One empty line, as a length — an empty line the writer left in the source
+   * is kept and has to be exactly as tall here as it is in the editor. The two
+   * numbers are the `text-…` and the `leading-…` of `block` above.
+   * src/ui/markdown-blank-lines.ts
+   */
+  blank: string
 }
 
 const PAGE: Scale = {
@@ -79,6 +87,7 @@ const PAGE: Scale = {
   code: 'text-sm',
   quote:
     'my-5 border-l-[3px] border-line-strong pl-4 text-[17px] leading-[1.75] text-fg-muted',
+  blank: 'calc(17px * 1.75)',
 }
 
 const COMPACT: Scale = {
@@ -92,6 +101,7 @@ const COMPACT: Scale = {
   list: 'my-2 space-y-1 pl-5 text-sm leading-relaxed text-fg',
   code: 'text-xs',
   quote: 'my-2 border-l-2 border-line-strong pl-3 text-sm text-fg-subtle',
+  blank: 'calc(14px * 1.625)',
 }
 
 /**
@@ -265,7 +275,12 @@ export function Markdown({
     <div className="[&>*:first-child]:mt-0">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMentions]}
-        rehypePlugins={[[rehypeSanitize, SCHEMA]]}
+        // The order is the point: everything the author wrote is sanitised
+        // first, and only then is our own spacing put in.
+        rehypePlugins={[
+          [rehypeSanitize, SCHEMA],
+          [rehypeBlankLines, { blank: s.blank }],
+        ]}
         urlTransform={keepMentionUrls}
         components={{
           h1: ({ node: _node, children, className, ...props }) => (

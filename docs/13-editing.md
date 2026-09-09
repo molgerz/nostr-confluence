@@ -190,6 +190,31 @@ for. Both places carry a comment saying so.
 The editor also grows with its text instead of scrolling inside a 60vh box: a
 page is a document, and a document does not have a window in it.
 
+### Empty lines
+
+Markdown collapses them: `a`, three empty lines, `b` parses to exactly the same
+document as `a`, one empty line, `b`. The editor, though, draws the source — so
+there the three lines *are* three lines, and a page that renders one of them
+looks nothing like what was written.
+
+So the gap is read back off the positions the parser recorded and put in as
+height, by `rehypeBlankLines` in `src/ui/markdown-blank-lines.ts`. The rule:
+
+- the **first** empty line separates the two paragraphs. That separation is the
+  page's own rhythm — 0.9em, not a line — and it is not drawn as one;
+- **every further** empty line is one the writer put there on purpose and is
+  kept, at exactly the height it has in the editor;
+- **before the first block** there is nothing to separate, so every empty line
+  counts;
+- **after the last block** they are dropped. Trailing empty lines are where the
+  cursor was left, not something anybody typed.
+
+The plugin runs *after* `rehype-sanitize`, on purpose: the spacer carries a
+`style`, which is exactly the sort of attribute the schema strips. Running
+afterwards keeps the check on the author's content strict while ours, which is
+not the author's, gets through. Top level only — an empty line inside a
+blockquote or a list item is not a paragraph break.
+
 ## Formatting help, folded away
 
 There is a `Formatting` disclosure under the editor listing every shortcut
