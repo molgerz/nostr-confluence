@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { PageEditor } from '../ui/PageEditor'
 import { PageFrame } from '../ui/layout/PageFrame'
+import { spacePeople } from '../domain/group-state'
 
 export function NewPageView() {
   const { group, space, base } = useSpaceRoute()
@@ -22,6 +23,7 @@ export function NewPageView() {
   return (
     <PageFrame
       width="wide"
+      stretch
       crumbs={[{ label: spaceName, to: base }, { label: 'New page' }]}
     >
       <PageEditor
@@ -29,6 +31,7 @@ export function NewPageView() {
         groupId={group.id}
         defaultParentSlug={parent}
         pages={space.pages}
+        members={spacePeople(space)}
         onSaved={(slug) => navigate(`${base}/${slug}`)}
         onCancel={() => navigate(base)}
       />

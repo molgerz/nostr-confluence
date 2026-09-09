@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
@@ -10,6 +10,7 @@ import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from './SignInButton'
 import { Button, Callout } from './controls'
 import { HeaderActions } from './layout/PageFrame'
+import { ChevronDownIcon, ChevronRightIcon } from './icons'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -22,6 +23,8 @@ type Props = {
   defaultParentSlug?: string | null
   /** existing pages of the space, for slug collisions */
   pages: Page[]
+  /** members of the space — the people the `@` dropdown offers */
+  members?: string[]
   /** pre-filled content, e.g. the result of a merge */
   initialContent?: string
   /** note above the editor, e.g. "merged two versions" */
@@ -32,12 +35,97 @@ type Props = {
   onCancel: () => void
 }
 
+/**
+ * What can be typed, for whoever does not already know.
+ *
+ * Folded away, because the editor's whole point is that you do not need it:
+ * the formatting appears as you type. It is here for the second question —
+ * "how do I get a quote?" — and not as a toolbar, which would put the
+ * technical vocabulary back on screen permanently.
+ *
+ * It is the same row as "Write a comment" under a page — rule, the same gap
+ * below it, the same muted 14px line with an icon in front — because it plays
+ * the same part: the one quiet thing at the foot of the column that opens when
+ * asked. The arrow is the sidebar's, so a fold is a fold everywhere in the app.
+ * docs/06-ui-information-architecture.md, docs/13-editing.md
+ */
+function FormattingHelp() {
+  const [open, setOpen] = useState(false)
+  const block = useRef<HTMLDivElement | null>(null)
+
+  // Opening the fold has to reveal what it opened, and at the foot of a long
+  // page it does not on its own: the content lands below the viewport and
+  // nothing scrolls, because the editor above can only give room back while
+  // the text is shorter than the column. So the block brings itself into view.
+  //
+  // `nearest` rather than `end`: it scrolls the least it can, so a fold that
+  // was already fully visible — the short-page case, where the editor does
+  // shrink — stays put instead of jumping. `scroll-mb-10` below matches the
+  // frame's bottom padding, so the last row does not end up flush with the
+  // edge.
+  useEffect(() => {
+    if (open) block.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [open])
+
+  const rules: [string, string][] = [
+    ['# ', 'Heading — ## and ### go smaller'],
+    ['- ', 'Bullet list'],
+    ['1. ', 'Numbered list'],
+    ['- [] ', 'Checkbox'],
+    ['**text**', 'Bold, ⌘B'],
+    ['*text*', 'Italic, ⌘I'],
+    ['~~text~~', 'Struck through'],
+    ['`code`', 'Code, ⌘E'],
+    ['> ', 'Quote'],
+    ['```', 'Code block'],
+    ['---', 'Divider — on a line of its own'],
+    ['@', 'Mention somebody'],
+    [':', 'Emoji, e.g. :smile'],
+  ]
+
+  return (
+    // mt-2 tops the column's gap-5 up to the 28px the comment block puts above
+    // its own rule, so both rows sit at the same height.
+    <div
+      ref={block}
+      className="mt-2 max-w-[70ch] shrink-0 scroll-mb-10 border-t border-line pt-7"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls="formatting-help"
+        className="flex items-center gap-2 text-sm text-fg-muted hover:text-fg"
+      >
+        {open ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+        Formatting
+      </button>
+      {open ? (
+        <dl
+          id="formatting-help"
+          className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs sm:grid-cols-[auto_1fr_auto_1fr]"
+        >
+          {rules.map(([syntax, meaning]) => (
+            <Fragment key={syntax}>
+              <dt className="rounded bg-code-bg px-1.5 py-0.5 font-mono whitespace-nowrap text-fg">
+                {syntax}
+              </dt>
+              <dd className="text-fg-muted">{meaning}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  )
+}
+
 export function PageEditor({
   relayUrl,
   groupId,
   page,
   defaultParentSlug = null,
   pages,
+  members,
   initialContent,
   initialNotice,
   overrideParents,
@@ -173,13 +261,16 @@ export function PageEditor({
   }
 
   return (
-    <div className="space-y-5">
+    // A flex column filling the frame (which is one too, via `stretch`): the
+    // editor takes what is left, so the Formatting row lands at the bottom of
+    // the page, exactly where "Write a comment" sits when reading.
+    <div className="flex flex-1 flex-col gap-5">
       {notice ? <Callout tone="warning">{notice}</Callout> : null}
 
       {/* The title is the page's own heading, so it is edited at the size it
           will be read at — a borderless field the width of the column, not a
           32px box labelled "Title". */}
-      <div>
+      <div className="shrink-0">
         <label htmlFor="title" className="sr-only">
           Title
         </label>
@@ -198,13 +289,25 @@ export function PageEditor({
         ) : null}
       </div>
 
-      <MarkdownEditor value={content} onChange={setContent} ariaLabel="Content in Markdown" />
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        ariaLabel="Content in Markdown"
+        members={members}
+      />
 
       {/* The relay's own words, never a paraphrase: with distributed storage
           "saved" must not be claimed before an OK came back, and when it did
-          not, the reason is the only thing that helps.
+          not, the reason is the only thing that helps. Directly under the text
+          it refers to, not below the fold-away help at the foot of the page.
           docs/06-ui-information-architecture.md */}
-      {error ? <Callout tone="danger" title="Not saved">{error}</Callout> : null}
+      {error ? (
+        <Callout tone="danger" title="Not saved">
+          {error}
+        </Callout>
+      ) : null}
+
+      <FormattingHelp />
 
       {/* Rendered into the breadcrumb bar above, not down here — see
           docs/10-roadmap.md, Phase 6. */}

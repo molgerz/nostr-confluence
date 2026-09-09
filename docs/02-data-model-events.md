@@ -67,6 +67,7 @@ context; `1818` deliberately echoes that but stands on its own.
     ["page-parent", "handbook"],
     ["m", "text/markdown"],
     ["summary", "fixed a typo"],
+    ["p", "<hex pubkey the text mentions>"],
     ["alt", "Wiki page 'Onboarding' in space engineering"],
     ["previous", "a1b2c3d4", "e5f6a7b8"]
   ],
@@ -93,6 +94,15 @@ What the tags mean:
   created; a page that is later moved gets a `31818` (see "Where a page hangs"
   below), which takes precedence. Subpages always move with their parent,
   because they name it by slug and the slug never changes.
+- **`p`** — one per key the content mentions. Mentions live in the Markdown as
+  NIP-27 `nostr:npub1…` URIs, never as a display name — a name is freely
+  chosen, not unique and can change, so a stored `@alice` would point at
+  whoever calls themselves alice on the day the page is read
+  ([13](13-editing.md)). NIP-27 asks for the tag, and without it the mention is
+  findable by whoever reads the page but not by the person mentioned. The same
+  applies to a comment (`1111`), where the key of the author being replied to
+  joins the set. Note that on a NIP-29 relay a `p` tag here is only data: `h` is
+  what decides who may write.
 - **`previous`** — NIP-29 timeline references: short ids of recently seen group
   events. Prevents a relay from forging events or re-parenting them into a
   different group history. **Not implemented yet:** the app does not write the

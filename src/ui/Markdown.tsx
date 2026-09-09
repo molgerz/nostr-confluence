@@ -6,6 +6,10 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ThemedToken } from 'shiki'
 import { normalizeSlug } from '../nostr/kinds'
 import { isOwnAttachment } from '../nostr/blossom'
+import { mentionPubkey } from '../nostr/mentions'
+import { useProfile } from '../nostr/profile-store'
+import { shortNpub, toNpub } from '../nostr/profile'
+import { remarkMentions } from './markdown-mentions'
 
 /**
  * Sanitising is mandatory, not optional: content comes from arbitrary keys.
@@ -18,6 +22,16 @@ const SCHEMA = {
   attributes: {
     ...defaultSchema.attributes,
     input: [...(defaultSchema.attributes?.input ?? []), 'checked'],
+  },
+  /**
+   * `nostr:` joins the allowed URL schemes. A mention is a link to a key, and
+   * the default list would strip the href — which is the only thing that says
+   * *who* is being mentioned. Nothing is loaded from such a URL, so it opens
+   * no request the page did not already make.
+   */
+  protocols: {
+    ...defaultSchema.protocols,
+    href: [...(defaultSchema.protocols?.href ?? []), 'nostr'],
   },
 }
 
@@ -188,6 +202,31 @@ function cx(...parts: (string | undefined | null | false)[]): string {
   return parts.filter(Boolean).join(' ')
 }
 
+/**
+ * A mention: the name, with the key behind it.
+ *
+ * The stored text is the npub — a name is freely chosen and can change, so it
+ * is only ever the label. That the UI shows a display name without the npub
+ * beside it is deliberate here and nowhere else: a mention sits inside a
+ * sentence, where `npub1abcd…wxyz` would be unreadable. The key stays one
+ * hover away, and the chip's shape says it stands for a person.
+ * docs/06-ui-information-architecture.md, docs/13-editing.md
+ */
+function Mention({ pubkey }: { pubkey: string }) {
+  const profile = useProfile(pubkey)
+  const npub = toNpub(pubkey)
+  const name = profile?.displayName ?? profile?.name
+
+  return (
+    <span
+      title={npub}
+      className="rounded bg-accent-bg px-1 py-0.5 text-[0.95em] whitespace-nowrap text-accent-fg"
+    >
+      @{name ?? shortNpub(npub)}
+    </span>
+  )
+}
+
 /** Renders Markdown written by arbitrary npubs. */
 export function Markdown({
   children,
@@ -204,7 +243,7 @@ export function Markdown({
     // The first block must not push the whole text down by its own top margin.
     <div className="[&>*:first-child]:mt-0">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkMentions]}
         rehypePlugins={[[rehypeSanitize, SCHEMA]]}
         components={{
           h1: ({ node: _node, children, className, ...props }) => (
@@ -269,13 +308,23 @@ export function Markdown({
               className="mr-2 size-3.5 translate-y-px accent-accent"
             />
           ),
-          a: ({ node: _node, className, ...props }) => (
-            <a
-              className={cx('text-accent-fg underline underline-offset-2', className)}
-              rel="noreferrer noopener"
-              {...props}
-            />
-          ),
+          a: ({ node: _node, className, href, children, ...props }) => {
+            // A `nostr:` target is a person, not a place: it is drawn as a
+            // mention chip. Both the ones the editor wrote and any typed by
+            // hand end up here.
+            const pubkey = typeof href === 'string' ? mentionPubkey(href) : null
+            if (pubkey) return <Mention pubkey={pubkey} />
+            return (
+              <a
+                href={href}
+                className={cx('text-accent-fg underline underline-offset-2', className)}
+                rel="noreferrer noopener"
+                {...props}
+              >
+                {children}
+              </a>
+            )
+          },
           code: ({ node: _node, className, children, ...props }) => {
             const style = cx('rounded bg-code-bg px-1 py-0.5 font-mono', s.code, className)
             // `language-…` on a fenced block is what tells us which grammar to

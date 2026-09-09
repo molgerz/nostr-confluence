@@ -65,7 +65,8 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
   //
   // `nearest` scrolls the least it can, so a composer that was already fully
   // visible stays put instead of jumping. `scroll-mb-10` matches the frame's
-  // bottom padding.
+  // bottom padding. The same handling as the editor's Formatting fold —
+  // docs/13-editing.md.
   useEffect(() => {
     if (!open) return
     composer.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

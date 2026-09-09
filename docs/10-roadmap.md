@@ -177,7 +177,9 @@ Done:
 | Mobile layout: sidebar as an overlay, compact top bar | `src/ui/layout/AppShell.tsx`, `Topbar.tsx` |
 | "On this page" table of contents with anchors | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
 | Display names and avatars from kind 0, fetched in batches | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
-| CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
+| CodeMirror 6 editor with **live Markdown formatting** — write and read mode look the same, no preview toggle | `src/ui/MarkdownEditor.tsx`, `src/ui/markdown-live.ts` |
+| `@` mentions over the space's members, stored as NIP-27 `nostr:` URIs and drawn as a name | `src/nostr/mentions.ts`, `src/ui/editor-complete.ts` |
+| `:` emoji dropdown that inserts the character, not the shortcode | `src/ui/emoji.ts` |
 | Attachments via Blossom (upload, markdown insertion) | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 | Editing one's own profile (kind 0, NIP-01 fields), foreign fields preserved | `src/nostr/publish-profile.ts`, `src/routes/ProfileSettings.tsx` |
 | Reading typography: 16px body, heading scale, 70-character measure, second density for comments | `src/ui/Markdown.tsx` |
@@ -187,7 +189,18 @@ Done:
 | Syntax highlighting for code blocks (Shiki, dual themes, grammars lazy) | `src/ui/code-highlight.ts` |
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
-Open: real-time CRDT (simultaneous typing), NIP-46 sign-in, an editor toolbar.
+Open: real-time CRDT (simultaneous typing), NIP-46 sign-in.
+
+**Live Markdown formatting (2026-09-09):** the editor draws the text the way
+it will be read while it is being typed — `# ` sizes the line as a heading, `- `
+becomes a bullet, `**bold**` goes bold, `- [ ]` a real checkbox that can be
+ticked. The markup shows only on the line the cursor is on. A decoration layer
+over CodeMirror, **not** a WYSIWYG document model: the stored text stays plain
+Markdown, because the diff, blame and the three-way merge all work on it.
+`@` mentions the space's members (stored as the key, drawn as the name, tagged
+with `p`), `:` opens an emoji dropdown. All of it in
+[13](13-editing.md), verified by 17 DOM tests against a real editor
+(`src/ui/markdown-live.test.ts`, jsdom per file).
 
 **Editor stripped to title + Markdown only (2026-09-09):** `PageEditor` no
 longer renders "Filed under", the Attach button, the Write/Preview toggle or
@@ -197,8 +210,10 @@ breadcrumb bar via `HeaderActions` (`src/ui/layout/PageFrame.tsx`). The upload
 plumbing in `src/nostr/blossom.ts` and the drag & drop hook in
 `MarkdownEditor` (`onDropFiles`) are untouched but no longer wired up from
 `PageEditor` — attaching a file currently has no way in. **Needed:** a new
-affordance for attachments (e.g. a paste/drag-drop-only flow, or a slash
-command) that fits the plain editor instead of a toolbar button.
+affordance for attachments that fits the plain editor instead of a toolbar
+button. Since the live formatting landed the answer is most likely the `/`
+insert menu from [13](13-editing.md), which is where tables and images belong
+too.
 
 ### Described in the docs but not built yet
 
@@ -214,6 +229,8 @@ As of 2026-09-07, found while comparing the docs against the code:
 | Writing `previous` timeline references | [02](02-data-model-events.md) |
 | Sidebar entries "all pages", "recently changed", "space settings" | [06](06-ui-information-architecture.md) |
 | Onboarding note that an npub is a permanent pseudonym | [09](09-security-privacy.md) |
+| `/` insert menu (tables, images, macros, layouts) — also the way attachments get back in | [13](13-editing.md) |
+| Help writing a table; a pipe table is the one bit of Markdown that is genuinely hard by hand | [13](13-editing.md) |
 
 ### Deliberately solved differently than planned
 

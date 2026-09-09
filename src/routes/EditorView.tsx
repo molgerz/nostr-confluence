@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { PageEditor } from '../ui/PageEditor'
 import { findCommonAncestor } from '../domain/pages'
+import { spacePeople } from '../domain/group-state'
 import { mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { PageFrame } from '../ui/layout/PageFrame'
@@ -40,6 +41,7 @@ export function EditorView() {
   const frame = (children: React.ReactNode) => (
     <PageFrame
       width="wide"
+      stretch
       crumbs={[
         { label: spaceName, to: base },
         {
@@ -103,6 +105,7 @@ export function EditorView() {
         groupId={group.id}
         page={page}
         pages={space.pages}
+        members={spacePeople(space)}
         initialContent={mergeContent}
         initialNotice={mergeNotice}
         overrideParents={mergeParents}
