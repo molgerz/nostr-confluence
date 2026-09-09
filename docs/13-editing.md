@@ -62,8 +62,10 @@ heading shifts by its `#`.
 
 ## What is recognised
 
-Everything below is standard Markdown — nothing here is a private dialect, so
-the same text renders in any Nostr client that knows Markdown.
+Everything below is standard Markdown, so the same text renders in any Nostr
+client that knows Markdown. There is exactly one deliberate deviation, and it
+subtracts rather than adds: Setext headings are not recognised. It is written
+down, with its cost, in `src/ui/markdown-flavour.ts`.
 
 ### Headings
 
@@ -80,8 +82,16 @@ H5 and H6 are drawn small, bold and uppercase rather than smaller than body
 text, which is what the reading view does too — see `PAGE` in
 `src/ui/Markdown.tsx`.
 
-A Setext heading (`Title` with `=====` under it) is sized as a heading as well,
-but its underline stays visible: hiding it would leave an empty line behind.
+**Setext headings are off.** CommonMark's second way of writing a heading —
+`Title` with a line of `-` or `=` under it — is not recognised, in the editor or
+on the page. A `-` under a paragraph is the first keystroke of `- milk` far more
+often than it is a heading, and `---` under a paragraph is somebody drawing a
+divider; neither means "make the line above a heading". Drawing it differently
+cannot help, because the page would still render the H2. The reasoning and the
+cost are in `src/ui/markdown-flavour.ts`, the single place that says so to both
+parsers, and `markdown-flavour.test.tsx` pins the rest of GFM down against it —
+that file exists because this change was once blamed, wrongly, for task lists
+breaking. `# ` is unaffected.
 
 ### Lists
 
@@ -165,9 +175,10 @@ markers, ready for the word.
 | ` ``` ` | Code block. The fence goes away off the active line, the **language stays visible** — that is information, not markup |
 | `---` or `___` | Divider, drawn as a rule across the measure |
 
-**Trap:** `---` directly under a line of text is not a divider in Markdown, it
-is a Setext H2 for the line above. A divider needs a blank line above it. The
-editor does not fight this — it shows what the text actually means.
+A divider needs no blank line above it here. In CommonMark `---` directly under
+a line of text is not a divider at all but a Setext H2 for the line above — the
+trap this app closes by not recognising Setext headings. See
+`src/ui/markdown-flavour.ts`.
 
 Code inside a fence is coloured, but by a small style bound to the theme tokens
 (`codeHighlight` in `src/ui/MarkdownEditor.tsx`), not by CodeMirror's default

@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
+import { EditorState } from '@codemirror/state'
+import { syntaxTree } from '@codemirror/language'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { NO_SETEXT_HEADINGS } from './markdown-flavour'
+import { Markdown } from './Markdown'
+
+/**
+ * Turning a construct off in the editor's parser is the sort of change that is
+ * blamed for anything that breaks afterwards — this one was, wrongly, for task
+ * lists. So GFM is pinned down here: with the flavour and without it, the tree
+ * has to be the same for everything except the heading it removes.
+ */
+function nodes(doc: string, extensions?: unknown): string {
+  const state = EditorState.create({
+    doc,
+    extensions: [markdown({ base: markdownLanguage, extensions: extensions as never })],
+  })
+  const out: string[] = []
+  syntaxTree(state).iterate({
+    enter: (n) => {
+      out.push(n.name)
+    },
+  })
+  return out.join(' ')
+}
+
+function page(markdownText: string): HTMLElement {
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  const root = createRoot(host)
+  act(() => root.render(<Markdown>{markdownText}</Markdown>))
+  return host
+}
+
+describe('the editor parser, with Setext headings off', () => {
+  it.each([
+    ['task, open', '- [ ] milk'],
+    ['task, ticked', '- [x] milk'],
+    ['task, nested', '- [ ] a\n  - [ ] b'],
+    ['table', '| a | b |\n|---|---|\n| 1 | 2 |'],
+    ['strikethrough', '~~gone~~'],
+    ['autolink', 'see https://example.com'],
+    ['atx heading', '# Title'],
+    ['bullet list', '- milk\n- bread'],
+    ['numbered list', '1. one\n2. two'],
+    ['quote', '> quoted'],
+    ['fence', '```js\nlet a = 1\n```'],
+  ])('leaves %s exactly as it was', (_label, doc) => {
+    expect(nodes(doc, NO_SETEXT_HEADINGS)).toBe(nodes(doc))
+  })
+
+  it('removes the heading, and only that', () => {
+    expect(nodes('Text\n-')).toContain('SetextHeading2')
+    expect(nodes('Text\n-', NO_SETEXT_HEADINGS)).toBe('Document Paragraph')
+    expect(nodes('Title\n===', NO_SETEXT_HEADINGS)).toBe('Document Paragraph')
+  })
+
+  it('gives a line of dashes back to the divider it looks like', () => {
+    expect(nodes('Text\n---', NO_SETEXT_HEADINGS)).toBe('Document Paragraph HorizontalRule')
+  })
+})
+
+describe('the page, told the same', () => {
+  it('reads a `-` under a paragraph as a paragraph', () => {
+    const rendered = page('Shopping\n-')
+    expect(rendered.querySelector('h2')).toBeNull()
+    expect(rendered.querySelector('p')?.textContent).toBe('Shopping\n-')
+  })
+
+  it('reads a line of dashes under a paragraph as a divider', () => {
+    const rendered = page('Shopping\n---')
+    expect(rendered.querySelector('h2')).toBeNull()
+    expect(rendered.querySelector('hr')).not.toBeNull()
+    expect(rendered.querySelector('p')?.textContent).toBe('Shopping')
+  })
+
+  it('still makes a heading from a #, and a task from a box', () => {
+    expect(page('# Title').querySelector('h1')?.textContent).toBe('Title')
+    expect(page('- [ ] milk').querySelectorAll('input')).toHaveLength(1)
+  })
+})

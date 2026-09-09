@@ -6,6 +6,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { MarkdownEditor, continueList } from './MarkdownEditor'
+import { NO_SETEXT_HEADINGS } from './markdown-flavour'
 import { ThemeProvider } from '../theme/theme'
 
 // jsdom has no matchMedia, and the theme asks it which mode the system is in.
@@ -25,7 +26,7 @@ function mount(doc: string) {
   const parent = document.createElement('div')
   document.body.appendChild(parent)
   const view = new EditorView({
-    state: EditorState.create({ doc, extensions: [markdown({ base: markdownLanguage })] }),
+    state: EditorState.create({ doc, extensions: [markdown({ base: markdownLanguage, extensions: NO_SETEXT_HEADINGS })] }),
     parent,
   })
   view.dispatch({ selection: { anchor: doc.length } })

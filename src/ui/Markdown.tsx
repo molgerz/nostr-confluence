@@ -11,6 +11,7 @@ import { useProfile } from '../nostr/profile-store'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { remarkMentions } from './markdown-mentions'
 import { rehypeBlankLines } from './markdown-blank-lines'
+import { remarkNoSetextHeadings } from './markdown-flavour'
 
 /**
  * Sanitising is mandatory, not optional: content comes from arbitrary keys.
@@ -274,7 +275,7 @@ export function Markdown({
     // The first block must not push the whole text down by its own top margin.
     <div className="[&>*:first-child]:mt-0">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMentions]}
+        remarkPlugins={[remarkGfm, remarkMentions, remarkNoSetextHeadings]}
         // The order is the point: everything the author wrote is sanitised
         // first, and only then is our own spacing put in.
         rehypePlugins={[
