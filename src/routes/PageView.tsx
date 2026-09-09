@@ -130,7 +130,7 @@ export function PageView() {
       ) : (
         <SignInButton
           variant="quiet"
-          title="Reading works without signing in, editing does not"
+          title="Editing needs an npub this space knows as a member"
         >
           Sign in to edit
         </SignInButton>
