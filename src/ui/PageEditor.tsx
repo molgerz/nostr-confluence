@@ -1,18 +1,15 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
 import { publishPlacement } from '../nostr/publish-placement'
 import { useSession } from '../session/session'
-import { Markdown } from './Markdown'
 import { MarkdownEditor } from './MarkdownEditor'
-import type { EditorHandle } from './MarkdownEditor'
-import { attachmentMarkdown, attachmentsEnabled, uploadAttachment } from '../nostr/blossom'
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from './SignInButton'
-import { Button, Callout, INPUT, Segmented } from './controls'
-import { PencilIcon, BookIcon, PlusIcon } from './icons'
+import { Button, Callout } from './controls'
+import { HeaderActions } from './layout/PageFrame'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -54,15 +51,11 @@ export function PageEditor({
   // the meantime, we merge instead of overwriting.
   const [baseRevision, setBaseRevision] = useState<Revision | null>(page?.head ?? null)
   const [notice, setNotice] = useState<string | null>(initialNotice ?? null)
-  const [summary, setSummary] = useState('')
-  const [parentSlug, setParentSlug] = useState(page?.parentSlug ?? defaultParentSlug ?? '')
+  // The parent is fixed for the life of this editor session — filing a page
+  // elsewhere is a separate action, not a field in here.
+  const [parentSlug] = useState(page?.parentSlug ?? defaultParentSlug ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
-  const editorHandle = useRef<EditorHandle | null>(null)
-  const fileInput = useRef<HTMLInputElement | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadNote, setUploadNote] = useState<string | null>(null)
 
   if (session.status !== 'signed-in') {
     return (
@@ -79,34 +72,6 @@ export function PageEditor({
   const slug = page?.slug ?? normalizeSlug(title)
   const existing = page ?? (slug.length > 0 ? pages.find((entry) => entry.slug === slug) : undefined)
   const collision = !page && existing !== undefined
-
-  /**
-   * Upload an attachment and insert it at the cursor. Images as ![…](url),
-   * everything else as a link — the file then lives on the Blossom server and
-   * the Nostr event only carries the URL.
-   */
-  const upload = async (files: File[]) => {
-    if (session.status !== 'signed-in' || files.length === 0) return
-    setUploadNote(null)
-    setUploading(true)
-    try {
-      for (const file of files) {
-        const result = await uploadAttachment(session.signer, file)
-        if (!result.ok) {
-          setUploadNote(`${file.name}: ${result.reason}`)
-          return
-        }
-        const snippet = attachmentMarkdown(result, file.name)
-        if (editorHandle.current) editorHandle.current.insert(`\n${snippet}\n`)
-        else setContent((current) => `${current}\n${snippet}\n`)
-        setUploadNote(`${file.name} uploaded (${Math.round(result.size / 1024)} kB)`)
-      }
-    } catch (err) {
-      setUploadNote(err instanceof Error ? err.message : 'upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const save = async () => {
     setError(null)
@@ -162,7 +127,7 @@ export function PageEditor({
         // Carry the sidebar position over. Without this every save would drop
         // the page back into alphabetical order. src/domain/order.ts
         order: existing?.order ?? null,
-        summary: summary.trim() || null,
+        summary: null,
         content,
         // New page: no predecessors. Merge: all leaves. Otherwise the current
         // head of the chain.
@@ -213,8 +178,7 @@ export function PageEditor({
 
       {/* The title is the page's own heading, so it is edited at the size it
           will be read at — a borderless field the width of the column, not a
-          32px box labelled "Title". The slug it derives sits under it in the
-          same place the byline will. */}
+          32px box labelled "Title". */}
       <div>
         <label htmlFor="title" className="sr-only">
           Title
@@ -226,10 +190,6 @@ export function PageEditor({
           placeholder="Untitled page"
           className="w-full bg-transparent text-[30px] leading-tight font-semibold tracking-[-0.02em] text-fg placeholder:text-fg-subtle/60 focus:outline-none"
         />
-        <p className="mt-2 font-mono text-xs text-fg-subtle">
-          /{slug || '…'}
-          {page ? ' · fixed for the life of the page' : ''}
-        </p>
         {collision ? (
           <p className="mt-1 text-xs text-warning">
             “{existing?.title}” already uses this slug. Saving appends another revision to that
@@ -238,96 +198,7 @@ export function PageEditor({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-y border-line py-2.5">
-        <label htmlFor="parent" className="text-xs font-medium text-fg-subtle">
-          Filed under
-        </label>
-        <input
-          id="parent"
-          value={parentSlug}
-          onChange={(event) => setParentSlug(event.target.value)}
-          placeholder="the top level"
-          list="nc-parent-slugs"
-          className={`${INPUT} w-56 font-mono text-xs`}
-        />
-        {/* The slugs of the space, so the field can be picked from rather than
-            typed from memory — a wrong slug here files the page nowhere. */}
-        <datalist id="nc-parent-slugs">
-          {pages
-            .filter((entry) => entry.slug !== page?.slug)
-            .map((entry) => (
-              <option key={entry.slug} value={entry.slug}>
-                {entry.title}
-              </option>
-            ))}
-        </datalist>
-
-        <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            size="sm"
-            disabled={!attachmentsEnabled() || uploading}
-            title={
-              attachmentsEnabled()
-                ? 'Attach an image or file — it goes to the Blossom server, not into the event'
-                : 'No Blossom server configured (VITE_BLOSSOM_SERVER)'
-            }
-            onClick={() => fileInput.current?.click()}
-          >
-            <PlusIcon className="size-3.5" />
-            {uploading ? 'uploading…' : 'Attach'}
-          </Button>
-          <Segmented
-            label="Source or preview"
-            value={showPreview ? 'preview' : 'source'}
-            options={[
-              { value: 'source', label: 'Write', icon: <PencilIcon className="size-3.5" /> },
-              { value: 'preview', label: 'Preview', icon: <BookIcon className="size-3.5" /> },
-            ]}
-            onChange={(next) => setShowPreview(next === 'preview')}
-          />
-        </div>
-      </div>
-
-      {showPreview ? (
-        <div className="min-h-64 rounded-lg border border-line p-4">
-          <Markdown>{content || '_still empty_'}</Markdown>
-        </div>
-      ) : (
-        <MarkdownEditor
-          value={content}
-          onChange={setContent}
-          ariaLabel="Content in Markdown"
-          handleRef={editorHandle}
-          onDropFiles={(files) => void upload(files)}
-        />
-      )}
-
-      <div className="space-y-1.5">
-        <label htmlFor="summary" className="block text-xs font-medium text-fg-muted">
-          What did you change?
-        </label>
-        <input
-          id="summary"
-          value={summary}
-          onChange={(event) => setSummary(event.target.value)}
-          placeholder={page ? 'e.g. added a deployment section' : 'created the page'}
-          className={INPUT}
-        />
-        <p className="text-xs text-fg-subtle">Shown in the history next to this revision.</p>
-      </div>
-
-      <input
-        ref={fileInput}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const files = [...(event.target.files ?? [])]
-          event.target.value = ''
-          void upload(files)
-        }}
-      />
-      {uploadNote ? <p className="text-xs text-fg-subtle">{uploadNote}</p> : null}
+      <MarkdownEditor value={content} onChange={setContent} ariaLabel="Content in Markdown" />
 
       {/* The relay's own words, never a paraphrase: with distributed storage
           "saved" must not be claimed before an OK came back, and when it did
@@ -335,14 +206,14 @@ export function PageEditor({
           docs/06-ui-information-architecture.md */}
       {error ? <Callout tone="danger" title="Not saved">{error}</Callout> : null}
 
-      {/* Pinned to the bottom of the viewport: on a long page the save button
-          was two screens below the paragraph being written. */}
-      <div className="sticky bottom-0 -mx-1 flex gap-2 border-t border-line bg-surface-2/90 px-1 py-3 backdrop-blur-sm">
+      {/* Rendered into the breadcrumb bar above, not down here — see
+          docs/10-roadmap.md, Phase 6. */}
+      <HeaderActions>
         <Button variant="primary" onClick={() => void save()} disabled={busy}>
-          {busy ? 'saving…' : 'Save'}
+          {busy ? 'publishing…' : 'Publish'}
         </Button>
         <Button onClick={onCancel}>Cancel</Button>
-      </div>
+      </HeaderActions>
     </div>
   )
 }

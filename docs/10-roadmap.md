@@ -178,7 +178,7 @@ Done:
 | "On this page" table of contents with anchors | `src/domain/toc.ts`, `src/ui/layout/TableOfContents.tsx` |
 | Display names and avatars from kind 0, fetched in batches | `src/nostr/profile-store.ts`, `src/ui/Author.tsx` |
 | CodeMirror 6 editor with Markdown highlighting | `src/ui/MarkdownEditor.tsx` |
-| Attachments via Blossom, upload by button and drag & drop | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
+| Attachments via Blossom (upload, markdown insertion) | `src/nostr/blossom.ts`, `scripts/dev-blossom.mjs` |
 | Editing one's own profile (kind 0, NIP-01 fields), foreign fields preserved | `src/nostr/publish-profile.ts`, `src/routes/ProfileSettings.tsx` |
 | Reading typography: 16px body, heading scale, 70-character measure, second density for comments | `src/ui/Markdown.tsx` |
 | Collapsible branches in the page tree, folded state kept | `src/ui/layout/Sidebar.tsx` |
@@ -188,6 +188,17 @@ Done:
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
 
 Open: real-time CRDT (simultaneous typing), NIP-46 sign-in, an editor toolbar.
+
+**Editor stripped to title + Markdown only (2026-09-09):** `PageEditor` no
+longer renders "Filed under", the Attach button, the Write/Preview toggle or
+the "what did you change?" summary field — Create and Edit now show just the
+title and a plain, unframed Markdown area, with Publish/Cancel moved into the
+breadcrumb bar via `HeaderActions` (`src/ui/layout/PageFrame.tsx`). The upload
+plumbing in `src/nostr/blossom.ts` and the drag & drop hook in
+`MarkdownEditor` (`onDropFiles`) are untouched but no longer wired up from
+`PageEditor` — attaching a file currently has no way in. **Needed:** a new
+affordance for attachments (e.g. a paste/drag-drop-only flow, or a slash
+command) that fits the plain editor instead of a toolbar button.
 
 ### Described in the docs but not built yet
 

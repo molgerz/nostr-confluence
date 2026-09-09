@@ -21,19 +21,19 @@ function editorTheme(dark: boolean) {
     {
       '&': {
         color: 'var(--fg)',
-        backgroundColor: 'var(--surface-2)',
+        backgroundColor: 'transparent',
         fontSize: '13px',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius, 8px)',
       },
-      '&.cm-focused': { outline: '2px solid var(--accent)', outlineOffset: '-1px' },
+      '&.cm-focused': { outline: 'none' },
       '.cm-content': {
         fontFamily: 'var(--font-mono)',
-        padding: '12px',
+        padding: '0',
         caretColor: 'var(--fg)',
       },
       '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--fg)' },
-      '.cm-activeLine': { backgroundColor: 'var(--surface-1)' },
+      // highlightActiveLine() ships its own default background; override it
+      // rather than just omitting a rule, or that default shows through.
+      '.cm-activeLine': { backgroundColor: 'transparent' },
       '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': {
         backgroundColor: 'var(--accent-bg)',
       },

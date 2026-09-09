@@ -4,7 +4,7 @@ import { PageEditor } from '../ui/PageEditor'
 import { findCommonAncestor } from '../domain/pages'
 import { mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
-import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
+import { PageFrame } from '../ui/layout/PageFrame'
 import { PageIcon } from '../ui/icons'
 
 export function EditorView() {
@@ -95,21 +95,6 @@ export function EditorView() {
 
   return frame(
     <>
-      <PageTitle
-        kicker={mergeMode ? 'Merging versions' : 'Editing'}
-        below={
-          mergeMode ? null : (
-            <p className="text-sm text-fg-subtle">
-              Saving creates a new revision with predecessor{' '}
-              <span className="font-mono">{page.head.id.slice(0, 8)}</span> — nothing is
-              overwritten.
-            </p>
-          )
-        }
-      >
-        {page.title}
-      </PageTitle>
-
       <PageEditor
         // Rebuild when switching between editing and merging: the initial
         // content is only read on mount.

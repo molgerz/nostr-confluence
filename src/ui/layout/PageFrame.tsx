@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 export type Crumb = { label: string; to?: string; icon?: ReactNode }
 
@@ -71,6 +72,20 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
  * suffocates in one that narrow ('wide').
  * docs/06-ui-information-architecture.md
  */
+const HeaderActionsTarget = createContext<HTMLDivElement | null>(null)
+
+/**
+ * Portals its children into the frame's own header bar, right of the
+ * breadcrumb — so content nested deep in the page (an editor's Publish
+ * button) can sit in the sticky bar above it instead of trailing at the
+ * bottom of a long form. Renders nothing outside a `PageFrame`.
+ */
+export function HeaderActions({ children }: { children: ReactNode }) {
+  const target = useContext(HeaderActionsTarget)
+  if (!target) return null
+  return createPortal(children, target)
+}
+
 export function PageFrame({
   crumbs,
   actions,
@@ -82,6 +97,8 @@ export function PageFrame({
   width?: 'doc' | 'wide'
   children: ReactNode
 }) {
+  const [actionsEl, setActionsEl] = useState<HTMLDivElement | null>(null)
+
   return (
     <div className="flex min-h-full flex-col">
       {crumbs || actions ? (
@@ -90,17 +107,21 @@ export function PageFrame({
         // abruptly on the pixel it reaches the edge.
         <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-3 border-b border-line bg-surface-2/85 px-4 backdrop-blur-sm sm:px-6">
           <div className="min-w-0 flex-1">{crumbs ? <Breadcrumbs items={crumbs} /> : null}</div>
-          {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
+          <div ref={setActionsEl} className="flex shrink-0 items-center gap-1.5">
+            {actions}
+          </div>
         </div>
       ) : null}
 
-      <div
-        className={`mx-auto w-full flex-1 px-5 pt-8 pb-24 sm:px-8 ${
-          width === 'doc' ? 'max-w-3xl' : 'max-w-4xl'
-        }`}
-      >
-        {children}
-      </div>
+      <HeaderActionsTarget.Provider value={actionsEl}>
+        <div
+          className={`mx-auto w-full flex-1 px-5 pt-8 pb-24 sm:px-8 ${
+            width === 'doc' ? 'max-w-3xl' : 'max-w-4xl'
+          }`}
+        >
+          {children}
+        </div>
+      </HeaderActionsTarget.Provider>
     </div>
   )
 }
