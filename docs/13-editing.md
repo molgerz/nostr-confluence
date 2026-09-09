@@ -162,6 +162,7 @@ editor, or the page cannot be operated from the keyboard at all.
 | `*text*` or `_text_` | *italic* | ⌘I / Ctrl-I |
 | `~~text~~` | struck through | ⌘⇧X |
 | `` `code` `` | inline code | ⌘E |
+| `[text](url)` | a link. Off the active line only the label is shown — the target is markup like any other marker | — |
 
 The keys toggle: pressing ⌘B on already-bold text removes the markers rather
 than nesting a second pair. With nothing selected the cursor lands between the
@@ -275,6 +276,12 @@ blockquote or a list item is not a paragraph break.
 
 There is a `Formatting` disclosure under the editor listing every shortcut
 above. It is folded, and it is not a toolbar.
+
+Every line in it has to be something that actually works when it is typed. It
+is read at the moment somebody is asking "why did that not do anything", so an
+entry that is almost right — `- []`, which gives a bullet followed by a literal
+`[]` — costs more than no entry would. When a marker changes here, that list is
+part of the change.
 
 It is deliberately **the same row as "Write a comment"** under a page, in the
 same place: a rule, the same gap below it, the same muted 14px line with an
