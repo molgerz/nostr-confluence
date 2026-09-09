@@ -47,5 +47,16 @@ describe('Markdown', () => {
     // one step earlier, it is not an exception to this
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['https://example.com', null])
   })
+
+  it('gives a nested list its own bullet shape, the way the editor does', () => {
+    const page = render('- outer\n  - inner\n    - deep')
+    const lists = [...page.querySelectorAll('ul')]
+    expect(lists).toHaveLength(3)
+    expect(lists[0].className).toContain('list-disc')
+    // the nested levels are selected from the outermost list, so a level keeps
+    // its shape however deep the tree already is
+    expect(lists[0].className).toContain('[&_ul]:list-[circle]')
+    expect(lists[0].className).toContain('[&_ul_ul]:list-[square]')
+  })
 })
 

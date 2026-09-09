@@ -49,6 +49,10 @@ Two deliberate exceptions:
 - **An image stays as written** — `![alt](url)`. Drawn as its alt text alone it
   would look like a paragraph that had lost its picture.
 
+The indentation of a nested list item is markup too, so the active line shows
+it again — the item shifts by the two spaces it is written with, the way a
+heading shifts by its `#`.
+
 ## What is recognised
 
 Everything below is standard Markdown — nothing here is a private dialect, so
@@ -79,6 +83,15 @@ but its underline stays visible: hiding it would leave an empty line behind.
 | `- ` or `* ` | Bullet list. The marker is drawn as `•`, one nesting level in as `◦`, deeper as `▪` |
 | `1. ` | Numbered list. The number is **never** replaced, only toned down — a number carries information |
 | `- [] ` or `- [ ] ` | Task list with a real checkbox. Clicking it writes `[x]` into the text |
+
+**The indent is a step, not the spaces in the source.** A level is 1.5rem —
+the `pl-6` a list gets in `src/ui/Markdown.tsx` — and the marker sits in the
+gutter that step opens up, so a wrapped line lines up under the text. The two
+spaces that nest an item in the source are markup like any other marker and go
+away with it; drawn as they are written, a level would be four pixels instead
+of a step and a list would be indented differently here than on the page. The
+same goes for the marker itself: it is replaced together with the space behind
+it, so the gap to the text is the width of the gutter and not a character.
 
 `Enter` continues a list and a quote, and on an empty item it removes the marker
 instead of nesting another one — that is `insertNewlineContinueMarkup` from

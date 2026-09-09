@@ -115,9 +115,14 @@ function editorTheme(dark: boolean) {
       '.cm-md-marker': { color: 'var(--fg-subtle)', fontWeight: '400' },
 
       // — blocks —
+      // The two indents that can meet on one line — a quote's and a list's —
+      // are added rather than overriding one another: both rules declare the
+      // same `padding-left`, and each contributes only its own variable, so a
+      // list inside a quote is indented by both.
       '.cm-md-quote': {
+        '--md-quote': '1rem',
+        paddingLeft: 'calc(var(--md-quote, 0rem) + var(--md-step, 0rem))',
         borderLeft: '3px solid var(--line-strong)',
-        paddingLeft: '1rem',
         color: 'var(--fg-muted)',
       },
       '.cm-md-code-block': {
@@ -145,14 +150,48 @@ function editorTheme(dark: boolean) {
 
       // — lists —
       // Hanging indent: the marker sits in the gutter the padding opens up, so
-      // a wrapped line lines up under the text and not under the bullet.
-      '.cm-md-item': { paddingLeft: '1.6em', textIndent: '-1.6em' },
+      // a wrapped line lines up under the text and not under the bullet. One
+      // step is 1.5rem — the `pl-6` a list gets in `src/ui/Markdown.tsx`, so a
+      // list is indented the same amount here as it is on the page. The source
+      // spaces that nest an item are hidden for the same reason; two spaces
+      // per level would be a step of its own. src/ui/markdown-live.ts
+      // The gap between items is padding, not a margin: inside a quote a
+      // margin would break the border running down the side into pieces.
+      '.cm-md-item': {
+        textIndent: '-1.5rem',
+        paddingTop: '0.375rem',
+        paddingLeft: 'calc(var(--md-quote, 0rem) + var(--md-step, 0rem))',
+      },
+      '.cm-md-depth-1': { '--md-step': '1.5rem' },
+      '.cm-md-depth-2': { '--md-step': '3rem' },
+      '.cm-md-depth-3': { '--md-step': '4.5rem' },
+      '.cm-md-depth-4': { '--md-step': '6rem' },
+      '.cm-md-depth-5': { '--md-step': '7.5rem' },
+      '.cm-md-depth-6': { '--md-step': '9rem' },
+      // Marker and the space behind it are one replacement exactly one step
+      // wide, so the text starts on the step and not a few pixels beside it.
+      // `textIndent` is inherited, and an inline-block is a block container:
+      // without resetting it the marker would take the line's hanging indent a
+      // second time and end up outside the text column.
       '.cm-md-bullet': {
         display: 'inline-block',
-        width: '1ch',
+        boxSizing: 'border-box',
+        width: '1.5rem',
+        paddingLeft: '0.5rem',
+        textIndent: '0',
         color: 'var(--fg-subtle)',
       },
-      '.cm-md-number': { color: 'var(--fg-subtle)' },
+      // `minWidth`, not `width`: at "10." the number is wider than the gutter
+      // and then pushes the text along instead of being cut off.
+      '.cm-md-number': {
+        display: 'inline-block',
+        boxSizing: 'border-box',
+        minWidth: '1.5rem',
+        paddingRight: '0.5rem',
+        textAlign: 'right',
+        textIndent: '0',
+        color: 'var(--fg-subtle)',
+      },
       '.cm-md-task': {
         marginRight: '0.4em',
         width: '0.9em',

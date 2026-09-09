@@ -238,6 +238,16 @@ function Mention({ pubkey }: { pubkey: string }) {
   )
 }
 
+/**
+ * A list marker is a marker, not text: it is toned down so the words stay the
+ * loudest thing on the line. `.cm-md-bullet` in `src/ui/MarkdownEditor.tsx`
+ * says the same in the editor.
+ */
+const MARKER = 'marker:text-fg-subtle'
+
+/** A list nested in a list carries the indent, not a block margin of its own. */
+const NESTED_LIST = '[&_ul]:my-0 [&_ol]:my-0'
+
 /** Renders Markdown written by arbitrary npubs. */
 export function Markdown({
   children,
@@ -296,11 +306,28 @@ export function Markdown({
             <del className={cx('text-fg-subtle', className)} {...props} />
           ),
           hr: () => <hr className={`my-10 border-0 border-t border-line ${s.measure}`} />,
+          // Bullet shape by level, the way the editor draws it — a nested
+          // list that repeats the same dot only says "indented", not "below".
+          // A nested list also drops the block margin: inside a tight list it
+          // would open a gap the source does not ask for.
           ul: ({ node: _node, className, ...props }) => (
-            <ul className={cx('list-disc', s.list, s.measure, className)} {...props} />
+            <ul
+              className={cx(
+                'list-disc [&_ul]:list-[circle] [&_ul_ul]:list-[square]',
+                NESTED_LIST,
+                MARKER,
+                s.list,
+                s.measure,
+                className,
+              )}
+              {...props}
+            />
           ),
           ol: ({ node: _node, className, ...props }) => (
-            <ol className={cx('list-decimal', s.list, s.measure, className)} {...props} />
+            <ol
+              className={cx('list-decimal', NESTED_LIST, MARKER, s.list, s.measure, className)}
+              {...props}
+            />
           ),
           li: ({ node: _node, children, className, ...props }) => {
             // A GFM task item carries its own checkbox, so the bullet would be

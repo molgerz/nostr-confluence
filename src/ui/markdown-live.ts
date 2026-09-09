@@ -211,11 +211,16 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
     }
   }
 
-  /** hide a marker together with the spaces that separate it from the text */
-  const hideWithSpaces = (from: number, to: number) => {
+  /** the position after the spaces that separate a marker from its text */
+  const afterSpaces = (to: number) => {
     let end = to
     while (end < state.doc.length && state.doc.sliceString(end, end + 1) === ' ') end += 1
-    decos.push(hidden.range(from, end))
+    return end
+  }
+
+  /** hide a marker together with the spaces that separate it from the text */
+  const hideWithSpaces = (from: number, to: number) => {
+    decos.push(hidden.range(from, afterSpaces(to)))
   }
 
   const tree = syntaxTree(state)
@@ -313,38 +318,56 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
           }
 
           case 'ListItem': {
-            eachLine(node.from, node.to, (pos, index) => {
-              if (index === 0) decos.push(line('cm-md-item').range(pos))
-            })
+            // Only the line the item starts on. The lines below it belong
+            // either to a nested item — which decorates itself — or to the
+            // item's own continuation, which is left alone.
+            const indent = `cm-md-item cm-md-depth-${Math.min(listDepth(node.node), 6)}`
+            decos.push(line(indent).range(state.doc.lineAt(node.from).from))
             return
           }
 
           case 'ListMark': {
             const ordered = node.node.parent?.parent?.name === 'OrderedList'
-            if (ordered) {
-              // A number carries information — it is never replaced, only
-              // toned down so the text stays the loudest thing on the line.
-              decos.push(LIST_NUMBER.range(node.from, node.to))
-              return
-            }
             if (raw(node.from, node.to)) {
               decos.push(mark('cm-md-marker').range(node.from, node.to))
+              return
+            }
+            // The spaces that nest the item are markup as well: the depth is
+            // drawn by the line's padding, so leaving them would indent twice
+            // — and by two spaces where the page indents by a full step. Only
+            // whitespace: in a quoted list the `>` comes first on the line and
+            // is the QuoteMark's to hide, not ours.
+            const start = state.doc.lineAt(node.from).from
+            if (start < node.from && /^[ \t]+$/.test(state.doc.sliceString(start, node.from))) {
+              decos.push(hidden.range(start, node.from))
+            }
+
+            const end = afterSpaces(node.to)
+            if (ordered) {
+              // A number carries information — it is never replaced, only
+              // toned down. Hiding the space behind it lets the CSS give it
+              // the width of the gutter, the way `list-decimal` does.
+              decos.push(LIST_NUMBER.range(node.from, node.to))
+              if (end > node.to) decos.push(hidden.range(node.to, end))
               return
             }
             decos.push(
               Decoration.replace({ widget: new BulletWidget(listDepth(node.node)) }).range(
                 node.from,
-                node.to,
+                end,
               ),
             )
             return
           }
 
           case 'TaskMarker': {
-            if (raw(node.from, node.to)) {
-              decos.push(mark('cm-md-marker').range(node.from, node.to))
-              return
-            }
+            // Like a mention chip, and unlike every other marker, this does not
+            // fall back to raw text on the active line. `[ ]` is not something
+            // anybody edits by hand — a box is ticked by clicking it — and a
+            // checklist is written *on* the line it is being added to, so a box
+            // that only appears once the cursor has left reads as "it did not
+            // work". It is atomic instead: one Backspace takes the whole
+            // marker, and the item falls back to an ordinary bullet.
             const checked = state.doc.sliceString(node.from, node.to).toLowerCase() === '[x]'
             const deco = Decoration.replace({ widget: new TaskWidget(checked) })
             decos.push(deco.range(node.from, node.to))

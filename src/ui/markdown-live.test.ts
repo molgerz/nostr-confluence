@@ -69,15 +69,32 @@ describe('liveMarkdown', () => {
 
   it('replaces a bullet marker with a bullet and keeps a number as it is', () => {
     const view = mount('- milk\n\n1. first')
-    expect(lineText(view, 0)).toBe('• milk')
+    // The space behind the marker goes with it: the gap to the text is the
+    // width of the gutter the marker fills, not a character that happens to
+    // be there — that is what lines both kinds of list up on the same step.
+    expect(lineText(view, 0)).toBe('•milk')
     expect(lineClasses(view, 0)).toContain('cm-md-item')
-    expect(lineText(view, 2)).toBe('1. first')
+    expect(lineText(view, 2)).toBe('1.first')
+    expect(view.contentDOM.innerHTML).toContain('cm-md-number')
     view.destroy()
   })
 
-  it('nests bullets by shape rather than by indentation alone', () => {
+  it('indents a list by depth rather than by the spaces in the source', () => {
+    const view = mount('- outer\n  - inner\n    - deep')
+    expect(lineClasses(view, 0)).toContain('cm-md-depth-1')
+    expect(lineClasses(view, 1)).toContain('cm-md-depth-2')
+    expect(lineClasses(view, 2)).toContain('cm-md-depth-3')
+    // the two spaces that nest the item are markup as well and go away, or
+    // the line would be indented once by the padding and once by the source
+    expect(lineText(view, 1)).toBe('◦inner')
+    expect(lineText(view, 2)).toBe('▪deep')
+    view.destroy()
+  })
+
+  it('shows the indentation again on the line being edited', () => {
     const view = mount('- outer\n  - inner')
-    expect(lineText(view, 1).trim()).toBe('◦ inner')
+    focus(view, 10)
+    expect(lineText(view, 1)).toBe('  - inner')
     view.destroy()
   })
 
