@@ -2,6 +2,7 @@ import { verifyEvent } from 'nostr-tools'
 import { client } from './client'
 import type { PublishResult } from './client'
 import { KINDS, TAGS } from './kinds'
+import { collectMentions } from './mentions'
 import type { Signer } from './signer'
 
 export type CommentInput = {
@@ -11,7 +12,7 @@ export type CommentInput = {
   content: string
   /** the comment being replied to */
   parentId?: string | null
-  /** author of the comment being replied to — for mentions later */
+  /** author of the comment being replied to — tagged so they are notified */
   parentAuthor?: string | null
 }
 
@@ -28,7 +29,11 @@ export async function publishComment(
     [TAGS.ALT, `Comment on page ${input.slug} in space ${input.groupId}`],
   ]
   if (input.parentId) tags.push(['e', input.parentId])
-  if (input.parentAuthor) tags.push([TAGS.PUBKEY, input.parentAuthor])
+  // NIP-27, and the same set as on a revision: the person replied to plus
+  // everybody the text mentions, each key only once.
+  const people = new Set<string>(collectMentions(input.content))
+  if (input.parentAuthor) people.add(input.parentAuthor)
+  for (const pubkey of people) tags.push([TAGS.PUBKEY, pubkey])
 
   const event = await signer.signEvent({
     kind: KINDS.COMMENT,

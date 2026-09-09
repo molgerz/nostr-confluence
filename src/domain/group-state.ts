@@ -58,6 +58,16 @@ export function parseMembers(event: Event): string[] {
     .map((tag) => tag[1])
 }
 
+/**
+ * Everybody in the space, admins included, each key once. What the `@`
+ * dropdown in the editor offers — mentioning somebody who cannot even read
+ * the page would be a dead reference.
+ * src/ui/editor-complete.ts
+ */
+export function spacePeople(state: { admins: Admin[]; members: string[] }): string[] {
+  return [...new Set([...state.admins.map((admin) => admin.pubkey), ...state.members])]
+}
+
 export const GROUP_STATE_KINDS = [
   KINDS.GROUP_METADATA,
   KINDS.GROUP_ADMINS,

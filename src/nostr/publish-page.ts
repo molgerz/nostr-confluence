@@ -2,6 +2,7 @@ import { verifyEvent } from 'nostr-tools'
 import { client } from './client'
 import type { PublishResult } from './client'
 import { KINDS, MIME_MARKDOWN, TAGS } from './kinds'
+import { collectMentions } from './mentions'
 import type { Signer } from './signer'
 
 export type RevisionInput = {
@@ -51,6 +52,10 @@ export async function publishRevision(
   // A restore deletes nothing: it creates a new revision with the old content
   // that points at its template. docs/05-versioning-history.md
   if (input.restoreOf) tags.push([TAGS.RESTORE_OF, input.restoreOf])
+  // NIP-27: everybody the text mentions gets a `p` tag, so the mention is
+  // findable by the person mentioned and not only by whoever reads the page.
+  // src/nostr/mentions.ts
+  for (const pubkey of collectMentions(input.content)) tags.push([TAGS.PUBKEY, pubkey])
 
   const event = await signer.signEvent({
     kind: KINDS.PAGE_REVISION,

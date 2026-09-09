@@ -1,0 +1,234 @@
+# 13 — Writing: one mode, not two
+
+**Decision:** the editor has no Write/Preview switch, because there is nothing
+to switch between. The text is drawn the way it will be read while it is being
+typed. Typing `# ` and a space sizes the line as a heading on the spot; `- `
+turns into a bullet; `**bold**` goes bold. The Markdown markers are only
+visible on the line the cursor is on.
+
+**Why:** this is the thing a rich-text wiki gets right that a Markdown box does
+not.
+Somebody who does not know Markdown never has to hold two representations in
+their head — "what I typed" and "what it will look like" — and never has to
+click something to find out which is which. And somebody who does know Markdown
+loses nothing: it is still Markdown all the way down.
+
+**Non-goal:** a rich-text editor with a Markdown serialiser (TipTap,
+ProseMirror). The document has to *be* Markdown, not be convertible to it —
+[05](05-versioning-history.md) builds the revision chain, the line diff, blame
+and the three-way merge directly on the stored text. A WYSIWYG tree that is
+serialised on save would reformat lines nobody touched, and every such
+reformatting turns into a diff hunk and a merge conflict. So the editor is the
+source, decorated: `src/ui/markdown-live.ts` is a CodeMirror decoration layer,
+not a document model.
+
+## The one rule: the active line shows its markup
+
+The line the cursor is on is source; every other line is the result.
+
+```
+# Release notes        ← cursor elsewhere: large, no hash
+Everything about …
+```
+```
+# Release notes        ← cursor on this line: the # is back, in grey
+Everything about …
+```
+
+**Why per line and not per construct:** revealing "the markers of whatever my
+cursor is inside" is what Obsidian does, and it means the markers of a bold word
+appear and disappear as the cursor crosses it. One rule about lines is a rule a
+reader works out in the first minute without being told.
+
+Two deliberate exceptions:
+
+- **A mention chip never falls back to raw text.** A 63-character npub in the
+  middle of a sentence is not something anyone edits by hand, so it stays a
+  chip and is *atomic* instead: one Backspace removes the whole mention. See
+  below.
+- **An image stays as written** — `![alt](url)`. Drawn as its alt text alone it
+  would look like a paragraph that had lost its picture.
+
+## What is recognised
+
+Everything below is standard Markdown — nothing here is a private dialect, so
+the same text renders in any Nostr client that knows Markdown.
+
+### Headings
+
+| Type | Result |
+|---|---|
+| `# ` | H1 |
+| `## ` | H2 |
+| `### ` | H3 |
+| `#### ` | H4 |
+| `##### ` | H5 |
+| `###### ` | H6 |
+
+H5 and H6 are drawn small, bold and uppercase rather than smaller than body
+text, which is what the reading view does too — see `PAGE` in
+`src/ui/Markdown.tsx`.
+
+A Setext heading (`Title` with `=====` under it) is sized as a heading as well,
+but its underline stays visible: hiding it would leave an empty line behind.
+
+### Lists
+
+| Type | Result |
+|---|---|
+| `- ` or `* ` | Bullet list. The marker is drawn as `•`, one nesting level in as `◦`, deeper as `▪` |
+| `1. ` | Numbered list. The number is **never** replaced, only toned down — a number carries information |
+| `- [] ` or `- [ ] ` | Task list with a real checkbox. Clicking it writes `[x]` into the text |
+
+`Enter` continues a list and a quote, and on an empty item it removes the marker
+instead of nesting another one — that is `insertNewlineContinueMarkup` from
+`@codemirror/lang-markdown`. `Tab` and `Shift-Tab` indent and outdent, **but
+only inside a list**: everywhere else `Tab` has to keep moving focus out of the
+editor, or the page cannot be operated from the keyboard at all.
+
+### Text
+
+| Type | Result | Key |
+|---|---|---|
+| `**text**` or `__text__` | **bold** | ⌘B / Ctrl-B |
+| `*text*` or `_text_` | *italic* | ⌘I / Ctrl-I |
+| `~~text~~` | struck through | ⌘⇧X |
+| `` `code` `` | inline code | ⌘E |
+
+The keys toggle: pressing ⌘B on already-bold text removes the markers rather
+than nesting a second pair. With nothing selected the cursor lands between the
+markers, ready for the word.
+
+### Blocks
+
+| Type | Result |
+|---|---|
+| `> ` | Quote — a rule down the left, the text in the muted colour |
+| ` ``` ` | Code block. The fence goes away off the active line, the **language stays visible** — that is information, not markup |
+| `---` or `___` | Divider, drawn as a rule across the measure |
+
+**Trap:** `---` directly under a line of text is not a divider in Markdown, it
+is a Setext H2 for the line above. A divider needs a blank line above it. The
+editor does not fight this — it shows what the text actually means.
+
+Code inside a fence is coloured, but by a small style bound to the theme tokens
+(`codeHighlight` in `src/ui/MarkdownEditor.tsx`), not by CodeMirror's default
+highlight style. That default also colours headings and bold text, which would
+be a second answer to a question the decorations have already answered.
+
+### Mentions — `@`
+
+Typing `@` at the start of a word opens a list of the people in the space
+(admins and members from `39001`/`39002`, via `spacePeople` in
+`src/domain/group-state.ts`).
+
+**Decision:** what is written into the text is the key, not the name — a NIP-27
+`nostr:npub1…` URI. What is *shown*, in the editor and in the rendered page, is
+the name.
+
+**Why:** a display name is freely chosen, not unique and can change. `@alice`
+in a stored page would point at whoever calls themselves alice on the day it is
+read. The key cannot drift.
+
+This is the one place the app shows a display name without the npub next to it,
+which [06](06-ui-information-architecture.md) otherwise forbids. It is
+deliberate: a mention sits inside a sentence, and `npub1qz…7k4f` mid-sentence is
+unreadable. The key stays one hover away (`title`), the chip's shape says it
+stands for a person, and — unlike a byline — a mention is not a claim about who
+signed anything.
+
+The dropdown lists the name **with** the shortened npub beside it, because that
+is the moment somebody picks between two people. Until a profile has arrived
+from `VITE_PROFILE_RELAYS` an entry can only be searched for by its npub;
+picking it still works and the chip fills in the name when the profile lands.
+
+Every mentioned key is also written as a `p` tag on the revision and on
+comments, as NIP-27 asks — otherwise the mention is findable by whoever reads
+the page but not by the person mentioned. See [02](02-data-model-events.md).
+
+### Emoji — `:`
+
+`:` plus at least one letter opens a dropdown that leads with the character
+itself, because that is what is being chosen. Picking one inserts **the
+character**, not the shortcode: the page then needs no emoji support to render
+it and it survives every foreign client.
+
+The list is a curated few hundred entries in `src/ui/emoji.ts`, not an emoji
+database — the point is that `:smi` finds 😄 without a keyboard shortcut, and
+for that a hand-ordered list beats 3800 entries that have to be downloaded
+first. Ranking is exact name, then prefix, then substring, then keyword, so
+`:ear` offers `earth_africa` before `bear`.
+
+A lone `:` opens nothing. `:` is punctuation far more often than it is the start
+of an emoji, and the boundary guard also keeps the dropdown out of `https://`
+and out of `12:30`.
+
+## Why the write and read views must not drift
+
+The sizes in `editorTheme` (`src/ui/MarkdownEditor.tsx`) mirror `PAGE` in
+`src/ui/Markdown.tsx` — 17px body at 1.75, the same heading scale, the same
+70-character measure. They are two implementations of one scale, because one is
+CSS-in-JS for CodeMirror and the other Tailwind classes for React.
+
+**Consequence:** changing one means changing the other. If they drift, writing
+and reading stop looking alike, and that is the only thing this whole file is
+for. Both places carry a comment saying so.
+
+The editor also grows with its text instead of scrolling inside a 60vh box: a
+page is a document, and a document does not have a window in it.
+
+## Formatting help, folded away
+
+There is a `Formatting` disclosure under the editor listing every shortcut
+above. It is folded, and it is not a toolbar.
+
+It is deliberately **the same row as "Write a comment"** under a page, in the
+same place: a rule, the same gap below it, the same muted 14px line with an
+icon in front, and flush with the bottom of the column rather than floating
+right under the text. That last part is `PageFrame`'s `stretch` prop — the
+frame becomes a flex column and the editor takes what is left, exactly the way
+the reading view grows its content so the comment composer lands at the foot of
+a short page.
+
+The room this opens under the last line is not dead: clicking it puts the
+cursor at the end of the document, the way clicking under the last paragraph of
+a document does.
+
+**Opening the fold scrolls it into view.** On a short page it needs no help —
+the editor gives the room back, because `flex-1` lets it shrink down to its
+text. On a long one it cannot, so the content would appear below the viewport
+and nothing would move. The block therefore calls `scrollIntoView` with
+`block: 'nearest'`, which scrolls the least it can: the long-page case comes up
+into view, the short-page case stays put instead of jumping.
+
+The comment composer on a published page has the same problem and the same
+answer — see [06](06-ui-information-architecture.md). Both are the one fold at
+the foot of the column, so both had better behave the same way.
+
+Both rows play the same part — the one quiet thing at the foot of the column
+that opens when asked — so they should not be two different shapes. The arrow is
+the page tree's `ChevronRight`/`ChevronDown`, so that a fold looks like a fold
+everywhere in the app.
+
+**Why not a toolbar:** a toolbar puts the technical vocabulary back on screen
+permanently, which is exactly what the live formatting removes. The help is
+there for the second question — "how do I get a quote?" — not the first one.
+
+## Open
+
+- **`/` at the start of a line → insert menu.** A wiki usually opens a menu for
+  tables, images and layouts there. Not built. This is also where
+  attachments should come back: since the editor was stripped to title +
+  Markdown ([10](10-roadmap.md), phase 6) the Blossom upload in
+  `src/nostr/blossom.ts` has no way in except drag & drop.
+- **Tables.** Rendered ([`Markdown.tsx`](../src/ui/Markdown.tsx) handles GFM
+  tables, wide ones scroll), but there is no help writing one — a pipe table is
+  the one piece of Markdown syntax that really is hard to type by hand, and
+  doing it properly means column-aware editing, which belongs with the insert
+  menu.
+- **Auto-replacing a typed-out `:smile:`.** Only the dropdown converts a
+  shortcode today. Doing it on the text as well risks firing inside things like
+  `a:b:c`, so it waits for a reason.
+- **Real-time collaboration.** Unchanged from [05](05-versioning-history.md):
+  two people editing at once are resolved by the optimistic lock and the
+  three-way merge, not by a CRDT.

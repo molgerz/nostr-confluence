@@ -240,6 +240,17 @@ is over: a column of cards each carrying two buttons is a form, the same column
 with the buttons held back is a conversation. The same hover rule governs the
 per-revision actions in the history and the "remove" in the member list.
 
+The composer stays collapsed behind a "Write a comment" trigger, so an unread
+page does not open with an empty textarea at the bottom of it. **Opening it
+scrolls it into view** — at the foot of a long page it unfolds below the
+viewport and nothing moves on its own. Focusing the textarea would drag itself
+in, but only itself: the Send buttons under it stay below the edge, and signed
+out there is no textarea at all. So the whole block calls `scrollIntoView` with
+`block: 'nearest'` (the least it can, so a composer already in view does not
+jump) and the focus is told `preventScroll`, giving one movement instead of
+two. The editor's `Formatting` fold is the same row in the same place and does
+the same thing — [13](13-editing.md).
+
 **The history** is a timeline — one rule down the left with a marker per
 revision, the current one in the accent colour. A stack of separate cards said
 nothing about the order things happened in, and order is the whole point of a
@@ -250,7 +261,7 @@ history.
 | State | What is shown |
 |---|---|
 | Reading | Rendered Markdown, table of contents on the right, byline, action bar |
-| Editing | Editor with a preview toggle, save/cancel, a "what did you change?" field → `summary` |
+| Editing | Editor and rendered page look the same — there is no preview to toggle. Title, text, Publish/Cancel in the breadcrumb bar → [13](13-editing.md) |
 | Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
 | Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works. The button signs in **where it stands** — you never leave the page |
 | Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also says which extensions are common and that the app stores no key. Only after an attempt, never unprompted |
@@ -274,16 +285,25 @@ like filling in a record; this way the top of the editor and the top of the page
 are the same shape. Save and Cancel are pinned to the bottom of the viewport,
 because on a long page they were two screens below the paragraph being written.
 
-- **Implemented**: CodeMirror 6 with Markdown highlighting and a Write/Preview
-  switch, a field for the change note, an automatically derived slug and a
-  parent-page field backed by a `datalist` of the space's slugs — a wrong slug
-  there files the page nowhere, so it can be picked from rather than typed from
-  memory. The colour mode is swapped through a `Compartment` so that cursor and
-  undo history survive the switch.
-- **Planned**: a toolbar for headings/lists/links/code blocks. Images can
-  already be attached via button or drag & drop (Blossom).
-- **Later**: WYSIWYG (TipTap) producing Markdown. Deliberately not first,
-  because WYSIWYG plus merge conflicts at the same time is too much risk.
+**There is no Write/Preview switch**, because there is nothing to switch
+between: the text is drawn as it will be read while it is being typed. `# ` and
+a space sizes the line as a heading, `- ` becomes a bullet, `@` opens a list of
+the people in the space. The full set of what is recognised, and why it is a
+decoration layer over Markdown rather than a WYSIWYG document model, is
+[13](13-editing.md).
+
+- **Implemented**: CodeMirror 6 with live formatting, `@` mentions, `:` emoji,
+  and a folded `Formatting` disclosure listing the shortcuts. The colour mode is
+  swapped through a `Compartment` so that cursor and undo history survive the
+  switch.
+- **Deliberately not a toolbar.** A toolbar puts the technical vocabulary back
+  on screen permanently, which is exactly what the live formatting removes.
+- **Planned**: `/` at the start of a line opening an insert menu (tables,
+  images, macros). That is also where attaching a file has to come back — since
+  the editor was stripped to title + Markdown the Blossom upload has no way in
+  except drag & drop.
+- **Dropped**: the change-note field and the parent-page picker. Filing a page
+  elsewhere is its own action, not a field in the editor.
 
 ## How identity is displayed
 
@@ -296,6 +316,11 @@ could be somebody impersonating somebody else, and these are exactly the screens
 somebody opens to decide whether to trust a change or a member.
 
 Everywhere else the name stands alone, because the key would be noise:
+
+- **A mention inside a sentence** (`@Alice`). `npub1qz…7k4f` mid-sentence is
+  unreadable, and a mention is not a claim about who signed anything. What is
+  *stored* is the key either way — the name is only the label, and the key is in
+  the tooltip. [13](13-editing.md)
 
 - **One's own account chip in the top bar.** Nobody has to tell themselves
   apart from an impostor, and the bar is the narrowest strip in the layout.

@@ -99,6 +99,33 @@ export function cacheProfile(pubkey: string, profile: Profile): void {
   store.set(pubkey, profile)
 }
 
+/**
+ * What is in the cache right now, without asking a relay — for the
+ * autocomplete list, which has to answer while a keystroke is being handled.
+ * Names that have not arrived yet simply cannot be searched for; the npub can.
+ */
+export function peekProfile(pubkey: string): Profile | null {
+  return store.get(pubkey) ?? null
+}
+
+/** Warm the cache for a set of keys, e.g. the members of a space. */
+export function primeProfiles(pubkeys: string[]): void {
+  for (const pubkey of pubkeys) store.request(pubkey)
+}
+
+/**
+ * The same lookup for code that is not a React component: the mention chips
+ * the editor draws are plain DOM widgets, so they cannot use a hook. Calls
+ * back immediately with what is cached and again once the relay answered;
+ * the returned function unsubscribes.
+ */
+export function observeProfile(pubkey: string, listener: (profile: Profile | null) => void): () => void {
+  const unsubscribe = store.subscribe(() => listener(store.get(pubkey) ?? null))
+  store.request(pubkey)
+  listener(store.get(pubkey) ?? null)
+  return unsubscribe
+}
+
 export function useProfile(pubkey: string | null): Profile | null {
   const subscribe = useCallback((listener: () => void) => store.subscribe(listener), [])
   const getSnapshot = useCallback(() => store.get(pubkey), [pubkey])

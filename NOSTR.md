@@ -66,6 +66,7 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md) relay info | ✅ | Relay name, `supported_nips`, relay pubkey for `naddr` | `src/nostr/relay-status.ts` |
 | [NIP-19](https://github.com/nostr-protocol/nips/blob/master/19.md) bech32 | ✅ | Displaying `npub`, accepting npub input in member administration | `src/nostr/profile.ts` |
 | [NIP-22](https://github.com/nostr-protocol/nips/blob/master/22.md) comments | ⚠️ | Comments (kind 1111) — the anchoring deviates, see below | `src/domain/comment.ts` |
+| [NIP-27](https://github.com/nostr-protocol/nips/blob/master/27.md) text references | ✅ | Mentions: `nostr:npub1…` inline in the Markdown plus a `p` tag per mentioned key. The name is drawn from kind 0, the key is what is stored | `src/nostr/mentions.ts` |
 | [NIP-29](https://github.com/nostr-protocol/nips/blob/master/29.md) groups | ✅ | Spaces, membership, moderation. The relay is the authority | `src/domain/group-state.ts`, `src/nostr/moderation.ts` |
 | [NIP-31](https://github.com/nostr-protocol/nips/blob/master/31.md) `alt` | ✅ | Plain-text description on our own kinds so foreign clients can show something | `src/nostr/publish-page.ts` |
 | [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) AUTH | ✅ | Authenticating to the relay, automatically on every new connection, retried after `auth-required` | `src/nostr/client.ts` |
@@ -126,7 +127,8 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | `restore-of` | 1818 | A restore points at the revision it copied |
 | `m` | 1818 | Always `text/markdown` |
 | `alt` | 1818, 1111, 31818 | NIP-31 fallback for foreign clients |
-| `K` / `k` / `e` / `p` | 1111 | NIP-22: kind of the root object, kind of the direct parent, parent comment, its author |
+| `K` / `k` / `e` | 1111 | NIP-22: kind of the root object, kind of the direct parent, parent comment |
+| `p` | 1818, 1111 | Everybody the content mentions, one tag per key, plus (in `1111`) the author being replied to. NIP-27 — without it a mention is findable by whoever reads the page but not by the person mentioned. Written from `nostr:` URIs in the text (`src/nostr/mentions.ts`) |
 | `supported_kinds` | 39000 (read) | Kinds the group accepts. If `1818` is missing, the app warns **before** publishing |
 | `previous` | — | ❌ NIP-29 timeline references are **not** written. `groups_relay` does not check them anyway |
 
@@ -146,10 +148,23 @@ the backlog, see [docs/10](docs/10-roadmap.md).
     ["alt", "Wiki page \"Onboarding\" in space engineering"],
     ["page-parent", "handbook"],
     ["summary", "added an access section"],
-    ["parent-rev", "<id of the preceding revision>"]
+    ["parent-rev", "<id of the preceding revision>"],
+    ["p", "<hex pubkey mentioned in the text>"]
   ]
 }
 ```
+
+### Mentions in the content
+
+The content is Markdown (`m: text/markdown`), and a mention inside it is a
+NIP-27 URI — `nostr:npub1…` or `nostr:nprofile1…`, written inline. Never the
+display name: a name is freely chosen, not unique and can change, so `@alice`
+in a stored page would point at whoever calls themselves alice on the day it is
+read. The app draws the name and keeps the key ([docs/13](docs/13-editing.md)).
+
+Every key found this way is also written as a `p` tag, as NIP-27 asks. A
+relay-side consequence: on a NIP-29 relay a `p` tag on a `1818` is just data —
+it is `h` that decides who may write, and nothing else.
 
 A page is therefore **not a single event** but the pair `(group, slug)` plus the
 chain of its revisions. Why it has to be that way: addressable events (`30xxx`)

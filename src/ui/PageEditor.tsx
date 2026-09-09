@@ -1,18 +1,16 @@
-import { useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { classifyRejection } from '../nostr/client'
 import { normalizeSlug } from '../nostr/kinds'
 import { publishRevision } from '../nostr/publish-page'
 import { publishPlacement } from '../nostr/publish-placement'
 import { useSession } from '../session/session'
-import { Markdown } from './Markdown'
 import { MarkdownEditor } from './MarkdownEditor'
-import type { EditorHandle } from './MarkdownEditor'
-import { attachmentMarkdown, attachmentsEnabled, uploadAttachment } from '../nostr/blossom'
 import { hasConflictMarkers, mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { SignInButton } from './SignInButton'
-import { Button, Callout, INPUT, Segmented } from './controls'
-import { PencilIcon, BookIcon, PlusIcon } from './icons'
+import { Button, Callout } from './controls'
+import { HeaderActions } from './layout/PageFrame'
+import { ChevronDownIcon, ChevronRightIcon } from './icons'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -25,6 +23,8 @@ type Props = {
   defaultParentSlug?: string | null
   /** existing pages of the space, for slug collisions */
   pages: Page[]
+  /** members of the space — the people the `@` dropdown offers */
+  members?: string[]
   /** pre-filled content, e.g. the result of a merge */
   initialContent?: string
   /** note above the editor, e.g. "merged two versions" */
@@ -35,12 +35,97 @@ type Props = {
   onCancel: () => void
 }
 
+/**
+ * What can be typed, for whoever does not already know.
+ *
+ * Folded away, because the editor's whole point is that you do not need it:
+ * the formatting appears as you type. It is here for the second question —
+ * "how do I get a quote?" — and not as a toolbar, which would put the
+ * technical vocabulary back on screen permanently.
+ *
+ * It is the same row as "Write a comment" under a page — rule, the same gap
+ * below it, the same muted 14px line with an icon in front — because it plays
+ * the same part: the one quiet thing at the foot of the column that opens when
+ * asked. The arrow is the sidebar's, so a fold is a fold everywhere in the app.
+ * docs/06-ui-information-architecture.md, docs/13-editing.md
+ */
+function FormattingHelp() {
+  const [open, setOpen] = useState(false)
+  const block = useRef<HTMLDivElement | null>(null)
+
+  // Opening the fold has to reveal what it opened, and at the foot of a long
+  // page it does not on its own: the content lands below the viewport and
+  // nothing scrolls, because the editor above can only give room back while
+  // the text is shorter than the column. So the block brings itself into view.
+  //
+  // `nearest` rather than `end`: it scrolls the least it can, so a fold that
+  // was already fully visible — the short-page case, where the editor does
+  // shrink — stays put instead of jumping. `scroll-mb-10` below matches the
+  // frame's bottom padding, so the last row does not end up flush with the
+  // edge.
+  useEffect(() => {
+    if (open) block.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [open])
+
+  const rules: [string, string][] = [
+    ['# ', 'Heading — ## and ### go smaller'],
+    ['- ', 'Bullet list'],
+    ['1. ', 'Numbered list'],
+    ['- [] ', 'Checkbox'],
+    ['**text**', 'Bold, ⌘B'],
+    ['*text*', 'Italic, ⌘I'],
+    ['~~text~~', 'Struck through'],
+    ['`code`', 'Code, ⌘E'],
+    ['> ', 'Quote'],
+    ['```', 'Code block'],
+    ['---', 'Divider — on a line of its own'],
+    ['@', 'Mention somebody'],
+    [':', 'Emoji, e.g. :smile'],
+  ]
+
+  return (
+    // mt-2 tops the column's gap-5 up to the 28px the comment block puts above
+    // its own rule, so both rows sit at the same height.
+    <div
+      ref={block}
+      className="mt-2 max-w-[70ch] shrink-0 scroll-mb-10 border-t border-line pt-7"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls="formatting-help"
+        className="flex items-center gap-2 text-sm text-fg-muted hover:text-fg"
+      >
+        {open ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+        Formatting
+      </button>
+      {open ? (
+        <dl
+          id="formatting-help"
+          className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs sm:grid-cols-[auto_1fr_auto_1fr]"
+        >
+          {rules.map(([syntax, meaning]) => (
+            <Fragment key={syntax}>
+              <dt className="rounded bg-code-bg px-1.5 py-0.5 font-mono whitespace-nowrap text-fg">
+                {syntax}
+              </dt>
+              <dd className="text-fg-muted">{meaning}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  )
+}
+
 export function PageEditor({
   relayUrl,
   groupId,
   page,
   defaultParentSlug = null,
   pages,
+  members,
   initialContent,
   initialNotice,
   overrideParents,
@@ -54,15 +139,11 @@ export function PageEditor({
   // the meantime, we merge instead of overwriting.
   const [baseRevision, setBaseRevision] = useState<Revision | null>(page?.head ?? null)
   const [notice, setNotice] = useState<string | null>(initialNotice ?? null)
-  const [summary, setSummary] = useState('')
-  const [parentSlug, setParentSlug] = useState(page?.parentSlug ?? defaultParentSlug ?? '')
+  // The parent is fixed for the life of this editor session — filing a page
+  // elsewhere is a separate action, not a field in here.
+  const [parentSlug] = useState(page?.parentSlug ?? defaultParentSlug ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
-  const editorHandle = useRef<EditorHandle | null>(null)
-  const fileInput = useRef<HTMLInputElement | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadNote, setUploadNote] = useState<string | null>(null)
 
   if (session.status !== 'signed-in') {
     return (
@@ -79,34 +160,6 @@ export function PageEditor({
   const slug = page?.slug ?? normalizeSlug(title)
   const existing = page ?? (slug.length > 0 ? pages.find((entry) => entry.slug === slug) : undefined)
   const collision = !page && existing !== undefined
-
-  /**
-   * Upload an attachment and insert it at the cursor. Images as ![…](url),
-   * everything else as a link — the file then lives on the Blossom server and
-   * the Nostr event only carries the URL.
-   */
-  const upload = async (files: File[]) => {
-    if (session.status !== 'signed-in' || files.length === 0) return
-    setUploadNote(null)
-    setUploading(true)
-    try {
-      for (const file of files) {
-        const result = await uploadAttachment(session.signer, file)
-        if (!result.ok) {
-          setUploadNote(`${file.name}: ${result.reason}`)
-          return
-        }
-        const snippet = attachmentMarkdown(result, file.name)
-        if (editorHandle.current) editorHandle.current.insert(`\n${snippet}\n`)
-        else setContent((current) => `${current}\n${snippet}\n`)
-        setUploadNote(`${file.name} uploaded (${Math.round(result.size / 1024)} kB)`)
-      }
-    } catch (err) {
-      setUploadNote(err instanceof Error ? err.message : 'upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const save = async () => {
     setError(null)
@@ -162,7 +215,7 @@ export function PageEditor({
         // Carry the sidebar position over. Without this every save would drop
         // the page back into alphabetical order. src/domain/order.ts
         order: existing?.order ?? null,
-        summary: summary.trim() || null,
+        summary: null,
         content,
         // New page: no predecessors. Merge: all leaves. Otherwise the current
         // head of the chain.
@@ -208,14 +261,16 @@ export function PageEditor({
   }
 
   return (
-    <div className="space-y-5">
+    // A flex column filling the frame (which is one too, via `stretch`): the
+    // editor takes what is left, so the Formatting row lands at the bottom of
+    // the page, exactly where "Write a comment" sits when reading.
+    <div className="flex flex-1 flex-col gap-5">
       {notice ? <Callout tone="warning">{notice}</Callout> : null}
 
       {/* The title is the page's own heading, so it is edited at the size it
           will be read at — a borderless field the width of the column, not a
-          32px box labelled "Title". The slug it derives sits under it in the
-          same place the byline will. */}
-      <div>
+          32px box labelled "Title". */}
+      <div className="shrink-0">
         <label htmlFor="title" className="sr-only">
           Title
         </label>
@@ -226,10 +281,6 @@ export function PageEditor({
           placeholder="Untitled page"
           className="w-full bg-transparent text-[30px] leading-tight font-semibold tracking-[-0.02em] text-fg placeholder:text-fg-subtle/60 focus:outline-none"
         />
-        <p className="mt-2 font-mono text-xs text-fg-subtle">
-          /{slug || '…'}
-          {page ? ' · fixed for the life of the page' : ''}
-        </p>
         {collision ? (
           <p className="mt-1 text-xs text-warning">
             “{existing?.title}” already uses this slug. Saving appends another revision to that
@@ -238,111 +289,34 @@ export function PageEditor({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-y border-line py-2.5">
-        <label htmlFor="parent" className="text-xs font-medium text-fg-subtle">
-          Filed under
-        </label>
-        <input
-          id="parent"
-          value={parentSlug}
-          onChange={(event) => setParentSlug(event.target.value)}
-          placeholder="the top level"
-          list="nc-parent-slugs"
-          className={`${INPUT} w-56 font-mono text-xs`}
-        />
-        {/* The slugs of the space, so the field can be picked from rather than
-            typed from memory — a wrong slug here files the page nowhere. */}
-        <datalist id="nc-parent-slugs">
-          {pages
-            .filter((entry) => entry.slug !== page?.slug)
-            .map((entry) => (
-              <option key={entry.slug} value={entry.slug}>
-                {entry.title}
-              </option>
-            ))}
-        </datalist>
-
-        <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            size="sm"
-            disabled={!attachmentsEnabled() || uploading}
-            title={
-              attachmentsEnabled()
-                ? 'Attach an image or file — it goes to the Blossom server, not into the event'
-                : 'No Blossom server configured (VITE_BLOSSOM_SERVER)'
-            }
-            onClick={() => fileInput.current?.click()}
-          >
-            <PlusIcon className="size-3.5" />
-            {uploading ? 'uploading…' : 'Attach'}
-          </Button>
-          <Segmented
-            label="Source or preview"
-            value={showPreview ? 'preview' : 'source'}
-            options={[
-              { value: 'source', label: 'Write', icon: <PencilIcon className="size-3.5" /> },
-              { value: 'preview', label: 'Preview', icon: <BookIcon className="size-3.5" /> },
-            ]}
-            onChange={(next) => setShowPreview(next === 'preview')}
-          />
-        </div>
-      </div>
-
-      {showPreview ? (
-        <div className="min-h-64 rounded-lg border border-line p-4">
-          <Markdown>{content || '_still empty_'}</Markdown>
-        </div>
-      ) : (
-        <MarkdownEditor
-          value={content}
-          onChange={setContent}
-          ariaLabel="Content in Markdown"
-          handleRef={editorHandle}
-          onDropFiles={(files) => void upload(files)}
-        />
-      )}
-
-      <div className="space-y-1.5">
-        <label htmlFor="summary" className="block text-xs font-medium text-fg-muted">
-          What did you change?
-        </label>
-        <input
-          id="summary"
-          value={summary}
-          onChange={(event) => setSummary(event.target.value)}
-          placeholder={page ? 'e.g. added a deployment section' : 'created the page'}
-          className={INPUT}
-        />
-        <p className="text-xs text-fg-subtle">Shown in the history next to this revision.</p>
-      </div>
-
-      <input
-        ref={fileInput}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const files = [...(event.target.files ?? [])]
-          event.target.value = ''
-          void upload(files)
-        }}
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        ariaLabel="Content in Markdown"
+        members={members}
       />
-      {uploadNote ? <p className="text-xs text-fg-subtle">{uploadNote}</p> : null}
 
       {/* The relay's own words, never a paraphrase: with distributed storage
           "saved" must not be claimed before an OK came back, and when it did
-          not, the reason is the only thing that helps.
+          not, the reason is the only thing that helps. Directly under the text
+          it refers to, not below the fold-away help at the foot of the page.
           docs/06-ui-information-architecture.md */}
-      {error ? <Callout tone="danger" title="Not saved">{error}</Callout> : null}
+      {error ? (
+        <Callout tone="danger" title="Not saved">
+          {error}
+        </Callout>
+      ) : null}
 
-      {/* Pinned to the bottom of the viewport: on a long page the save button
-          was two screens below the paragraph being written. */}
-      <div className="sticky bottom-0 -mx-1 flex gap-2 border-t border-line bg-surface-2/90 px-1 py-3 backdrop-blur-sm">
+      <FormattingHelp />
+
+      {/* Rendered into the breadcrumb bar above, not down here — see
+          docs/10-roadmap.md, Phase 6. */}
+      <HeaderActions>
         <Button variant="primary" onClick={() => void save()} disabled={busy}>
-          {busy ? 'saving…' : 'Save'}
+          {busy ? 'publishing…' : 'Publish'}
         </Button>
         <Button onClick={onCancel}>Cancel</Button>
-      </div>
+      </HeaderActions>
     </div>
   )
 }

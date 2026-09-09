@@ -17,6 +17,7 @@ Suggested reading order:
 | 10 | [Roadmap](10-roadmap.md) | Phases with acceptance criteria |
 | 11 | [Open questions](11-open-questions.md) | Decisions that are yours to make |
 | 12 | [Theming](12-theming.md) | Light/dark switching, token layers |
+| 13 | [Writing](13-editing.md) | Live Markdown formatting, mentions, emoji |
 
 Conventions: decisions are marked **Decision:**, deliberate exclusions
 **Non-goal:**, and unresolved points **Open:**.

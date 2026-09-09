@@ -9,14 +9,17 @@
 | Cache | **none yet** | IndexedDB was planned for instant rendering and offline reading. So far everything lives in memory and is fetched from the relay on every load → open |
 | State | **our own stores** (`useSyncExternalStore`) | Zustand was planned but turned out unnecessary: space state hangs off relay subscriptions, which are a store anyway. A library would only have added a layer in between |
 | Rendering Markdown | `react-markdown` + `remark-gfm` + **`rehype-sanitize`** | Content comes from arbitrary npubs → sanitising is mandatory, not optional |
-| Editor | CodeMirror 6 (`@codemirror/lang-markdown`) | Robust, handles large documents, good selection API for inline comments later |
+| Editor | CodeMirror 6 (`@codemirror/lang-markdown`) | Robust, handles large documents, good selection API for inline comments later. The live formatting is a decoration layer of our own on top of it → [13](13-editing.md) |
+| Rejected | TipTap / ProseMirror for the editor | A WYSIWYG document model serialised to Markdown on save reformats lines nobody touched, and every such line becomes a diff hunk and a merge conflict. The document has to *be* Markdown → [13](13-editing.md) |
+| Emoji | **a curated list of our own** (`src/ui/emoji.ts`) | An emoji database is ~3800 entries to download so that `:smi` can find 😄. A few hundred hand-ordered ones rank better and cost nothing |
 | Diff | `diff` (jsdiff), `diffArrays` over line arrays | Line and word diff, the basis for blame and the three-way merge |
 | Three-way merge | **written ourselves** (`src/domain/merge.ts`) | jsdiff v8 no longer ships `merge`. Ours is about 100 lines, fully tested, and we control how conflicts are presented |
 | Styling | Tailwind, `dark` variant bound to `data-theme` | Atlassian-like density in tokens; a manual light/dark switch is required → [12](12-theming.md) |
-| Syntax highlighting in the editor | CodeMirror (`@codemirror/lang-markdown`) | Covers the editor |
+| Syntax highlighting in the editor | CodeMirror, with a highlight style of our own bound to the theme tokens | Only inside fenced code. CodeMirror's `defaultHighlightStyle` also colours headings and bold text, which the live formatting has already answered → [13](13-editing.md) |
 | Syntax highlighting when displaying | Shiki (`shiki`, JavaScript regex engine) | Dual themes in one pass, rendered from tokens rather than HTML, grammars loaded lazily — [12](12-theming.md) |
 | Search | **written ourselves** (`src/domain/search.ts`) | MiniSearch was planned; for title and line search over the loaded pages, 60 lines are enough — no dependency and no index that can go stale |
-| Unit tests | Vitest | The chain logic (head, merge, blame, search) is pure function logic → 76 tests |
+| Unit tests | Vitest | The chain logic (head, merge, blame, search) is pure function logic → 179 tests |
+| DOM tests | Vitest with **jsdom**, per file via `@vitest-environment` | The live formatting is decorations over a real document, so it can only be checked against a real editor. Set per file, not globally: the other 150 tests are pure logic and should not pay for a DOM |
 | End-to-end tests | **none yet** | Playwright was planned, also for the colour-mode regression from [12](12-theming.md). So far testing is done by hand in the browser → open |
 
 ## Configuration
