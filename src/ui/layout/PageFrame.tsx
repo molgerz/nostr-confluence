@@ -90,11 +90,33 @@ export function PageFrame({
   crumbs,
   actions,
   width = 'doc',
+  stretch = false,
   children,
 }: {
   crumbs?: Crumb[]
   actions?: ReactNode
   width?: 'doc' | 'wide'
+  /**
+   * Lays `children` out as a flex column filling the frame's full height,
+   * instead of plain block flow. For a view with a trailing element that
+   * should sit flush with the bottom of a short page (e.g. a comment
+   * composer) rather than floating right under the content — the element
+   * before it takes `flex-1` and the rest follows for free. Doesn't touch
+   * `pb-24`/max-width, and every other `PageFrame` caller is unaffected by
+   * default.
+   *
+   * Why not `min-h-full` on a wrapper inside `children` instead of this:
+   * tried first, and it doesn't work — a flex item's flex-grow-resolved
+   * height isn't "definite" for a *grandchild's* percentage height in
+   * Chromium (confirmed against an isolated repro), so `min-height: 100%`
+   * on anything nested one level inside this div silently collapses to its
+   * content size. Making this div itself the flex column sidesteps the
+   * percentage resolution entirely — its own height is already reliably
+   * resolved via flex-grow from `PageFrame`'s root, and children of a
+   * definite-size flex container distribute space directly, no percentages
+   * involved.
+   */
+  stretch?: boolean
   children: ReactNode
 }) {
   const [actionsEl, setActionsEl] = useState<HTMLDivElement | null>(null)
@@ -115,8 +137,13 @@ export function PageFrame({
 
       <HeaderActionsTarget.Provider value={actionsEl}>
         <div
-          className={`mx-auto w-full flex-1 px-5 pt-8 pb-24 sm:px-8 ${
+          className={`mx-auto w-full flex-1 px-5 pt-8 sm:px-8 ${
             width === 'doc' ? 'max-w-3xl' : 'max-w-4xl'
+          } ${
+            // A stretched column ends in something meant to sit near the
+            // bottom, so it gets a short tail; ordinary content keeps the
+            // deep one that stops the last line from hugging the edge.
+            stretch ? 'flex flex-col pb-10' : 'pb-24'
           }`}
         >
           {children}

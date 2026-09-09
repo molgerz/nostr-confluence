@@ -240,6 +240,16 @@ is over: a column of cards each carrying two buttons is a form, the same column
 with the buttons held back is a conversation. The same hover rule governs the
 per-revision actions in the history and the "remove" in the member list.
 
+The composer stays collapsed behind a "Write a comment" trigger, so an unread
+page does not open with an empty textarea at the bottom of it. **Opening it
+scrolls it into view** — at the foot of a long page it unfolds below the
+viewport and nothing moves on its own. Focusing the textarea would drag itself
+in, but only itself: the Send buttons under it stay below the edge, and signed
+out there is no textarea at all. So the whole block calls `scrollIntoView` with
+`block: 'nearest'` (the least it can, so a composer already in view does not
+jump) and the focus is told `preventScroll`, giving one movement instead of
+two.
+
 **The history** is a timeline — one rule down the left with a marker per
 revision, the current one in the accent colour. A stack of separate cards said
 nothing about the order things happened in, and order is the whole point of a

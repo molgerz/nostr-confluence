@@ -132,31 +132,38 @@ export function PageView() {
   )
 
   return (
-    <PageFrame crumbs={crumbs} actions={actions}>
-      <PageTitle below={<Byline revision={page.head} />}>{page.title}</PageTitle>
+    <PageFrame crumbs={crumbs} actions={actions} stretch>
+      {/* flex-1 here (PageFrame's content column is a flex column via
+          `stretch`) so Comments lands flush with the bottom of a short
+          page instead of floating right under the last paragraph — on a
+          page long enough to scroll, flex-grow has nothing to add and
+          Comments simply falls where the content ends. */}
+      <div className="flex-1">
+        <PageTitle below={<Byline revision={page.head} />}>{page.title}</PageTitle>
 
-      {forked ? (
-        <div className="mb-6">
-          <Callout
-            tone="warning"
-            title={`This page has ${page.leaves.length} open versions`}
-            actions={
-              session.status === 'signed-in' ? (
-                <ButtonLink to={`${base}/${page.slug}/edit?merge=1`} size="sm">
-                  Merge versions
-                </ButtonLink>
-              ) : null
-            }
-          >
-            Several people saved at the same time. The newest one is shown (
-            {shortNpub(toNpub(page.head.author))}); all versions are in the history.
-          </Callout>
-        </div>
-      ) : null}
+        {forked ? (
+          <div className="mb-6">
+            <Callout
+              tone="warning"
+              title={`This page has ${page.leaves.length} open versions`}
+              actions={
+                session.status === 'signed-in' ? (
+                  <ButtonLink to={`${base}/${page.slug}/edit?merge=1`} size="sm">
+                    Merge versions
+                  </ButtonLink>
+                ) : null
+              }
+            >
+              Several people saved at the same time. The newest one is shown (
+              {shortNpub(toNpub(page.head.author))}); all versions are in the history.
+            </Callout>
+          </div>
+        ) : null}
 
-      <article>
-        <Markdown>{page.head.content}</Markdown>
-      </article>
+        <article>
+          <Markdown>{page.head.content}</Markdown>
+        </article>
+      </div>
 
       <Comments
         relayUrl={group.relayUrl}
