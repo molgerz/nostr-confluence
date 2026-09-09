@@ -58,6 +58,21 @@ describe('Markdown', () => {
     expect(spacers[0].nextElementSibling?.textContent).toBe('Para B')
   })
 
+  it('draws a task as a checkbox, ticked or not', () => {
+    const page = render('- [ ] one\n- [x] two')
+    const boxes = [...page.querySelectorAll('input')]
+    expect(boxes).toHaveLength(2)
+    expect(boxes.map((b) => b.checked)).toEqual([false, true])
+    // no bullet in front of the box — the box is the item's marker
+    expect(page.querySelector('li')?.className).toContain('list-none')
+  })
+
+  it('prints brackets that are not a link, the way the editor shows them', () => {
+    const page = render('a [b] c')
+    expect(page.querySelector('a')).toBeNull()
+    expect(page.querySelector('p')?.textContent).toBe('a [b] c')
+  })
+
   it('gives a nested list its own bullet shape, the way the editor does', () => {
     const page = render('- outer\n  - inner\n    - deep')
     const lists = [...page.querySelectorAll('ul')]

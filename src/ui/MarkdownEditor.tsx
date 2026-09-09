@@ -360,6 +360,58 @@ export const continueList: Command = (view) => {
   return true
 }
 
+/**
+ * `[` , the box, `]` , and the space that has to follow — with the two places
+ * where an invisible character silently turns the task back into a bullet.
+ */
+const TASK_MARKER = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([^\]])(\])(.?)/
+
+/**
+ * Puts a plain space back into a task marker that lost one.
+ *
+ * `- [ ] milk` is a checkbox; `- [<no-break space>] milk` is a bullet followed
+ * by two brackets, because GFM asks for U+0020 and nothing else. On a Mac
+ * Option-Space produces exactly that character, and pasted text is full of
+ * them — so the line refuses to become a task and **nothing on screen says
+ * why**, because the character is invisible. `- [x]` keeps working the whole
+ * time, which makes it look as though ticked boxes were the only kind there is.
+ *
+ * There is no reading of `- [<nbsp>]` in which the writer meant something other
+ * than a checkbox, so the character is replaced as it is typed. Only whitespace
+ * is touched: `- [y]` is left alone, because that really is just brackets.
+ */
+export const normaliseTaskMarker = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged) return tr
+
+  const fixes: { from: number; to: number; insert: string }[] = []
+  const seen = new Set<number>()
+  tr.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    const doc = tr.newDoc
+    for (let n = doc.lineAt(fromB).number, last = doc.lineAt(toB).number; n <= last; n++) {
+      if (seen.has(n)) continue
+      seen.add(n)
+      const line = doc.line(n)
+      const match = TASK_MARKER.exec(line.text)
+      if (!match) continue
+      const [, before, box, bracket, after] = match
+      // the box itself
+      if (box !== ' ' && box !== 'x' && box !== 'X' && /\s/.test(box)) {
+        fixes.push({ from: line.from + before.length, to: line.from + before.length + box.length, insert: ' ' })
+      }
+      // and the space that has to separate it from the words
+      if (after && after !== ' ' && after !== '\t' && /\s/.test(after)) {
+        const at = line.from + before.length + box.length + bracket.length
+        fixes.push({ from: at, to: at + after.length, insert: ' ' })
+      }
+    }
+  })
+
+  if (fixes.length === 0) return tr
+  // `sequential`, because the positions were read off the document this
+  // transaction produces, not the one it started from.
+  return [tr, { changes: fixes, sequential: true }]
+})
+
 function inList(view: EditorView): boolean {
   const node = syntaxTree(view.state).resolveInner(view.state.selection.main.head, -1)
   for (let parent: typeof node | null = node; parent; parent = parent.parent) {
@@ -450,6 +502,7 @@ export function MarkdownEditor({
           completeHTMLTags: false,
         }),
         syntaxHighlighting(codeHighlight),
+        normaliseTaskMarker,
         liveMarkdown,
         autocompletion({
           override: [mentionCompletion(() => membersRef.current), emojiCompletion],

@@ -40,12 +40,19 @@ cursor is inside" is what Obsidian does, and it means the markers of a bold word
 appear and disappear as the cursor crosses it. One rule about lines is a rule a
 reader works out in the first minute without being told.
 
-Two deliberate exceptions:
+Three deliberate exceptions:
 
 - **A mention chip never falls back to raw text.** A 63-character npub in the
   middle of a sentence is not something anyone edits by hand, so it stays a
   chip and is *atomic* instead: one Backspace removes the whole mention. See
   below.
+- **A task box never falls back either.** `[ ]` is not edited by hand — a box is
+  ticked by clicking it — and a checklist is written *on* the line it is being
+  added to. A box that only appeared once the cursor had left would mean that
+  while you type `- [ ] milk` you watch plain text, and the list only turns into
+  a list when you leave it: it reads as "it did not work". `- ` and `[ ]` are
+  one marker here, so the dash goes with the box; Backspace takes the whole
+  marker and leaves an ordinary bullet behind.
 - **An image stays as written** — `![alt](url)`. Drawn as its alt text alone it
   would look like a paragraph that had lost its picture.
 
@@ -82,7 +89,7 @@ but its underline stays visible: hiding it would leave an empty line behind.
 |---|---|
 | `- ` or `* ` | Bullet list. The marker is drawn as `•`, one nesting level in as `◦`, deeper as `▪` |
 | `1. ` | Numbered list. The number is **never** replaced, only toned down — a number carries information |
-| `- [] ` or `- [ ] ` | Task list with a real checkbox. Clicking it writes `[x]` into the text |
+| `- [ ] ` (the space inside the brackets is part of it) | Task list with a real checkbox. Clicking it writes `[x]` into the text. It is the item's only marker — no bullet in front of it, the same as on the page |
 
 **The indent is a step, not the spaces in the source.** A level is 1.5rem —
 the `pl-6` a list gets in `src/ui/Markdown.tsx` — and the marker sits in the
@@ -92,6 +99,20 @@ away with it; drawn as they are written, a level would be four pixels instead
 of a step and a list would be indented differently here than on the page. The
 same goes for the marker itself: it is replaced together with the space behind
 it, so the gap to the text is the width of the gutter and not a character.
+
+**The invisible slip.** GFM asks for U+0020 between the brackets and nothing
+else, so `- [<no-break space>] milk` is not a task at all — it is an ordinary
+bullet followed by two brackets. On a German Mac layout `[` is Option-5 and `]`
+is Option-6, so holding Option a moment too long over the space between them
+produces exactly that character. Nothing on screen says so, because the
+character is invisible; `- [x]` keeps working the whole time, which makes it
+look as though ticked boxes were the only kind the editor has. Pasting the same
+line from somewhere else works, because that space is a real one.
+
+`normaliseTaskMarker` in `src/ui/MarkdownEditor.tsx` puts a plain space back, as
+the marker is typed — in the box and in the gap behind it. There is no reading
+of `- [<nbsp>]` in which the writer meant anything but a checkbox. Only
+whitespace is touched: `- [y]` is left alone, because that really is brackets.
 
 `Enter` continues a list and a quote, and on an empty item it removes the marker
 instead of nesting another one — one press, whether the item is a bullet, a

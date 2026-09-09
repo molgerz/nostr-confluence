@@ -173,6 +173,26 @@ function revealedLines(state: EditorState, hasFocus: boolean): { from: number; t
   })
 }
 
+/**
+ * Whether a `Link`/`Image` node is really one.
+ *
+ * Any pair of brackets parses as a `Link` — `[X]`, `[ ]`, `[see]` — because it
+ * *might* be a reference to a definition further down. Almost always there is
+ * no such definition, and then the page prints the brackets as the text they
+ * are. So a bracket pair only counts as a link once it carries a target, and
+ * only then are the brackets hidden as markup.
+ *
+ * This is what made a checkbox impossible to type: `[` and `]` disappeared the
+ * moment they were closed, and `- [ ] milk` was drawn as a bullet followed by
+ * nothing at all until the parser had a whole task to look at.
+ */
+function hasTarget(node: SyntaxNode | null | undefined): boolean {
+  for (let child = node?.firstChild; child; child = child.nextSibling) {
+    if (child.name === 'URL') return true
+  }
+  return false
+}
+
 function hasAncestor(node: SyntaxNode, name: string): boolean {
   for (let parent = node.parent; parent; parent = parent.parent) {
     if (parent.name === name) return true
@@ -328,6 +348,13 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
 
           case 'ListMark': {
             const ordered = node.node.parent?.parent?.name === 'OrderedList'
+            // A task item already has a marker — its checkbox — and `- ` and
+            // `[ ]` are one thing, so the `- ` goes even on the active line.
+            // See the TaskMarker case for why the box does not fall back.
+            if (node.node.nextSibling?.name === 'Task') {
+              decos.push(hidden.range(node.from, afterSpaces(node.to)))
+              return
+            }
             if (raw(node.from, node.to)) {
               decos.push(mark('cm-md-marker').range(node.from, node.to))
               return
@@ -385,7 +412,7 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
           }
 
           case 'Link': {
-            decos.push(LINK_TEXT.range(node.from, node.to))
+            if (hasTarget(node.node)) decos.push(LINK_TEXT.range(node.from, node.to))
             return
           }
 
@@ -393,6 +420,9 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
             // An image is left as written: drawn as its alt text alone it
             // would look like a paragraph that lost its picture.
             if (hasAncestor(node.node, 'Image')) return
+            // Brackets around nothing are not markup, they are two characters
+            // the page prints. See hasTarget.
+            if (!hasTarget(node.node.parent)) return
             if (!raw(node.from, node.to)) decos.push(hidden.range(node.from, node.to))
             return
           }
