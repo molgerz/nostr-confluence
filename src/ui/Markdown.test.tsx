@@ -88,4 +88,3 @@ describe('Markdown', () => {
     expect(lists[0].className).toContain('[&_ul_ul]:list-[square]')
   })
 })
-

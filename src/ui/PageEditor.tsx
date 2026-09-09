@@ -11,6 +11,7 @@ import { SignInButton } from './SignInButton'
 import { Button, Callout } from './controls'
 import { HeaderActions } from './layout/PageFrame'
 import { ChevronDownIcon, ChevronRightIcon } from './icons'
+import { FORMATTING_RULES } from './formatting-help'
 import type { Page } from '../domain/pages'
 import type { Revision } from '../domain/revision'
 
@@ -67,22 +68,6 @@ function FormattingHelp() {
     if (open) block.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [open])
 
-  const rules: [string, string][] = [
-    ['# ', 'Heading — ## and ### go smaller'],
-    ['- ', 'Bullet list'],
-    ['1. ', 'Numbered list'],
-    ['- [] ', 'Checkbox'],
-    ['**text**', 'Bold, ⌘B'],
-    ['*text*', 'Italic, ⌘I'],
-    ['~~text~~', 'Struck through'],
-    ['`code`', 'Code, ⌘E'],
-    ['> ', 'Quote'],
-    ['```', 'Code block'],
-    ['---', 'Divider — on a line of its own'],
-    ['@', 'Mention somebody'],
-    [':', 'Emoji, e.g. :smile'],
-  ]
-
   return (
     // mt-2 tops the column's gap-5 up to the 28px the comment block puts above
     // its own rule, so both rows sit at the same height.
@@ -105,7 +90,7 @@ function FormattingHelp() {
           id="formatting-help"
           className="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs sm:grid-cols-[auto_1fr_auto_1fr]"
         >
-          {rules.map(([syntax, meaning]) => (
+          {FORMATTING_RULES.map(({ syntax, meaning }) => (
             <Fragment key={syntax}>
               <dt className="rounded bg-code-bg px-1.5 py-0.5 font-mono whitespace-nowrap text-fg">
                 {syntax}

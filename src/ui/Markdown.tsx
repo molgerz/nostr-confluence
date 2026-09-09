@@ -357,11 +357,7 @@ export function Markdown({
             )
           },
           input: ({ node: _node, ...props }) => (
-            <input
-              {...props}
-              readOnly
-              className="mr-2 size-3.5 translate-y-px accent-accent"
-            />
+            <input {...props} readOnly className="mr-2 size-3.5 translate-y-px accent-accent" />
           ),
           a: ({ node: _node, className, href, children, ...props }) => {
             // A `nostr:` target is a person, not a place: it is drawn as a

@@ -599,3 +599,16 @@ export function MarkdownEditor({
     />
   )
 }
+
+/**
+ * The editor is built once, in a `useEffect` that does not depend on this
+ * module, and it keeps the extensions it was built with. A hot update here
+ * therefore replaces the module while the running editor goes on using the old
+ * decorations — the change looks like it simply did not work, and no amount of
+ * editing makes it land. So a change here asks for a reload instead of
+ * pretending it arrived. Dev only: `import.meta.hot` is undefined in a build.
+ * src/ui/MarkdownEditor.tsx, the `[ariaLabel]` effect
+ */
+if (import.meta.hot) {
+  import.meta.hot.accept(() => import.meta.hot?.invalidate())
+}
