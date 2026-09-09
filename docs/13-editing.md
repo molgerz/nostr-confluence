@@ -40,14 +40,25 @@ cursor is inside" is what Obsidian does, and it means the markers of a bold word
 appear and disappear as the cursor crosses it. One rule about lines is a rule a
 reader works out in the first minute without being told.
 
-Two deliberate exceptions:
+Three deliberate exceptions:
 
 - **A mention chip never falls back to raw text.** A 63-character npub in the
   middle of a sentence is not something anyone edits by hand, so it stays a
   chip and is *atomic* instead: one Backspace removes the whole mention. See
   below.
+- **A task box never falls back either.** `[ ]` is not edited by hand — a box is
+  ticked by clicking it — and a checklist is written *on* the line it is being
+  added to. A box that only appeared once the cursor had left would mean that
+  while you type `- [ ] milk` you watch plain text, and the list only turns into
+  a list when you leave it: it reads as "it did not work". `- ` and `[ ]` are
+  one marker here, so the dash goes with the box; Backspace takes the whole
+  marker and leaves an ordinary bullet behind.
 - **An image stays as written** — `![alt](url)`. Drawn as its alt text alone it
   would look like a paragraph that had lost its picture.
+
+The indentation of a nested list item is markup too, so the active line shows
+it again — the item shifts by the two spaces it is written with, the way a
+heading shifts by its `#`.
 
 ## What is recognised
 
@@ -78,11 +89,58 @@ but its underline stays visible: hiding it would leave an empty line behind.
 |---|---|
 | `- ` or `* ` | Bullet list. The marker is drawn as `•`, one nesting level in as `◦`, deeper as `▪` |
 | `1. ` | Numbered list. The number is **never** replaced, only toned down — a number carries information |
-| `- [] ` or `- [ ] ` | Task list with a real checkbox. Clicking it writes `[x]` into the text |
+| `- [ ] ` (the space inside the brackets is part of it) | Task list with a real checkbox. Clicking it writes `[x]` into the text. It is the item's only marker — no bullet in front of it, the same as on the page |
+
+**The indent is a step, not the spaces in the source.** A level is 1.5rem —
+the `pl-6` a list gets in `src/ui/Markdown.tsx` — and the marker sits in the
+gutter that step opens up, so a wrapped line lines up under the text. The two
+spaces that nest an item in the source are markup like any other marker and go
+away with it; drawn as they are written, a level would be four pixels instead
+of a step and a list would be indented differently here than on the page. The
+same goes for the marker itself: it is replaced together with the space behind
+it, so the gap to the text is the width of the gutter and not a character.
+
+**The invisible slip.** GFM asks for U+0020 between the brackets and nothing
+else, so `- [<no-break space>] milk` is not a task at all — it is an ordinary
+bullet followed by two brackets. On a German Mac layout `[` is Option-5 and `]`
+is Option-6, so holding Option a moment too long over the space between them
+produces exactly that character. Nothing on screen says so, because the
+character is invisible; `- [x]` keeps working the whole time, which makes it
+look as though ticked boxes were the only kind the editor has. Pasting the same
+line from somewhere else works, because that space is a real one.
+
+`normaliseTaskMarker` in `src/ui/MarkdownEditor.tsx` puts a plain space back, as
+the marker is typed — in the box and in the gap behind it. There is no reading
+of `- [<nbsp>]` in which the writer meant anything but a checkbox. Only
+whitespace is touched: `- [y]` is left alone, because that really is brackets.
 
 `Enter` continues a list and a quote, and on an empty item it removes the marker
-instead of nesting another one — that is `insertNewlineContinueMarkup` from
-`@codemirror/lang-markdown`. `Tab` and `Shift-Tab` indent and outdent, **but
+instead of nesting another one — one press, whether the item is a bullet, a
+number or a task.
+
+That last part is `continueList` in `src/ui/MarkdownEditor.tsx`, bound above the
+Enter the Markdown language brings. The language uses the same command but with
+its default `nonTightLists`, and on the empty item of a list that still has only
+one entry that default does not remove the marker: it inserts a blank line and
+writes the marker again, because a blank line inside a list is what makes the
+list *loose* in CommonMark, and the command keeps that option open. The marker
+then only goes on the press after that — and only in the one-entry case, so the
+key behaves differently depending on how much has been typed already, which is
+not something anybody can learn. Ending the list wins over keeping it loose: a
+list is written tight, and the empty line, if it is really wanted, is one
+keystroke away afterwards.
+
+The same rule cuts the other way when a list is already *loose* — has a blank
+line in it. There the command puts a blank line in front of every new item to
+keep it loose, so the cursor lands two lines down with an empty one above it.
+That is not configurable, so `continueList` takes the blank line out again. One
+rule underneath both halves: **an empty line is something the writer types,
+never something a key leaves behind.** And since the first half is what made
+lists loose by accident to begin with, the two are the same fix.
+
+A quote still takes two presses: an empty quoted line is a paragraph break
+inside the quote, which is a thing people want, so it is only the second one in
+a row that ends the quote. `Tab` and `Shift-Tab` indent and outdent, **but
 only inside a list**: everywhere else `Tab` has to keep moving focus out of the
 editor, or the page cannot be operated from the keyboard at all.
 
@@ -176,6 +234,31 @@ for. Both places carry a comment saying so.
 
 The editor also grows with its text instead of scrolling inside a 60vh box: a
 page is a document, and a document does not have a window in it.
+
+### Empty lines
+
+Markdown collapses them: `a`, three empty lines, `b` parses to exactly the same
+document as `a`, one empty line, `b`. The editor, though, draws the source — so
+there the three lines *are* three lines, and a page that renders one of them
+looks nothing like what was written.
+
+So the gap is read back off the positions the parser recorded and put in as
+height, by `rehypeBlankLines` in `src/ui/markdown-blank-lines.ts`. The rule:
+
+- the **first** empty line separates the two paragraphs. That separation is the
+  page's own rhythm — 0.9em, not a line — and it is not drawn as one;
+- **every further** empty line is one the writer put there on purpose and is
+  kept, at exactly the height it has in the editor;
+- **before the first block** there is nothing to separate, so every empty line
+  counts;
+- **after the last block** they are dropped. Trailing empty lines are where the
+  cursor was left, not something anybody typed.
+
+The plugin runs *after* `rehype-sanitize`, on purpose: the spacer carries a
+`style`, which is exactly the sort of attribute the schema strips. Running
+afterwards keeps the check on the author's content strict while ours, which is
+not the author's, gets through. Top level only — an empty line inside a
+blockquote or a list item is not a paragraph break.
 
 ## Formatting help, folded away
 

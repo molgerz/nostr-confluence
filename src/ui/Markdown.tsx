@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { Fragment, useEffect, useState } from 'react'
@@ -10,6 +10,7 @@ import { mentionPubkey } from '../nostr/mentions'
 import { useProfile } from '../nostr/profile-store'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { remarkMentions } from './markdown-mentions'
+import { rehypeBlankLines } from './markdown-blank-lines'
 
 /**
  * Sanitising is mandatory, not optional: content comes from arbitrary keys.
@@ -36,6 +37,17 @@ const SCHEMA = {
 }
 
 /**
+ * react-markdown blanks every href whose scheme is not on its own short list,
+ * and `nostr:` is not on it — the mention would arrive here with an empty
+ * target and be drawn as a plain link showing all 63 characters of the npub.
+ * Only a target that decodes to a key is let through; everything else keeps
+ * react-markdown's own check.
+ */
+function keepMentionUrls(url: string): string {
+  return mentionPubkey(url) ? url : defaultUrlTransform(url)
+}
+
+/**
  * Two densities, one renderer. A page is a reading surface and gets the size
  * and line length of a document; a comment sits inside somebody else's page and
  * has to stay subordinate to it, so it keeps the 14px of the surrounding UI.
@@ -54,6 +66,13 @@ type Scale = {
   list: string
   code: string
   quote: string
+  /**
+   * One empty line, as a length — an empty line the writer left in the source
+   * is kept and has to be exactly as tall here as it is in the editor. The two
+   * numbers are the `text-…` and the `leading-…` of `block` above.
+   * src/ui/markdown-blank-lines.ts
+   */
+  blank: string
 }
 
 const PAGE: Scale = {
@@ -68,6 +87,7 @@ const PAGE: Scale = {
   code: 'text-sm',
   quote:
     'my-5 border-l-[3px] border-line-strong pl-4 text-[17px] leading-[1.75] text-fg-muted',
+  blank: 'calc(17px * 1.75)',
 }
 
 const COMPACT: Scale = {
@@ -81,6 +101,7 @@ const COMPACT: Scale = {
   list: 'my-2 space-y-1 pl-5 text-sm leading-relaxed text-fg',
   code: 'text-xs',
   quote: 'my-2 border-l-2 border-line-strong pl-3 text-sm text-fg-subtle',
+  blank: 'calc(14px * 1.625)',
 }
 
 /**
@@ -227,6 +248,16 @@ function Mention({ pubkey }: { pubkey: string }) {
   )
 }
 
+/**
+ * A list marker is a marker, not text: it is toned down so the words stay the
+ * loudest thing on the line. `.cm-md-bullet` in `src/ui/MarkdownEditor.tsx`
+ * says the same in the editor.
+ */
+const MARKER = 'marker:text-fg-subtle'
+
+/** A list nested in a list carries the indent, not a block margin of its own. */
+const NESTED_LIST = '[&_ul]:my-0 [&_ol]:my-0'
+
 /** Renders Markdown written by arbitrary npubs. */
 export function Markdown({
   children,
@@ -244,7 +275,13 @@ export function Markdown({
     <div className="[&>*:first-child]:mt-0">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMentions]}
-        rehypePlugins={[[rehypeSanitize, SCHEMA]]}
+        // The order is the point: everything the author wrote is sanitised
+        // first, and only then is our own spacing put in.
+        rehypePlugins={[
+          [rehypeSanitize, SCHEMA],
+          [rehypeBlankLines, { blank: s.blank }],
+        ]}
+        urlTransform={keepMentionUrls}
         components={{
           h1: ({ node: _node, children, className, ...props }) => (
             <h1 id={headingId(children)} className={cx(heading(s.h1), className)} {...props}>
@@ -284,11 +321,28 @@ export function Markdown({
             <del className={cx('text-fg-subtle', className)} {...props} />
           ),
           hr: () => <hr className={`my-10 border-0 border-t border-line ${s.measure}`} />,
+          // Bullet shape by level, the way the editor draws it — a nested
+          // list that repeats the same dot only says "indented", not "below".
+          // A nested list also drops the block margin: inside a tight list it
+          // would open a gap the source does not ask for.
           ul: ({ node: _node, className, ...props }) => (
-            <ul className={cx('list-disc', s.list, s.measure, className)} {...props} />
+            <ul
+              className={cx(
+                'list-disc [&_ul]:list-[circle] [&_ul_ul]:list-[square]',
+                NESTED_LIST,
+                MARKER,
+                s.list,
+                s.measure,
+                className,
+              )}
+              {...props}
+            />
           ),
           ol: ({ node: _node, className, ...props }) => (
-            <ol className={cx('list-decimal', s.list, s.measure, className)} {...props} />
+            <ol
+              className={cx('list-decimal', NESTED_LIST, MARKER, s.list, s.measure, className)}
+              {...props}
+            />
           ),
           li: ({ node: _node, children, className, ...props }) => {
             // A GFM task item carries its own checkbox, so the bullet would be

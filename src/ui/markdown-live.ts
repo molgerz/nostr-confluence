@@ -173,6 +173,26 @@ function revealedLines(state: EditorState, hasFocus: boolean): { from: number; t
   })
 }
 
+/**
+ * Whether a `Link`/`Image` node is really one.
+ *
+ * Any pair of brackets parses as a `Link` — `[X]`, `[ ]`, `[see]` — because it
+ * *might* be a reference to a definition further down. Almost always there is
+ * no such definition, and then the page prints the brackets as the text they
+ * are. So a bracket pair only counts as a link once it carries a target, and
+ * only then are the brackets hidden as markup.
+ *
+ * This is what made a checkbox impossible to type: `[` and `]` disappeared the
+ * moment they were closed, and `- [ ] milk` was drawn as a bullet followed by
+ * nothing at all until the parser had a whole task to look at.
+ */
+function hasTarget(node: SyntaxNode | null | undefined): boolean {
+  for (let child = node?.firstChild; child; child = child.nextSibling) {
+    if (child.name === 'URL') return true
+  }
+  return false
+}
+
 function hasAncestor(node: SyntaxNode, name: string): boolean {
   for (let parent = node.parent; parent; parent = parent.parent) {
     if (parent.name === name) return true
@@ -211,11 +231,16 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
     }
   }
 
-  /** hide a marker together with the spaces that separate it from the text */
-  const hideWithSpaces = (from: number, to: number) => {
+  /** the position after the spaces that separate a marker from its text */
+  const afterSpaces = (to: number) => {
     let end = to
     while (end < state.doc.length && state.doc.sliceString(end, end + 1) === ' ') end += 1
-    decos.push(hidden.range(from, end))
+    return end
+  }
+
+  /** hide a marker together with the spaces that separate it from the text */
+  const hideWithSpaces = (from: number, to: number) => {
+    decos.push(hidden.range(from, afterSpaces(to)))
   }
 
   const tree = syntaxTree(state)
@@ -313,38 +338,63 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
           }
 
           case 'ListItem': {
-            eachLine(node.from, node.to, (pos, index) => {
-              if (index === 0) decos.push(line('cm-md-item').range(pos))
-            })
+            // Only the line the item starts on. The lines below it belong
+            // either to a nested item — which decorates itself — or to the
+            // item's own continuation, which is left alone.
+            const indent = `cm-md-item cm-md-depth-${Math.min(listDepth(node.node), 6)}`
+            decos.push(line(indent).range(state.doc.lineAt(node.from).from))
             return
           }
 
           case 'ListMark': {
             const ordered = node.node.parent?.parent?.name === 'OrderedList'
-            if (ordered) {
-              // A number carries information — it is never replaced, only
-              // toned down so the text stays the loudest thing on the line.
-              decos.push(LIST_NUMBER.range(node.from, node.to))
+            // A task item already has a marker — its checkbox — and `- ` and
+            // `[ ]` are one thing, so the `- ` goes even on the active line.
+            // See the TaskMarker case for why the box does not fall back.
+            if (node.node.nextSibling?.name === 'Task') {
+              decos.push(hidden.range(node.from, afterSpaces(node.to)))
               return
             }
             if (raw(node.from, node.to)) {
               decos.push(mark('cm-md-marker').range(node.from, node.to))
               return
             }
+            // The spaces that nest the item are markup as well: the depth is
+            // drawn by the line's padding, so leaving them would indent twice
+            // — and by two spaces where the page indents by a full step. Only
+            // whitespace: in a quoted list the `>` comes first on the line and
+            // is the QuoteMark's to hide, not ours.
+            const start = state.doc.lineAt(node.from).from
+            if (start < node.from && /^[ \t]+$/.test(state.doc.sliceString(start, node.from))) {
+              decos.push(hidden.range(start, node.from))
+            }
+
+            const end = afterSpaces(node.to)
+            if (ordered) {
+              // A number carries information — it is never replaced, only
+              // toned down. Hiding the space behind it lets the CSS give it
+              // the width of the gutter, the way `list-decimal` does.
+              decos.push(LIST_NUMBER.range(node.from, node.to))
+              if (end > node.to) decos.push(hidden.range(node.to, end))
+              return
+            }
             decos.push(
               Decoration.replace({ widget: new BulletWidget(listDepth(node.node)) }).range(
                 node.from,
-                node.to,
+                end,
               ),
             )
             return
           }
 
           case 'TaskMarker': {
-            if (raw(node.from, node.to)) {
-              decos.push(mark('cm-md-marker').range(node.from, node.to))
-              return
-            }
+            // Like a mention chip, and unlike every other marker, this does not
+            // fall back to raw text on the active line. `[ ]` is not something
+            // anybody edits by hand — a box is ticked by clicking it — and a
+            // checklist is written *on* the line it is being added to, so a box
+            // that only appears once the cursor has left reads as "it did not
+            // work". It is atomic instead: one Backspace takes the whole
+            // marker, and the item falls back to an ordinary bullet.
             const checked = state.doc.sliceString(node.from, node.to).toLowerCase() === '[x]'
             const deco = Decoration.replace({ widget: new TaskWidget(checked) })
             decos.push(deco.range(node.from, node.to))
@@ -362,7 +412,7 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
           }
 
           case 'Link': {
-            decos.push(LINK_TEXT.range(node.from, node.to))
+            if (hasTarget(node.node)) decos.push(LINK_TEXT.range(node.from, node.to))
             return
           }
 
@@ -370,6 +420,9 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
             // An image is left as written: drawn as its alt text alone it
             // would look like a paragraph that lost its picture.
             if (hasAncestor(node.node, 'Image')) return
+            // Brackets around nothing are not markup, they are two characters
+            // the page prints. See hasTarget.
+            if (!hasTarget(node.node.parent)) return
             if (!raw(node.from, node.to)) decos.push(hidden.range(node.from, node.to))
             return
           }

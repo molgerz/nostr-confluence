@@ -14,7 +14,7 @@ import { liveMarkdown } from './markdown-live'
 const NPUB = nip19.npubEncode('1'.repeat(64))
 
 /**
- * An editor on `doc`. Unfocused, so nothing is revealed — the two tests about
+ * An editor on `doc`. Unfocused, so nothing is revealed — the tests about
  * revealing say so explicitly.
  */
 function mount(doc: string) {
@@ -69,15 +69,32 @@ describe('liveMarkdown', () => {
 
   it('replaces a bullet marker with a bullet and keeps a number as it is', () => {
     const view = mount('- milk\n\n1. first')
-    expect(lineText(view, 0)).toBe('• milk')
+    // The space behind the marker goes with it: the gap to the text is the
+    // width of the gutter the marker fills, not a character that happens to
+    // be there — that is what lines both kinds of list up on the same step.
+    expect(lineText(view, 0)).toBe('•milk')
     expect(lineClasses(view, 0)).toContain('cm-md-item')
-    expect(lineText(view, 2)).toBe('1. first')
+    expect(lineText(view, 2)).toBe('1.first')
+    expect(view.contentDOM.innerHTML).toContain('cm-md-number')
     view.destroy()
   })
 
-  it('nests bullets by shape rather than by indentation alone', () => {
+  it('indents a list by depth rather than by the spaces in the source', () => {
+    const view = mount('- outer\n  - inner\n    - deep')
+    expect(lineClasses(view, 0)).toContain('cm-md-depth-1')
+    expect(lineClasses(view, 1)).toContain('cm-md-depth-2')
+    expect(lineClasses(view, 2)).toContain('cm-md-depth-3')
+    // the two spaces that nest the item are markup as well and go away, or
+    // the line would be indented once by the padding and once by the source
+    expect(lineText(view, 1)).toBe('◦inner')
+    expect(lineText(view, 2)).toBe('▪deep')
+    view.destroy()
+  })
+
+  it('shows the indentation again on the line being edited', () => {
     const view = mount('- outer\n  - inner')
-    expect(lineText(view, 1).trim()).toBe('◦ inner')
+    focus(view, 10)
+    expect(lineText(view, 1)).toBe('  - inner')
     view.destroy()
   })
 
@@ -87,6 +104,18 @@ describe('liveMarkdown', () => {
     expect(boxes).toHaveLength(2)
     expect(boxes[0].checked).toBe(false)
     expect(boxes[1].checked).toBe(true)
+    view.destroy()
+  })
+
+  it('keeps the box a box on the line being typed — a checklist is written on it', () => {
+    const view = mount('- [ ] milk')
+    focus(view, 10)
+    // Every other marker falls back to raw text while the cursor is on its
+    // line. This one does not: a box that appears only once the cursor has
+    // left reads as "it did not work", and `[ ]` is not edited by hand.
+    expect(view.contentDOM.querySelectorAll('input.cm-md-task')).toHaveLength(1)
+    // marker and box are one thing, so the `- ` goes with it
+    expect(lineText(view, 0)).toBe(' milk')
     view.destroy()
   })
 
@@ -119,6 +148,24 @@ describe('liveMarkdown', () => {
     const view = mount('see [the docs](https://example.com)\n\nhttps://example.com')
     expect(lineText(view, 0)).toBe('see the docs')
     expect(lineText(view, 2)).toBe('https://example.com')
+    view.destroy()
+  })
+
+  it('keeps brackets that are not a link — they are two characters, not markup', () => {
+    // Any bracket pair parses as a Link, because it *might* refer to a
+    // definition further down. Almost always there is none, and the page then
+    // prints the brackets. Hiding them is what made a checkbox impossible to
+    // type: `[` and `]` vanished the moment they were closed.
+    const view = mount('a [b] c\n\n- [X]')
+    expect(lineText(view, 0)).toBe('a [b] c')
+    expect(lineText(view, 2)).toBe('•[X]')
+    view.destroy()
+  })
+
+  it('draws a checkbox while it is being written, and no bullet beside it', () => {
+    const view = mount('- [ ] aufgabe')
+    expect(view.contentDOM.querySelectorAll('input.cm-md-task')).toHaveLength(1)
+    expect(view.contentDOM.querySelectorAll('.cm-md-bullet')).toHaveLength(0)
     view.destroy()
   })
 

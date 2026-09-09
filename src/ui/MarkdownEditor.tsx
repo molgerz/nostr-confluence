@@ -10,7 +10,11 @@ import {
 import type { Command } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentMore, indentLess } from '@codemirror/commands'
 import { autocompletion } from '@codemirror/autocomplete'
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import {
+  markdown,
+  markdownLanguage,
+  insertNewlineContinueMarkupCommand,
+} from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { syntaxTree, syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
@@ -115,9 +119,14 @@ function editorTheme(dark: boolean) {
       '.cm-md-marker': { color: 'var(--fg-subtle)', fontWeight: '400' },
 
       // — blocks —
+      // The two indents that can meet on one line — a quote's and a list's —
+      // are added rather than overriding one another: both rules declare the
+      // same `padding-left`, and each contributes only its own variable, so a
+      // list inside a quote is indented by both.
       '.cm-md-quote': {
+        '--md-quote': '1rem',
+        paddingLeft: 'calc(var(--md-quote, 0rem) + var(--md-step, 0rem))',
         borderLeft: '3px solid var(--line-strong)',
-        paddingLeft: '1rem',
         color: 'var(--fg-muted)',
       },
       '.cm-md-code-block': {
@@ -145,14 +154,48 @@ function editorTheme(dark: boolean) {
 
       // — lists —
       // Hanging indent: the marker sits in the gutter the padding opens up, so
-      // a wrapped line lines up under the text and not under the bullet.
-      '.cm-md-item': { paddingLeft: '1.6em', textIndent: '-1.6em' },
+      // a wrapped line lines up under the text and not under the bullet. One
+      // step is 1.5rem — the `pl-6` a list gets in `src/ui/Markdown.tsx`, so a
+      // list is indented the same amount here as it is on the page. The source
+      // spaces that nest an item are hidden for the same reason; two spaces
+      // per level would be a step of its own. src/ui/markdown-live.ts
+      // The gap between items is padding, not a margin: inside a quote a
+      // margin would break the border running down the side into pieces.
+      '.cm-md-item': {
+        textIndent: '-1.5rem',
+        paddingTop: '0.375rem',
+        paddingLeft: 'calc(var(--md-quote, 0rem) + var(--md-step, 0rem))',
+      },
+      '.cm-md-depth-1': { '--md-step': '1.5rem' },
+      '.cm-md-depth-2': { '--md-step': '3rem' },
+      '.cm-md-depth-3': { '--md-step': '4.5rem' },
+      '.cm-md-depth-4': { '--md-step': '6rem' },
+      '.cm-md-depth-5': { '--md-step': '7.5rem' },
+      '.cm-md-depth-6': { '--md-step': '9rem' },
+      // Marker and the space behind it are one replacement exactly one step
+      // wide, so the text starts on the step and not a few pixels beside it.
+      // `textIndent` is inherited, and an inline-block is a block container:
+      // without resetting it the marker would take the line's hanging indent a
+      // second time and end up outside the text column.
       '.cm-md-bullet': {
         display: 'inline-block',
-        width: '1ch',
+        boxSizing: 'border-box',
+        width: '1.5rem',
+        paddingLeft: '0.5rem',
+        textIndent: '0',
         color: 'var(--fg-subtle)',
       },
-      '.cm-md-number': { color: 'var(--fg-subtle)' },
+      // `minWidth`, not `width`: at "10." the number is wider than the gutter
+      // and then pushes the text along instead of being cut off.
+      '.cm-md-number': {
+        display: 'inline-block',
+        boxSizing: 'border-box',
+        minWidth: '1.5rem',
+        paddingRight: '0.5rem',
+        textAlign: 'right',
+        textIndent: '0',
+        color: 'var(--fg-subtle)',
+      },
       '.cm-md-task': {
         marginRight: '0.4em',
         width: '0.9em',
@@ -273,6 +316,102 @@ function toggleWrap(marker: string): Command {
   }
 }
 
+const continueMarkup = insertNewlineContinueMarkupCommand({ nonTightLists: false })
+
+/**
+ * Enter: the next line, with the same marker — and on an empty item, the end of
+ * the list. One press either way, and never a blank line nobody asked for.
+ *
+ * `@codemirror/lang-markdown` binds Enter to `insertNewlineContinueMarkup`
+ * already, but it looks after CommonMark's distinction between a *tight* list
+ * and a *loose* one — a list with a blank line in it — and that costs a press
+ * in both directions:
+ *
+ * 1. **Ending it.** On the empty item of a list that has only one entry so far,
+ *    the default does not remove the marker: it inserts a blank line and writes
+ *    the marker again, keeping the option of a loose list open. The marker goes
+ *    only on the press after that — and only in the one-entry case, so the key
+ *    behaves differently depending on how much has been typed already, which is
+ *    not something anybody can learn. `nonTightLists: false` says: end it.
+ * 2. **Continuing it.** Once a list *is* loose, every Enter puts a blank line in
+ *    front of the new item to keep it that way, so the cursor lands two lines
+ *    down with an empty line above it. That is not configurable, so the blank
+ *    line is taken out again below.
+ *
+ * Both come down to one rule: **an empty line is something the writer types,
+ * never something a key leaves behind.** Enter lands on the next line. Whether
+ * the list ends up tight or loose is then what the text says, not what the
+ * editor guessed — and (1) is what made lists loose by accident in the first
+ * place, so the two fixes are the same fix.
+ */
+export const continueList: Command = (view) => {
+  const before = view.state.doc.lineAt(view.state.selection.main.head).number
+  if (!continueMarkup(view)) return false
+
+  const landed = view.state.doc.lineAt(view.state.selection.main.head).number
+  if (landed !== before + 2) return true
+
+  // Two lines down: the line skipped over is the one the command inserted to
+  // keep the list loose. Only if it really is empty — in a quoted list it
+  // carries the `>` that holds the quote together, and that has to stay.
+  const skipped = view.state.doc.line(landed - 1)
+  if (/\S/.test(skipped.text)) return true
+  view.dispatch({ changes: { from: skipped.from, to: skipped.to + 1 } })
+  return true
+}
+
+/**
+ * `[` , the box, `]` , and the space that has to follow — with the two places
+ * where an invisible character silently turns the task back into a bullet.
+ */
+const TASK_MARKER = /^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([^\]])(\])(.?)/
+
+/**
+ * Puts a plain space back into a task marker that lost one.
+ *
+ * `- [ ] milk` is a checkbox; `- [<no-break space>] milk` is a bullet followed
+ * by two brackets, because GFM asks for U+0020 and nothing else. On a Mac
+ * Option-Space produces exactly that character, and pasted text is full of
+ * them — so the line refuses to become a task and **nothing on screen says
+ * why**, because the character is invisible. `- [x]` keeps working the whole
+ * time, which makes it look as though ticked boxes were the only kind there is.
+ *
+ * There is no reading of `- [<nbsp>]` in which the writer meant something other
+ * than a checkbox, so the character is replaced as it is typed. Only whitespace
+ * is touched: `- [y]` is left alone, because that really is just brackets.
+ */
+export const normaliseTaskMarker = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged) return tr
+
+  const fixes: { from: number; to: number; insert: string }[] = []
+  const seen = new Set<number>()
+  tr.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+    const doc = tr.newDoc
+    for (let n = doc.lineAt(fromB).number, last = doc.lineAt(toB).number; n <= last; n++) {
+      if (seen.has(n)) continue
+      seen.add(n)
+      const line = doc.line(n)
+      const match = TASK_MARKER.exec(line.text)
+      if (!match) continue
+      const [, before, box, bracket, after] = match
+      // the box itself
+      if (box !== ' ' && box !== 'x' && box !== 'X' && /\s/.test(box)) {
+        fixes.push({ from: line.from + before.length, to: line.from + before.length + box.length, insert: ' ' })
+      }
+      // and the space that has to separate it from the words
+      if (after && after !== ' ' && after !== '\t' && /\s/.test(after)) {
+        const at = line.from + before.length + box.length + bracket.length
+        fixes.push({ from: at, to: at + after.length, insert: ' ' })
+      }
+    }
+  })
+
+  if (fixes.length === 0) return tr
+  // `sequential`, because the positions were read off the document this
+  // transaction produces, not the one it started from.
+  return [tr, { changes: fixes, sequential: true }]
+})
+
 function inList(view: EditorView): boolean {
   const node = syntaxTree(view.state).resolveInner(view.state.selection.main.head, -1)
   for (let parent: typeof node | null = node; parent; parent = parent.parent) {
@@ -345,6 +484,8 @@ export function MarkdownEditor({
             { key: 'Mod-i', run: toggleWrap('*') },
             { key: 'Mod-Shift-x', run: toggleWrap('~~') },
             { key: 'Mod-e', run: toggleWrap('`') },
+            // Above the language's own Enter — see continueList.
+            { key: 'Enter', run: continueList },
             { key: 'Tab', run: indentInList },
             { key: 'Shift-Tab', run: outdentInList },
           ]),
@@ -361,6 +502,7 @@ export function MarkdownEditor({
           completeHTMLTags: false,
         }),
         syntaxHighlighting(codeHighlight),
+        normaliseTaskMarker,
         liveMarkdown,
         autocompletion({
           override: [mentionCompletion(() => membersRef.current), emojiCompletion],
