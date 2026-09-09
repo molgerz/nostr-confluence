@@ -263,7 +263,7 @@ history.
 | Reading | Rendered Markdown, table of contents on the right, byline, action bar |
 | Editing | Editor and rendered page look the same — there is no preview to toggle. Title, text, Publish/Cancel in the breadcrumb bar → [13](13-editing.md) |
 | Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
-| Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works **in a public space** — in a private one there is nothing to read without signing in, see below. The button signs in **where it stands** — you never leave the page |
+| Signed out | Nothing to read. Access needs a signed-in npub *and* membership, so a signed-out visitor sees the notice from "When the relay shows nothing" below, with the sign-in button in it. The button signs in **where it stands** — you never leave the page |
 | Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also says which extensions are common and that the app stores no key. Only after an attempt, never unprompted |
 | Publish failed | Error message in the editor with the **literal relay reason**, classified by cause (AUTH needed, permissions, other). The text stays in the editor, nothing is lost |
 
@@ -296,7 +296,13 @@ too.
 | loading | nothing yet. An answer before the subscriptions settle would flash "no access" at a member on every reload |
 | hidden, signed out | "This space is private", with the sign-in button inside the notice |
 | hidden, signed in | "This space is not showing you anything", plus the viewer's own npub to hand to an admin |
-| reader, member | the space itself |
+| member | the space itself |
+
+`reader` — a space the relay hands out to somebody who is not a member — is a
+state the code can represent but the product does not want: **Akasha is for
+closed teams, and reading always requires being signed in and invited.** A space
+that turns up readable to a non-member is a misconfigured one, and the overview
+should say so rather than present it as a property.
 
 The wording lives once, in `SpaceHiddenNotice`, and reads the same on the
 overview, on a page and in search: the reader's situation is identical in all
