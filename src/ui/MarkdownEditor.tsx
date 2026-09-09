@@ -21,6 +21,7 @@ import { tags } from '@lezer/highlight'
 import { useTheme } from '../theme/theme'
 import { liveMarkdown } from './markdown-live'
 import { emojiCompletion, mentionCompletion } from './editor-complete'
+import { NO_SETEXT_HEADINGS } from './markdown-flavour'
 
 /**
  * The Markdown editor: one mode, not two.
@@ -500,6 +501,8 @@ export function MarkdownEditor({
           // A wiki page is Markdown, not HTML — completing `<div` would be an
           // invitation to write something the renderer strips again.
           completeHTMLTags: false,
+          // The page's parser is told the same. src/ui/markdown-flavour.ts
+          extensions: NO_SETEXT_HEADINGS,
         }),
         syntaxHighlighting(codeHighlight),
         normaliseTaskMarker,

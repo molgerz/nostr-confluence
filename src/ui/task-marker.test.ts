@@ -4,6 +4,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { liveMarkdown } from './markdown-live'
+import { NO_SETEXT_HEADINGS } from './markdown-flavour'
 import { normaliseTaskMarker } from './MarkdownEditor'
 
 /**
@@ -20,7 +21,7 @@ function type(text: string, into = '') {
   const view = new EditorView({
     state: EditorState.create({
       doc: into,
-      extensions: [markdown({ base: markdownLanguage }), normaliseTaskMarker, liveMarkdown],
+      extensions: [markdown({ base: markdownLanguage, extensions: NO_SETEXT_HEADINGS }), normaliseTaskMarker, liveMarkdown],
     }),
     parent,
   })

@@ -73,6 +73,10 @@ describe('Markdown', () => {
     expect(page.querySelector('p')?.textContent).toBe('a [b] c')
   })
 
+  it('makes a heading from a #', () => {
+    expect(render('# Title').querySelector('h1')?.textContent).toBe('Title')
+  })
+
   it('gives a nested list its own bullet shape, the way the editor does', () => {
     const page = render('- outer\n  - inner\n    - deep')
     const lists = [...page.querySelectorAll('ul')]

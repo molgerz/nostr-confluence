@@ -5,6 +5,7 @@ import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { liveMarkdown } from './markdown-live'
+import { NO_SETEXT_HEADINGS } from './markdown-flavour'
 
 /**
  * The live formatting is decorations over a real document, so it can only be
@@ -23,7 +24,7 @@ function mount(doc: string) {
   return new EditorView({
     state: EditorState.create({
       doc,
-      extensions: [markdown({ base: markdownLanguage }), liveMarkdown],
+      extensions: [markdown({ base: markdownLanguage, extensions: NO_SETEXT_HEADINGS }), liveMarkdown],
     }),
     parent,
   })
@@ -217,9 +218,31 @@ describe('liveMarkdown', () => {
     view.destroy()
   })
 
-  it('sizes a setext heading but leaves its underline alone', () => {
-    const view = mount('Title\n=====\n')
-    expect(lineClasses(view, 0)).toContain('cm-md-h1')
+  it('never turns the line above a `-` into a heading', () => {
+    // `-` under a paragraph is a Setext H2 in CommonMark — and the first
+    // keystroke of `- milk`. The construct is off in both parsers, so the
+    // paragraph stays one, cursor there or not. src/ui/markdown-flavour.ts
+    const typing = mount('Shopping\n-')
+    focus(typing, 10)
+    expect(lineClasses(typing, 0)).not.toContain('cm-md-h2')
+    typing.destroy()
+
+    const left = mount('Shopping\n-')
+    expect(lineClasses(left, 0)).not.toContain('cm-md-h2')
+    expect(lineText(left, 0)).toBe('Shopping')
+    left.destroy()
+  })
+
+  it('reads a line of dashes under a paragraph as the divider it looks like', () => {
+    const view = mount('Shopping\n---')
+    expect(lineClasses(view, 0)).not.toContain('cm-md-h2')
+    expect(view.contentDOM.querySelector('.cm-md-rule')).not.toBeNull()
+    view.destroy()
+  })
+
+  it('leaves an `=` underline as plain text — no longer a heading either', () => {
+    const view = mount('Title\n=====')
+    expect(lineClasses(view, 0)).not.toContain('cm-md-h1')
     expect(lineText(view, 1)).toBe('=====')
     view.destroy()
   })

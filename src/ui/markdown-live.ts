@@ -52,8 +52,6 @@ const HEADING_CLASS: Record<string, string> = {
   ATXHeading4: 'cm-md-h4',
   ATXHeading5: 'cm-md-h5',
   ATXHeading6: 'cm-md-h6',
-  SetextHeading1: 'cm-md-h1',
-  SetextHeading2: 'cm-md-h2',
 }
 
 const hidden = Decoration.replace({})
@@ -260,13 +258,8 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
 
         switch (name) {
           case 'HeaderMark': {
-            // In a Setext heading the "marker" is the ===/--- underline on its
-            // own line. Hiding it would leave an empty line behind, so it
-            // stays visible and only the line above is sized as a heading.
-            if (hasAncestor(node.node, 'SetextHeading1') || hasAncestor(node.node, 'SetextHeading2')) {
-              decos.push(mark('cm-md-marker').range(node.from, node.to))
-              return
-            }
+            // Only `#` reaches this: the underline of a Setext heading would be
+            // one too, but that construct is off. src/ui/markdown-flavour.ts
             if (raw(node.from, node.to)) {
               decos.push(mark('cm-md-marker').range(node.from, node.to))
             } else {
