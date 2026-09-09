@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { Fragment, useEffect, useState } from 'react'
@@ -33,6 +33,17 @@ const SCHEMA = {
     ...defaultSchema.protocols,
     href: [...(defaultSchema.protocols?.href ?? []), 'nostr'],
   },
+}
+
+/**
+ * react-markdown blanks every href whose scheme is not on its own short list,
+ * and `nostr:` is not on it — the mention would arrive here with an empty
+ * target and be drawn as a plain link showing all 63 characters of the npub.
+ * Only a target that decodes to a key is let through; everything else keeps
+ * react-markdown's own check.
+ */
+function keepMentionUrls(url: string): string {
+  return mentionPubkey(url) ? url : defaultUrlTransform(url)
 }
 
 /**
@@ -245,6 +256,7 @@ export function Markdown({
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMentions]}
         rehypePlugins={[[rehypeSanitize, SCHEMA]]}
+        urlTransform={keepMentionUrls}
         components={{
           h1: ({ node: _node, children, className, ...props }) => (
             <h1 id={headingId(children)} className={cx(heading(s.h1), className)} {...props}>
