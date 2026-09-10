@@ -14,6 +14,10 @@ import type { GroupMetadata } from './group-state'
  * signed in and the relay could not even check; somebody is signed in who is
  * not a member; or the space really is empty.
  *
+ * The absence of metadata carries that meaning only while nothing else has
+ * arrived. A relay that serves the pages but not the group state is telling us
+ * about its own AUTH handling, not about the viewer.
+ *
  * **What cannot be told apart** is "you are not a member" from "no such space".
  * Both are silence from the relay, and no check on this side can separate them
  * — the relay deliberately does not say which it is, because saying so would
@@ -33,14 +37,31 @@ export type SpaceAccess =
 export function spaceAccess(
   /** The signed-in pubkey, or `null` when nobody is signed in. */
   viewer: string | null,
-  space: { loading: boolean; metadata: GroupMetadata | null; members: string[] },
+  space: {
+    loading: boolean
+    metadata: GroupMetadata | null
+    members: string[]
+    /** Only the count is read: anything served is proof of access. */
+    pages: unknown[]
+  },
 ): SpaceAccess {
   if (space.loading) return { state: 'loading' }
   // Metadata is relay-signed and arrives unasked for any group the viewer may
-  // see. Its absence is therefore the one reliable signal that the relay is
-  // holding this space back — the page and member lists would be empty in a
-  // genuinely empty space too.
-  if (space.metadata === null) return { state: 'hidden', signedIn: viewer !== null }
+  // see, so its absence is the signal that the relay is holding this space
+  // back — the page and member lists would be empty in a genuinely empty space
+  // too, which is why they cannot carry that signal themselves.
+  //
+  // They can refute it though. Anything the relay served is proof that it is
+  // not withholding this space, and missing metadata then says something about
+  // the request rather than about the viewer: ws://localhost:8081 answers the
+  // group-state request from a not-yet-authenticated reader with silence while
+  // rejecting the page request with `auth-required`, so pages arrive and
+  // metadata does not (src/nostr/client.ts). Whatever the cause, "you cannot
+  // see in" next to a sidebar full of pages is the one answer that is
+  // certainly wrong.
+  if (space.metadata === null && space.pages.length === 0 && space.members.length === 0) {
+    return { state: 'hidden', signedIn: viewer !== null }
+  }
   if (viewer !== null && space.members.includes(viewer)) return { state: 'member' }
   return { state: 'reader' }
 }

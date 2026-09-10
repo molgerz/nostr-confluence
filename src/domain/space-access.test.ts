@@ -17,41 +17,67 @@ const STRANGER = 'b'.repeat(64)
 describe('spaceAccess', () => {
   it('says nothing while the subscriptions are still settling', () => {
     // Answering early would flash "no access" at a member on every reload.
-    const access = spaceAccess(ALICE, { loading: true, metadata: null, members: [] })
+    const access = spaceAccess(ALICE, { loading: true, metadata: null, members: [], pages: [] })
     expect(access.state).toBe('loading')
   })
 
   it('treats missing metadata as hidden, not as an empty space', () => {
-    const access = spaceAccess(null, { loading: false, metadata: null, members: [] })
+    const access = spaceAccess(null, { loading: false, metadata: null, members: [], pages: [] })
     expect(access).toEqual({ state: 'hidden', signedIn: false })
   })
 
   it('keeps hidden apart by whether anyone is signed in', () => {
     // The two need different wording: one can be resolved by signing in, the
-    // other only by an admin adding the npub.
-    const access = spaceAccess(STRANGER, { loading: false, metadata: null, members: [ALICE] })
+    // other only by an admin adding the npub. A truly hidden space has no
+    // member list either — the relay withholds that with everything else.
+    const access = spaceAccess(STRANGER, { loading: false, metadata: null, members: [], pages: [] })
     expect(access).toEqual({ state: 'hidden', signedIn: true })
   })
 
+  // The relay served the pages, so it is plainly not withholding this space.
+  // Missing metadata then says something about the request, not about the
+  // viewer — ws://localhost:8081 answers the group-state request of a
+  // not-yet-authenticated reader with silence while rejecting the page
+  // request with `auth-required`, so exactly this pair turns up.
+  it('does not call a space hidden while it is serving pages', () => {
+    const access = spaceAccess(ALICE, {
+      loading: false,
+      metadata: null,
+      members: [],
+      pages: [{ slug: 'onboarding' }],
+    })
+    expect(access.state).not.toBe('hidden')
+  })
+
+  it('does not call a space hidden while it is serving a member list', () => {
+    const access = spaceAccess(ALICE, {
+      loading: false,
+      metadata: null,
+      members: [ALICE],
+      pages: [],
+    })
+    expect(access.state).toBe('member')
+  })
+
   it('is a reader when the space is visible but nobody is signed in', () => {
-    const access = spaceAccess(null, { loading: false, metadata: META, members: [ALICE] })
+    const access = spaceAccess(null, { loading: false, metadata: META, members: [ALICE], pages: [] })
     expect(access.state).toBe('reader')
   })
 
   it('is a reader when signed in but outside the member list', () => {
-    const access = spaceAccess(STRANGER, { loading: false, metadata: META, members: [ALICE] })
+    const access = spaceAccess(STRANGER, { loading: false, metadata: META, members: [ALICE], pages: [] })
     expect(access.state).toBe('reader')
   })
 
   it('is a member when the member list carries the viewer', () => {
-    const access = spaceAccess(ALICE, { loading: false, metadata: META, members: [ALICE] })
+    const access = spaceAccess(ALICE, { loading: false, metadata: META, members: [ALICE], pages: [] })
     expect(access.state).toBe('member')
   })
 
   it('does not call an empty but visible space hidden', () => {
     // A member of a space with no pages yet must not be told they have no
     // access — that is the confusion this module exists to prevent.
-    const access = spaceAccess(ALICE, { loading: false, metadata: META, members: [ALICE] })
+    const access = spaceAccess(ALICE, { loading: false, metadata: META, members: [ALICE], pages: [] })
     expect(access.state).not.toBe('hidden')
   })
 })
