@@ -59,8 +59,16 @@ There is no backend of our own. Everything a classic wiki does server-side
 - Additional relays are optional as read replicas or backups (events are signed,
   so they are verifiable even from relays that have no say), but the permission
   check only happens on the group relay.
-- **Open:** whether mirror relays are written to at all in the MVP. Suggestion:
-  no, not before phase 5.
+- **Decided (2026-09-09): no second write path for now.** Mirror relays are not
+  written to in the MVP — the permission check only happens on the group
+  relay anyway, so a mirror would be a pure read replica or backup, and while
+  there is only a local dev environment it protects nothing that loss would
+  matter for. It would also actively hurt the invite-only decision if it does
+  not enforce group membership, since events are signed and therefore
+  verifiable from any relay, including ones with no say over group access.
+  To be revisited once a production relay runs on its own domain and holds
+  real content — at that point the question shifts from "redundancy?" to
+  "what happens on data loss on the one server?".
 
 ## Why no backend?
 
