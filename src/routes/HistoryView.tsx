@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
+import { spaceAccess } from '../domain/space-access'
+import { SpaceHiddenPage } from '../ui/SpaceHiddenNotice'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { DiffView } from '../ui/DiffView'
 import { Author } from '../ui/Author'
@@ -34,6 +36,10 @@ export function HistoryView() {
         <p className="text-sm text-danger">Invalid address.</p>
       </PageFrame>
     )
+  }
+
+  if (spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden') {
+    return <SpaceHiddenPage group={group} base={base} crumb="History" />
   }
 
   const spaceName = space.metadata?.name ?? group.id

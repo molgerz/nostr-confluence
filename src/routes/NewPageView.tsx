@@ -1,11 +1,15 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
+import { spaceAccess } from '../domain/space-access'
+import { SpaceHiddenPage } from '../ui/SpaceHiddenNotice'
+import { useSession } from '../session/session'
 import { PageEditor } from '../ui/PageEditor'
 import { PageFrame } from '../ui/layout/PageFrame'
 import { spacePeople } from '../domain/group-state'
 
 export function NewPageView() {
   const { group, space, base } = useSpaceRoute()
+  const { session } = useSession()
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
@@ -15,6 +19,13 @@ export function NewPageView() {
         <p className="text-sm text-danger">Invalid address.</p>
       </PageFrame>
     )
+  }
+
+  // Reachable by URL, so the guard belongs here too and not only on the button
+  // that leads here: a create in a space the relay withholds is a write it is
+  // going to reject.
+  if (spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden') {
+    return <SpaceHiddenPage group={group} base={base} crumb="New page" />
   }
 
   const spaceName = space.metadata?.name ?? group.id

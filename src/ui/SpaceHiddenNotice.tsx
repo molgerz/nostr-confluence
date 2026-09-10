@@ -1,6 +1,44 @@
 import { Callout } from './controls'
 import { SignInButton } from './SignInButton'
 import { useSession } from '../session/session'
+import { PageFrame, PageTitle } from './layout/PageFrame'
+import type { GroupAddress } from '../nostr/group-address'
+
+/**
+ * The whole page for a space the relay is withholding, for the views that have
+ * nothing else to show: the editor, the history, the line origin, a new page.
+ *
+ * They each used to explain the silence in their own words — "this page does
+ * not exist yet", "no revisions for this slug", "page not found" — and every
+ * one of those blames the slug for a question of access. An account switch
+ * lands here too: the identity that just became active cannot see the space,
+ * so its pages are gone from the store.
+ * docs/04-permissions-nip29.md
+ */
+export function SpaceHiddenPage({
+  group,
+  base,
+  crumb,
+}: {
+  group: GroupAddress
+  base: string
+  crumb: string
+}) {
+  return (
+    <PageFrame crumbs={[{ label: group.id, to: base }, { label: crumb }]}>
+      <PageTitle
+        kicker={
+          <span className="font-mono">
+            {group.host}&#39;{group.id}
+          </span>
+        }
+      >
+        Nothing to see here
+      </PageTitle>
+      <SpaceHiddenNotice />
+    </PageFrame>
+  )
+}
 
 /**
  * What to say when the relay served nothing at all for a space.
