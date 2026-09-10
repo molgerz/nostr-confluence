@@ -116,6 +116,7 @@ Two substantive consequences:
 ## Conventions
 
 - Documentation, code comments and commit messages in English.
+- Tickets, PR descriptions and other write-ups about this project are always in English.
 - Kind numbers and tag names only in `src/nostr/kinds.ts`.
 - Before every commit: `npm run typecheck && npm run build && npm test`.
 - Placeholders in the UI name their phase from `docs/10-roadmap.md`.
