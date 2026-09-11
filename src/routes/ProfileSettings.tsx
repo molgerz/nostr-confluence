@@ -113,7 +113,7 @@ export function ProfileSettings() {
 
   if (session.status !== 'signed-in') {
     return (
-      <PageFrame crumbs={[{ label: 'Profile' }]}>
+      <PageFrame crumbs={[{ label: 'Settings' }, { label: 'Profile' }]}>
         <PageTitle
           below={
             <p className="text-base text-fg-muted">

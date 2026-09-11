@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createGroupAndWait, editMetadata } from '../nostr/moderation'
 import { classifyRejection } from '../nostr/client'
-import { KINDS, normalizeSlug } from '../nostr/kinds'
+import { APP_CONTENT_KINDS, normalizeSlug } from '../nostr/kinds'
 import { DEFAULT_RELAY_URL } from '../nostr/relay-status'
 import { useSession } from '../session/session'
 import { SignInButton } from './SignInButton'
@@ -10,11 +10,6 @@ import { Button, Callout, Card, INPUT, SectionLabel, TEXTAREA } from './controls
 import { PlusIcon } from './icons'
 
 const LOCAL_HOST = DEFAULT_RELAY_URL.replace(/^wss?:\/\//, '')
-
-// Every kind the app writes as content, declared up front so a freshly
-// created space accepts its own pages and comments right away.
-// src/routes/SpaceOverview.tsx warns once a space is missing one of these.
-const DEFAULT_SUPPORTED_KINDS = [KINDS.PAGE_REVISION, KINDS.COMMENT, KINDS.PAGE_PLACEMENT]
 
 /**
  * Creates a space: `9007` (create-group), then `9002` with a name and the
@@ -96,7 +91,7 @@ export function CreateSpaceForm() {
         ...base,
         name: name.trim(),
         about: about.trim() || undefined,
-        supportedKinds: DEFAULT_SUPPORTED_KINDS,
+        supportedKinds: APP_CONTENT_KINDS,
       })
       if (!metadata.ok) {
         setCreatedAddress(address)

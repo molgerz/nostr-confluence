@@ -6,7 +6,14 @@ import { DEFAULT_RELAY_URL } from './relay-status'
 import { formatGroupAddress } from './group-address'
 import { parseGroupMetadata } from '../domain/group-state'
 
-export type MySpace = { groupId: string; relayUrl: string; address: string; name: string }
+export type MySpace = {
+  groupId: string
+  relayUrl: string
+  address: string
+  name: string
+  /** The npub holds an admin role in this group (39001), so it has settings. */
+  isAdmin: boolean
+}
 
 export type MySpacesState = {
   spaces: MySpace[]
@@ -44,8 +51,8 @@ function sameIds(a: Set<string>, b: Set<string>): boolean {
 }
 
 /**
- * A single EOSE round-trip for {kinds:[39002], '#p':[pubkey]}. Resolves null
- * when the signal aborts before the relay answered.
+ * A single EOSE round-trip for one membership filter. Resolves null when the
+ * signal aborts before the relay answered.
  */
 function fetchOnce(
   relayUrl: string,
@@ -103,8 +110,8 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
  * The relay's own indexing lags what it has just accepted — the same
  * eventual-consistency quirk waitForGroupMetadata in moderation.ts works
  * around for a single group's 39000. Here it can affect any recently written
- * 39002, so a single EOSE round-trip can under-report which spaces a member is
- * actually in.
+ * 39002/39001, so a single EOSE round-trip can under-report which spaces a
+ * member is actually in.
  *
  * Retries stop as soon as two consecutive reads agree with each other, and
  * keep the largest result seen (a space already found never disappears again).
@@ -148,6 +155,10 @@ async function fetchMany(
  * The spaces the signed-in npub is a member of, discovered from the relay's
  * 39002 membership events and named via each group's 39000 metadata.
  *
+ * 39001 (admins) is fetched alongside 39002 so callers can tell which of
+ * those spaces the npub can actually administer — /settings/spaces lists only
+ * those.
+ *
  * Reads only the app's one relay; a read path across several relays is
  * deferred with the mirror-relay decision (CON-25, CON-24). Metadata is
  * re-fetched on every mount instead of cached — that is the IndexedDB cache,
@@ -171,16 +182,25 @@ export function useMySpaces(pubkey: string | null): MySpacesState {
 
     void (async () => {
       try {
-        // 39002 (members) is the only kind tagging every member with p, so it
-        // is what answers "which groups is this pubkey in" across a relay.
-        const members = await fetchMany(
-          DEFAULT_RELAY_URL,
-          { kinds: [KINDS.GROUP_MEMBERS], '#p': [pubkey] },
-          signal,
-        )
+        // 39002 (members) tags every member with p, so it is what answers
+        // "which groups is this pubkey in" across a relay. 39001 (admins)
+        // does the same for admin status.
+        const [members, admins] = await Promise.all([
+          fetchMany(
+            DEFAULT_RELAY_URL,
+            { kinds: [KINDS.GROUP_MEMBERS], '#p': [pubkey] },
+            signal,
+          ),
+          fetchMany(
+            DEFAULT_RELAY_URL,
+            { kinds: [KINDS.GROUP_ADMINS], '#p': [pubkey] },
+            signal,
+          ),
+        ])
         if (signal.aborted) return
 
         const groupIds = [...groupIdsOf(members.events)]
+        const adminGroupIds = groupIdsOf(admins.events)
         const metadataEvents = await Promise.all(
           groupIds.map((id) =>
             client.getOne([DEFAULT_RELAY_URL], {
@@ -199,6 +219,7 @@ export function useMySpaces(pubkey: string | null): MySpacesState {
           name: metadataEvents[index]
             ? parseGroupMetadata(metadataEvents[index]!, id).name
             : id,
+          isAdmin: adminGroupIds.has(id),
         }))
         setState({
           spaces,

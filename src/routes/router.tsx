@@ -1,11 +1,12 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from '../ui/layout/AppShell'
-import { SpaceChooser } from './SpaceChooser'
 import { SpaceOverview } from './SpaceOverview'
 import { PageView } from './PageView'
 import { EditorView } from './EditorView'
 import { NewPageView } from './NewPageView'
 import { SearchView } from './SearchView'
+import { SpaceSettings } from './SpaceSettings'
+import { SpacesSettingsList } from './SpacesSettingsList'
 import { HistoryView } from './HistoryView'
 import { BlameView } from './BlameView'
 import { ProfileSettings } from './ProfileSettings'
@@ -20,8 +21,10 @@ export const router = createBrowserRouter([
   {
     element: <AppShell />,
     children: [
-      { path: '/', element: <SpaceChooser /> },
+      { path: '/', element: <Navigate to="/settings/spaces" replace /> },
       { path: '/settings/profile', element: <ProfileSettings /> },
+      { path: '/settings/spaces', element: <SpacesSettingsList /> },
+      { path: '/settings/spaces/:group', element: <SpaceSettings /> },
       { path: '/s/:group', element: <SpaceOverview /> },
       { path: '/s/:group/new', element: <NewPageView /> },
       { path: '/s/:group/search', element: <SearchView /> },

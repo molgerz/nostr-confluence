@@ -58,6 +58,15 @@ export const KINDS = {
 
 export type Kind = (typeof KINDS)[keyof typeof KINDS]
 
+/**
+ * Every kind the app writes as page/comment content. Declared as a group's
+ * `supported_kinds` on creation and on every metadata edit — a group missing
+ * one of these has its writes rejected by a relay that enforces the list.
+ * `src/routes/SpaceOverview.tsx` warns if `PAGE_REVISION`/`PAGE_PLACEMENT` are
+ * missing from it.
+ */
+export const APP_CONTENT_KINDS = [KINDS.PAGE_REVISION, KINDS.COMMENT, KINDS.PAGE_PLACEMENT]
+
 /** Tag names. Single-letter tags are relay-indexed and filterable. */
 export const TAGS = {
   /** NIP-29 group id. The relay checks write permission against this. */

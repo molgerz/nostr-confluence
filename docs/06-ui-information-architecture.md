@@ -194,7 +194,9 @@ suffocates in a column that narrow, so it gets `max-w-4xl`.
    far better than a list of slugs can. **Open:** moving therefore has no
    keyboard path, and none on a touch screen either, where HTML5 drag & drop
    does not fire.
-4. **Settings** — one row to `/settings/profile`.
+4. **Settings** — one row to `/settings/spaces`, the entry into the settings
+   hub (below). Stays visible even while already inside `/settings/*`, where
+   the bar shows the hub's own nav (Profile/Spaces) instead of zones 2 and 3.
 5. **Footer** — the relay state spelled out: name, connection, AUTH, and a
    NIP-29 line only when NIP-29 is *missing*. A relay that speaks it is the
    expected case and the footer has four other things to say.
@@ -376,7 +378,33 @@ In both the npub stays in the tooltip and appears in full under
 is shown regardless — there is no name to fall back to, and an unattributed
 byline would be worse than a key.
 
-## Profile
+## Settings
+
+`/settings/*` is a small hub, two sections reachable from the left bar itself:
+whenever no space is open, the bar shows a `Profile` / `Spaces` nav instead of
+a page tree, the same slot Overview/Search/New page occupy inside a space —
+one navigation surface, not two.
+
+- **Profile** (`/settings/profile`) — the npub-wide `kind 0`, below.
+- **Spaces** (`/settings/spaces`) — every space the signed-in npub is a member
+  of, one row each, opening the space on click. Where the npub is that space's
+  admin, the row also carries a small settings icon into
+  `/settings/spaces/:group`: name and description, sent as a fresh `9002`.
+  The invite-only flags are not exposed there — the save always re-asserts
+  `private`/`closed`/`restricted` regardless of input, because that is a
+  decision for the whole app ([04](04-permissions-nip29.md)), not a per-space
+  toggle a settings page should be able to undo. "Create a space" (`9007`,
+  [01](01-architecture.md)) lives at the bottom of the same page.
+
+  This is also where `/` redirects to — the app has no separate space-picker
+  page any more, since it would only be the same list without the admin
+  affordance.
+
+  Deliberately not on the space's own sidebar: settings are per-npub or
+  per-space-you-administer, not per-space-you-are-currently-reading, so they
+  sit with the other account-level pages rather than inside a space.
+
+### Profile
 
 `/settings/profile` edits one's own `kind 0`: the three fields NIP-01 names —
 `name`, `about`, `picture`. Three things make this more than a form:
@@ -410,7 +438,7 @@ of the possible states.
 ## Routing
 
 ```
-/                          space selection
+/                          redirects to /settings/spaces
 /s/:group                  space overview (metadata, members, page list)
 /s/:group/new              create a page  (?parent=<slug> for a subpage)
 /s/:group/search           search         (?q=…)
@@ -419,6 +447,8 @@ of the possible states.
 /s/:group/:slug/history    history with comparison
 /s/:group/:slug/blame      line origin
 /settings/profile          edit one's own kind 0
+/settings/spaces           every space the signed-in npub is a member of, open one, create one
+/settings/spaces/:group    that space's settings (admin rows only, linked from the list)
 ```
 
 `:group` includes the relay host (URL-encoded) so that a link is

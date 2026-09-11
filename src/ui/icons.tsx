@@ -150,6 +150,16 @@ export function UsersIcon(props: IconProps) {
   )
 }
 
+/** One's own profile — a single person, centred, against UsersIcon's several. */
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 20c0-3.6 3.1-6.25 7-6.25s7 2.65 7 6.25" />
+    </Icon>
+  )
+}
+
 /** Editing, on the Read/Edit switch. */
 export function PencilIcon(props: IconProps) {
   return (
