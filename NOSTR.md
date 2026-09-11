@@ -12,22 +12,23 @@ Legend: ✅ implemented · ⚠️ implemented, but with a caveat or home-grown �
 
 ## Right now: a prototype, not for production
 
-> **A space can currently only be created from the command line with `nak` —
-> the app itself cannot create a group. As long as that is the case, do not put
-> anything in here whose loss would hurt.**
+> **Everything runs on `localhost`, with no TLS and no deployment. As long as
+> that is the case, do not put anything in here whose loss would hurt.**
 
 Important for anyone reading this for the first time — **it is not meant to stay
 this way**:
 
-- **The app can neither create a space nor change group metadata.** Both happen
-  exclusively on the command line with `nak`, bundled in
-  [`scripts/dev-group-seed.sh`](scripts/dev-group-seed.sh):
-  `nak group create-group` creates the group, a `9002` event sets its flags
-  (`private`, `closed`, `restricted`, `supported_kinds`), and
-  `nak group put-user` adds people. The app has not a single button for any of
-  it.
-- **The sample content also comes from the seed script**, not from real usage:
-  two pages, a second revision, two throwaway keys.
+- **The app can create a space** (`9007`) and gives it default metadata
+  (`9002`: name, description, the `private`/`closed`/`restricted` flags,
+  `supported_kinds`) right away — `src/ui/CreateSpaceForm.tsx`,
+  `src/nostr/moderation.ts`. What is still missing is a settings page to
+  **change** that metadata afterwards, and self-service joining (`9021`) for
+  relays without auto-join.
+- **The seed script remains useful for sample content and a second member**:
+  [`scripts/dev-group-seed.sh`](scripts/dev-group-seed.sh) creates the
+  `engineering` space with two pages, a second revision, and two throwaway
+  keys — handy for trying the app against data that already has some history,
+  not required for creating a space in the first place any more.
 - **Everything runs locally.** Relay on `localhost:8080`, attachments on
   `localhost:3355`, profiles on `localhost:10577`. There is no deployment, no
   domain, no TLS.
@@ -39,16 +40,16 @@ the group metadata `39000`/`39001`/`39002` itself using `nak serve` — that was
 stand-in in which nothing was checked, and it was deliberately removed
 (reasoning in [AGENTS.md](AGENTS.md)).
 
-**What is therefore missing for real use:** creating a space from the app
-(`9007`), changing metadata from the app (`9002`), requesting to join (`9021`)
-for relays without auto-join, and a relay under its own domain with TLS. All in
-the backlog, see [docs/10](docs/10-roadmap.md).
+**What is therefore missing for real use:** changing metadata from the app
+(`9002`, beyond the defaults set at creation), requesting to join (`9021`) for
+relays without auto-join, and a relay under its own domain with TLS. All in the
+backlog, see [docs/10](docs/10-roadmap.md).
 
 ### Why "not for production yet"
 
 | Reason | What it means in practice |
 |---|---|
-| A space can only be created with `nak` | Anyone without terminal access cannot create a space. There is no path through the UI |
+| No settings page | A space's name, description and flags can be set at creation but not changed afterwards from the app |
 | Local only, no TLS | A browser will not allow `ws://` from an HTTPS page — outside `localhost` this does not run at all |
 | Throwaway keys in the seed | `scripts/.dev-keys` are test keys, not identities |
 | Our own kinds `1818` and `31818` | The data model is not set in stone. If a tag changes, existing events would need migrating — and there is no tool for that yet |
@@ -95,8 +96,8 @@ the backlog, see [docs/10](docs/10-roadmap.md).
 | **22242** relay AUTH | ✅ | NIP-42, produced by `nostr-tools` |
 | **9000** / **9001** add/remove member | ✅ | A request to the relay, which verifies admin status |
 | **9005** delete event | ✅ | Moderation; the relay enforces the deletion |
-| **9002** edit metadata | ⚠️ seed only | Sent by `scripts/dev-group-seed.sh`, not from the app |
-| **9007** create group | ⚠️ seed only | Via `nak group create-group` |
+| **9002** edit metadata | ⚠️ create-time only | Sent by the app right after `9007` to set name, description and the invite-only flags. `scripts/dev-group-seed.sh` also sends one, for the seeded space. No settings page yet to change it afterwards |
+| **9007** create group | ✅ | `src/ui/CreateSpaceForm.tsx` → `src/nostr/moderation.ts` |
 
 ### What we read
 

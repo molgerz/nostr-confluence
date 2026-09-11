@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { DEFAULT_RELAY_URL } from '../nostr/relay-status'
 import { PhaseNote } from '../ui/Phase'
+import { CreateSpaceForm } from '../ui/CreateSpaceForm'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { InitialsDisc, SectionLabel } from '../ui/controls'
-import { ChevronRightIcon, SpaceIcon } from '../ui/icons'
+import { ChevronRightIcon, PlusIcon, SpaceIcon } from '../ui/icons'
 
 const LOCAL_HOST = DEFAULT_RELAY_URL.replace(/^wss?:\/\//, '')
 const SEEDED = `${LOCAL_HOST}'engineering`
@@ -62,6 +63,12 @@ export function SpaceChooser() {
           Later this will list the spaces your npub is a member of according to event 39002.
         </PhaseNote>
       </div>
+
+      <div className="mt-8 mb-3 flex items-center gap-2">
+        <PlusIcon className="size-4 text-fg-subtle" />
+        <SectionLabel>New space</SectionLabel>
+      </div>
+      <CreateSpaceForm />
     </PageFrame>
   )
 }
