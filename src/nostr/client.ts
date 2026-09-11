@@ -20,10 +20,27 @@ export type RelaySnapshot = {
   auth: AuthState
   authMessage?: string
   /**
-   * Counts successful connections. Subscriptions die with their connection —
-   * whoever holds one has to set it up again when this counter increases.
+   * Counts connections that are ready to be subscribed on. Subscriptions die
+   * with their connection — whoever holds one has to set it up again when this
+   * counter increases.
+   *
+   * It deliberately rises only once AUTH has settled, not when the socket
+   * opens: a relay may answer a request from an unauthenticated reader with
+   * silence instead of `auth-required`, and silence is nothing a subscription
+   * can recover from. See `open`.
    */
   epoch: number
+  /**
+   * Whether a subscription may be opened on this connection right now: it is
+   * up, and its AUTH has settled under the current signer.
+   *
+   * A connection being rebuilt is not merely unusable, it is dangerous. The
+   * pool hands out the old socket until it has finished closing, and that one
+   * is still authenticated as the identity being left behind — a request on it
+   * comes back full. `connection` and `auth` cannot express this: both still
+   * read 'online'/'ok' in the instant a signer change starts.
+   */
+  ready: boolean
 }
 
 export type PublishResult = { ok: true; message: string } | { ok: false; reason: string }
@@ -35,6 +52,20 @@ function describeError(error: unknown): string {
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * The connection now waits for AUTH before it is handed out, so a relay that
+ * accepts the AUTH event and then says nothing must not stall it for good.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: number
+  return Promise.race([
+    promise.finally(() => window.clearTimeout(timer)),
+    new Promise<never>((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), ms)
+    }),
+  ])
+}
 
 /**
  * The only place that talks to relays. Encapsulates NIP-42: the challenge is
@@ -50,10 +81,21 @@ class NostrClient {
   private wanted = new Set<string>()
   /** increased on every signer change; subscriptions must be rebuilt then */
   private generation = 0
-  /** Relays we close on purpose — their onclose must not trigger the
-   *  reconnect counter, otherwise the UI shows "offline" when in fact only the
-   *  signer changed. */
-  private reopening = new Set<string>()
+  /**
+   * The connection currently in use per relay. A close on anything else is one
+   * we caused — a signer change, a retry — and must not be reported as the
+   * connection dropping, or the UI shows "offline" and books a backoff when in
+   * fact only the identity changed.
+   *
+   * Identity rather than a count of deliberate closes: counting has to pair up
+   * exactly, and a leftover credit would later swallow a real disconnect.
+   */
+  private activeRelay = new Map<string, object>()
+  /** Relays whose onclose we already chained onto, so a second attempt on the
+   *  same object does not wrap our own handler again. */
+  private wrapped = new WeakSet<object>()
+  /** Newest open attempt per relay; older ones must stay silent. */
+  private openSeq = new Map<string, number>()
 
   constructor() {
     this.pool.automaticallyAuth = (url) => this.signAuth(url)
@@ -91,7 +133,7 @@ class NostrClient {
   getSnapshot(url: string): RelaySnapshot {
     let snapshot = this.snapshots.get(url)
     if (!snapshot) {
-      snapshot = { url, connection: 'connecting', attempts: 0, auth: 'none', epoch: 0 }
+      snapshot = { url, connection: 'connecting', attempts: 0, auth: 'none', epoch: 0, ready: false }
       this.snapshots.set(url, snapshot)
     }
     return snapshot
@@ -120,28 +162,73 @@ class NostrClient {
     if (!this.wanted.has(url)) return
     window.clearTimeout(this.retryTimers.get(url))
     this.retryTimers.delete(url)
-    this.patch(url, { connection: 'connecting' })
+
+    // Signing out and straight back in starts two of these within a moment of
+    // each other. Only the newest may report anything: an older attempt
+    // finishing late would otherwise describe a connection that has already
+    // been replaced — including announcing it as ready.
+    const seq = (this.openSeq.get(url) ?? 0) + 1
+    this.openSeq.set(url, seq)
+    const current = (): boolean => this.openSeq.get(url) === seq && this.wanted.has(url)
+
+    this.patch(url, { connection: 'connecting', ready: false })
     try {
-      const relay = await this.pool.ensureRelay(url, { connectionTimeout: 5000 })
-      if (!this.wanted.has(url)) return
-      this.patch(url, {
-        connection: 'online',
-        attempts: 0,
-        epoch: this.getSnapshot(url).epoch + 1,
-      })
+      // Bounded on purpose. The pool caches the connection attempt per relay,
+      // and closing a socket that is still connecting can leave that attempt
+      // pending for good — the next ensureRelay then hands back a promise that
+      // never settles, and the relay sits on "connecting" with no way out.
+      const relay = await withTimeout(
+        this.pool.ensureRelay(url, { connectionTimeout: 5000 }),
+        8000,
+        'the relay did not finish connecting',
+      )
+      if (!current()) return
+      this.activeRelay.set(url, relay)
+      this.patch(url, { connection: 'online', attempts: 0, ready: false })
       // The pool installs its own onclose to drop the dead connection from its
       // registry. Do not overwrite it, chain onto it — otherwise the next
-      // ensureRelay hands back the same dead object.
-      const poolOnClose = relay.onclose
-      relay.onclose = () => {
-        poolOnClose?.()
-        if (this.reopening.delete(url)) return
-        this.patch(url, { connection: 'offline', auth: 'none', authMessage: undefined })
-        this.scheduleRetry(url)
+      // ensureRelay hands back the same dead object. Only once per relay
+      // though: wrapping our own wrapper would run the deliberate-close check
+      // twice for a single close, and the second run would mistake it for a
+      // connection that dropped by itself.
+      if (!this.wrapped.has(relay)) {
+        this.wrapped.add(relay)
+        const poolOnClose = relay.onclose
+        relay.onclose = () => {
+          poolOnClose?.()
+          // Superseded: we replaced this connection ourselves, so its close is
+          // expected and says nothing about reachability.
+          if (this.activeRelay.get(url) !== relay) return
+          this.activeRelay.delete(url)
+          this.patch(url, {
+            connection: 'offline',
+            auth: 'none',
+            authMessage: undefined,
+            ready: false,
+          })
+          this.scheduleRetry(url)
+        }
       }
-      void this.refreshAuth(url)
+      // AUTH first, then hand the connection out. A NIP-29 relay may answer a
+      // request from an unauthenticated reader by silently filtering it —
+      // ws://localhost:8081 does exactly that for the group state (39000-39002)
+      // while rejecting a page request with `auth-required`. The rejection
+      // makes the pool authenticate and repeat that one request, so pages turn
+      // up; the silence looks like a genuine empty answer, and nothing ever
+      // asks again. A space would then show its pages and claim in the same
+      // breath that the viewer cannot see it. scripts/dev-group-seed.sh runs
+      // every `nak` with --fpa for the same reason.
+      await this.refreshAuth(url)
+      if (!current()) return
+      this.patch(url, { epoch: this.getSnapshot(url).epoch + 1, ready: true })
     } catch (error) {
-      this.patch(url, { connection: 'offline', authMessage: describeError(error) })
+      if (!current()) return
+      this.patch(url, { connection: 'offline', authMessage: describeError(error), ready: false })
+      // Drop whatever the pool is holding for this url. After a timeout that
+      // is a connection attempt that never finished, and leaving it in place
+      // would make every retry wait on the same dead promise.
+      this.activeRelay.delete(url)
+      this.pool.close([url])
       this.scheduleRetry(url)
     }
   }
@@ -176,7 +263,7 @@ class NostrClient {
     if (!relay) return
     await delay(200)
     try {
-      const message = await relay.auth(sign)
+      const message = await withTimeout(relay.auth(sign), 5000, 'the relay did not answer the AUTH')
       this.patch(url, { auth: 'ok', authMessage: message || undefined })
     } catch (error) {
       const reason = describeError(error)
@@ -202,9 +289,15 @@ class NostrClient {
     this.signer = signer
     this.generation += 1
     for (const url of this.wanted) {
-      this.reopening.add(url)
+      // Give up this connection before closing it, so its close event is read
+      // as the replacement it is rather than as the relay going away.
+      this.activeRelay.delete(url)
       this.pool.close([url])
-      this.patch(url, { auth: 'none', authMessage: undefined, attempts: 0 })
+      // Withdraw the connection before anyone hears about the change. `patch`
+      // notifies synchronously, and a subscriber that still saw a usable
+      // connection would open its requests on the socket now winding down —
+      // the one still authenticated as the identity being left behind.
+      this.patch(url, { auth: 'none', authMessage: undefined, attempts: 0, ready: false })
       void this.open(url)
     }
   }
