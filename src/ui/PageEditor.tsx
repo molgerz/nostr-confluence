@@ -117,7 +117,7 @@ export function PageEditor({
   onSaved,
   onCancel,
 }: Props) {
-  const { session } = useSession()
+  const { session, ensureSamePubkey } = useSession()
   const [title, setTitle] = useState(page?.title ?? '')
   const [content, setContent] = useState(initialContent ?? page?.head.content ?? '')
   // The version this editor was opened on. If the head of the chain moves in
@@ -189,6 +189,14 @@ export function PageEditor({
 
     setBusy(true)
     try {
+      // Before the write, not after the relay complains: whoever is active in
+      // the extension now is who this revision would be signed by, and if that
+      // is somebody else, the space on screen is not theirs to save into.
+      const same = await ensureSamePubkey()
+      if (!same.ok) {
+        setError(same.reason)
+        return
+      }
       const result = await publishRevision(session.signer, {
         relayUrl,
         groupId,

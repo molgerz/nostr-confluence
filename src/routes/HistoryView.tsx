@@ -69,6 +69,11 @@ export function HistoryView() {
     setError(null)
     setBusy(true)
     try {
+      const same = await ensureSamePubkey()
+      if (!same.ok) {
+        setError(same.reason)
+        return
+      }
       const result = await deleteGroupEvent(session.signer, {
         relayUrl: group.relayUrl,
         groupId: group.id,
