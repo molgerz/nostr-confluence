@@ -14,6 +14,12 @@ type Props = {
   members: string[]
   admins: Admin[]
   loading: boolean
+  /**
+   * Add/remove live on the space's admin settings page
+   * (`/settings/spaces/:group`) now, not the overview everyone lands on —
+   * `false` there renders the list only, regardless of admin status.
+   */
+  showControls?: boolean
 }
 
 /**
@@ -21,14 +27,23 @@ type Props = {
  * whether they go through and then produces the new member list itself. That is
  * why the list here is never "corrected" locally.
  */
-export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Props) {
+export function MemberAdmin({
+  relayUrl,
+  groupId,
+  members,
+  admins,
+  loading,
+  showControls = true,
+}: Props) {
   const { session, ensureSamePubkey } = useSession()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const isAdmin =
-    session.status === 'signed-in' && admins.some((admin) => admin.pubkey === session.pubkey)
+    showControls &&
+    session.status === 'signed-in' &&
+    admins.some((admin) => admin.pubkey === session.pubkey)
 
   const run = async (label: string, action: () => Promise<{ ok: boolean; reason?: string }>) => {
     if (session.status !== 'signed-in') return
@@ -82,7 +97,7 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
                 key={pubkey}
                 className="group/member flex flex-wrap items-center gap-2 px-3.5 py-2.5 text-xs"
               >
-                <Author pubkey={pubkey} avatar />
+                <Author pubkey={pubkey} avatar showNpub={false} />
                 {roles.length > 0 ? (
                   <span className="rounded-full bg-surface-0 px-2 py-0.5 font-medium text-fg-muted">
                     {roles.join(', ')}
@@ -145,10 +160,6 @@ export function MemberAdmin({ relayUrl, groupId, members, admins, loading }: Pro
               {busy === 'add' ? 'sending…' : 'Add'}
             </Button>
           </div>
-          <p className="text-xs text-fg-subtle">
-            In an open group this is unnecessary: whoever writes is added by the relay
-            automatically.
-          </p>
         </div>
       ) : null}
 

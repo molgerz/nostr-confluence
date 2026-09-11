@@ -5,15 +5,17 @@ import { editMetadata } from '../nostr/moderation'
 import { classifyRejection } from '../nostr/client'
 import { APP_CONTENT_KINDS } from '../nostr/kinds'
 import { SignInButton } from '../ui/SignInButton'
+import { MemberAdmin } from '../ui/MemberAdmin'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { Button, Callout, INPUT, TEXTAREA } from '../ui/controls'
 
 /**
- * Name and description for admins, sent as a fresh `9002`. The
- * private/closed/restricted flags are not exposed here — `editMetadata`
- * re-asserts them on every save regardless of what is typed, because the
- * space being invite-only is a decision for the whole app, not a per-space
- * setting. docs/04-permissions-nip29.md
+ * Everything that needs an admin: name and description (sent as a fresh
+ * `9002` — the private/closed/restricted flags are not exposed, `editMetadata`
+ * re-asserts them regardless of input, because invite-only is a decision for
+ * the whole app, not a per-space setting, docs/04-permissions-nip29.md) and
+ * member administration, moved here from the overview everyone lands on —
+ * `MemberAdmin` there is list-only (`showControls={false}`).
  */
 export function SpaceSettings() {
   const { group, space, base } = useSpaceRoute()
@@ -178,6 +180,16 @@ export function SpaceSettings() {
           </Callout>
         </div>
       ) : null}
+
+      <div className="mt-10 max-w-lg border-t border-line pt-8">
+        <MemberAdmin
+          relayUrl={group.relayUrl}
+          groupId={group.id}
+          members={space.members}
+          admins={space.admins}
+          loading={space.loading}
+        />
+      </div>
     </PageFrame>
   )
 }

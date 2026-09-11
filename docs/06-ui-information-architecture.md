@@ -135,8 +135,9 @@ suffocates in a column that narrow, so it gets `max-w-4xl`.
    identity of a space here. **Open:** a space switcher and a "join" button for
    non-members.
 2. **Fixed entries** — *Overview*, *Search*, *New page*, each with an icon.
-   The member list and moderation live on the overview page rather than in the
-   bar. **Open:** entries for "all pages" and "recently changed".
+   The member list is read-only on the overview page; adding/removing members
+   lives on that space's admin settings (`/settings/spaces/:group`, reachable
+   from an "Admin" button on the overview for admins) rather than in the bar.
 3. **Page tree**, under a `PAGES` section heading that carries a **+** button.
    The button only appears on hover: the bar is a list of pages at rest and a
    set of controls the moment you reach for it, and the tree is read far more
@@ -388,13 +389,16 @@ one navigation surface, not two.
 - **Profile** (`/settings/profile`) — the npub-wide `kind 0`, below.
 - **Spaces** (`/settings/spaces`) — every space the signed-in npub is a member
   of, one row each, opening the space on click. Where the npub is that space's
-  admin, the row also carries a small settings icon into
-  `/settings/spaces/:group`: name and description, sent as a fresh `9002`.
-  The invite-only flags are not exposed there — the save always re-asserts
-  `private`/`closed`/`restricted` regardless of input, because that is a
-  decision for the whole app ([04](04-permissions-nip29.md)), not a per-space
-  toggle a settings page should be able to undo. "Create a space" (`9007`,
-  [01](01-architecture.md)) lives at the bottom of the same page.
+  admin, the row also carries a labelled "Admin" button into
+  `/settings/spaces/:group`, reachable the same way from an "Admin" button on
+  that space's own overview page: name and description (sent as a fresh
+  `9002`) and member administration — add (`9000`) and remove (`9001`), moved
+  here from the overview, which now only shows the member list read-only. The
+  invite-only flags are not exposed on the metadata form — the save always
+  re-asserts `private`/`closed`/`restricted` regardless of input, because that
+  is a decision for the whole app ([04](04-permissions-nip29.md)), not a
+  per-space toggle a settings page should be able to undo. "Create a space"
+  (`9007`, [01](01-architecture.md)) lives at the bottom of the spaces list.
 
   This is also where `/` redirects to — the app has no separate space-picker
   page any more, since it would only be the same list without the admin
