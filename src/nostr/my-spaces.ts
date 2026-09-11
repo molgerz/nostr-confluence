@@ -12,7 +12,7 @@ export type MySpace = { groupId: string; relayUrl: string; address: string; name
  * manually — CON-31 owns the real implementation (multiple relays, no
  * re-fetching metadata per space on every mount, proper empty/error states).
  */
-function fetchMany(relayUrl: string, filter: Filter, timeoutMs = 5000): Promise<Event[]> {
+function fetchOnce(relayUrl: string, filter: Filter, timeoutMs = 5000): Promise<Event[]> {
   return new Promise((resolve) => {
     const events: Event[] = []
     let settled = false
@@ -27,6 +27,24 @@ function fetchMany(relayUrl: string, filter: Filter, timeoutMs = 5000): Promise<
     const timer = window.setTimeout(finish, timeoutMs)
     unsubscribe = client.subscribeAcross([relayUrl], filter, (event) => events.push(event), finish)
   })
+}
+
+/**
+ * The relay's own indexing lags what it has just accepted — the same
+ * eventual-consistency quirk `waitForGroupMetadata` in moderation.ts works
+ * around for a single group's `39000`. Here it can affect **any** recently
+ * written `39002`, so a single EOSE round-trip can under-report which spaces
+ * a member is actually in. Retrying a few times, keeping the largest result
+ * seen, works in practice — a space already found never "disappears" again.
+ */
+async function fetchMany(relayUrl: string, filter: Filter, attempts = 4): Promise<Event[]> {
+  let best: Event[] = []
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 500))
+    const events = await fetchOnce(relayUrl, filter)
+    if (events.length > best.length) best = events
+  }
+  return best
 }
 
 export function useMySpaces(pubkey: string | null): { spaces: MySpace[]; loading: boolean } {
