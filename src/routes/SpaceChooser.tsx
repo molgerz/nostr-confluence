@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
-import { DEFAULT_RELAY_URL } from '../nostr/relay-status'
-import { PhaseNote } from '../ui/Phase'
+import { useMySpaces } from '../nostr/my-spaces'
+import { useSession } from '../session/session'
 import { CreateSpaceForm } from '../ui/CreateSpaceForm'
+import { SignInButton } from '../ui/SignInButton'
+import { PhaseNote } from '../ui/Phase'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { InitialsDisc, SectionLabel } from '../ui/controls'
 import { ChevronRightIcon, PlusIcon, SpaceIcon } from '../ui/icons'
-
-const LOCAL_HOST = DEFAULT_RELAY_URL.replace(/^wss?:\/\//, '')
-const SEEDED = `${LOCAL_HOST}'engineering`
 
 /**
  * A space as a card: the disc, the name, and the address underneath in
@@ -33,17 +32,16 @@ function SpaceCard({ name, address }: { name: string; address: string }) {
 }
 
 export function SpaceChooser() {
+  const { session } = useSession()
+  const { spaces, loading } = useMySpaces(session.status === 'signed-in' ? session.pubkey : null)
+
   return (
     <PageFrame width="wide" crumbs={[{ label: 'Spaces' }]}>
       <PageTitle
         below={
           <p className="max-w-[60ch] text-base text-fg-muted">
-            A space is a NIP-29 group on a relay. The one below is the space that{' '}
-            <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-sm">
-              scripts/dev-group-seed.sh
-            </code>{' '}
-            creates on the local NIP-29 relay via{' '}
-            <code className="rounded bg-code-bg px-1 py-0.5 font-mono text-sm">nak group</code>.
+            A space is a NIP-29 group on a relay — invite-only, so this list only shows
+            what your npub is already a member of.
           </p>
         }
       >
@@ -52,15 +50,32 @@ export function SpaceChooser() {
 
       <div className="mt-8 mb-3 flex items-center gap-2">
         <SpaceIcon className="size-4 text-fg-subtle" />
-        <SectionLabel>Spaces you can open</SectionLabel>
+        <SectionLabel>Your spaces</SectionLabel>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SpaceCard name="engineering" address={SEEDED} />
-      </div>
+      {session.status === 'signed-in' ? (
+        spaces.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {spaces.map((space) => (
+              <SpaceCard key={space.address} name={space.name} address={space.address} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">
+            {loading ? 'looking for spaces you are a member of…' : 'No spaces found for your npub yet.'}
+          </p>
+        )
+      ) : (
+        <p className="text-sm text-fg-muted">
+          <SignInButton variant="inline">Sign in</SignInButton> to see the spaces you are a
+          member of.
+        </p>
+      )}
 
       <div className="mt-8">
         <PhaseNote phase="Phase 2">
-          Later this will list the spaces your npub is a member of according to event 39002.
+          Quick version for local testing, built alongside CON-1 — CON-31 owns the real
+          implementation of this list (multiple relays, no metadata re-fetch on every
+          mount, proper empty/error states).
         </PhaseNote>
       </div>
 
