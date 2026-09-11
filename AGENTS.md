@@ -120,3 +120,7 @@ Two substantive consequences:
 - Kind numbers and tag names only in `src/nostr/kinds.ts`.
 - Before every commit: `npm run typecheck && npm run build && npm test`.
 - Placeholders in the UI name their phase from `docs/10-roadmap.md`.
+- Every branch and PR title starts with its Kaneo ticket id, so either is
+  traceable back to the ticket at a glance: branch `con-1-create-space-from-app`
+  (type prefix optional in front, e.g. `feat/con-1-...`), PR title
+  `CON-1: create a space from the app`. A change with no ticket gets no prefix.
