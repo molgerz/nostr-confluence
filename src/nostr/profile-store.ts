@@ -64,7 +64,14 @@ class ProfileStore {
     }
 
     const found = new Map<string, { profile: Profile; createdAt: number }>()
+    let settled = false
     const finish = () => {
+      // The 5s timeout and EOSE across several relays can both fire: an EOSE
+      // message already in flight when the timeout wins the race still
+      // arrives after close() runs. Without this guard that reprocesses the
+      // same batch twice — see client.ts's getOne() for the same pattern.
+      if (settled) return
+      settled = true
       for (const pubkey of batch) {
         this.inFlight.delete(pubkey)
         this.cache.set(pubkey, found.get(pubkey)?.profile ?? null)
