@@ -30,6 +30,9 @@ export function CreateSpaceForm() {
   const [about, setAbout] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set once the relay accepted the 9007, so the space exists even if a later
+  // step failed — the user always gets a way into it.
+  const [createdAddress, setCreatedAddress] = useState<string | null>(null)
 
   if (!open) {
     return (
@@ -55,6 +58,7 @@ export function CreateSpaceForm() {
 
   const create = async () => {
     setError(null)
+    setCreatedAddress(null)
     if (name.trim().length === 0) {
       setError('Give the space a name.')
       return
@@ -84,6 +88,10 @@ export function CreateSpaceForm() {
         return
       }
 
+      // The relay accepted the 9007, so the space exists even when its 39000 was
+      // not queryable in time. Try to set the metadata anyway; if that fails too,
+      // keep the space reachable (createdAddress) instead of dead-ending on a
+      // "not created" that is not true.
       const metadata = await editMetadata(session.signer, {
         ...base,
         name: name.trim(),
@@ -91,9 +99,12 @@ export function CreateSpaceForm() {
         supportedKinds: DEFAULT_SUPPORTED_KINDS,
       })
       if (!metadata.ok) {
+        setCreatedAddress(address)
         setError(
           `The space was created, but its metadata was not: ${metadata.reason}. ` +
-            'It may be missing its name and invite-only flags — try again from the space settings once available.',
+            (created.settled
+              ? 'It may be missing its name and invite-only flags.'
+              : 'The relay was still indexing the new space when we tried to name it.'),
         )
         return
       }
@@ -110,58 +121,76 @@ export function CreateSpaceForm() {
     <Card className="space-y-3 p-4">
       <SectionLabel>Create a space</SectionLabel>
 
-      <div>
-        <label htmlFor="space-name" className="mb-1 block text-xs font-medium text-fg-muted">
-          Name
-        </label>
-        <input
-          id="space-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Engineering"
-          className={INPUT}
-          autoFocus
-        />
-        {name.trim().length > 0 ? (
-          <p className="mt-1 truncate font-mono text-xs text-fg-subtle">{address}</p>
-        ) : null}
-      </div>
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void create()
+        }}
+      >
+        <div>
+          <label htmlFor="space-name" className="mb-1 block text-xs font-medium text-fg-muted">
+            Name
+          </label>
+          <input
+            id="space-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Engineering"
+            className={INPUT}
+            autoFocus
+          />
+          {name.trim().length > 0 ? (
+            <p className="mt-1 truncate font-mono text-xs text-fg-subtle">{address}</p>
+          ) : null}
+        </div>
 
-      <div>
-        <label htmlFor="space-about" className="mb-1 block text-xs font-medium text-fg-muted">
-          Description (optional)
-        </label>
-        <textarea
-          id="space-about"
-          value={about}
-          onChange={(event) => setAbout(event.target.value)}
-          rows={2}
-          className={TEXTAREA}
-        />
-      </div>
+        <div>
+          <label htmlFor="space-about" className="mb-1 block text-xs font-medium text-fg-muted">
+            Description (optional)
+          </label>
+          <textarea
+            id="space-about"
+            value={about}
+            onChange={(event) => setAbout(event.target.value)}
+            rows={2}
+            className={TEXTAREA}
+          />
+        </div>
 
-      <p className="text-xs text-fg-subtle">
-        Invite-only: only npubs an admin adds can read or write here. You become the first
-        admin.
-      </p>
+        <p className="text-xs text-fg-subtle">
+          Invite-only: only npubs an admin adds can read or write here. You become the first
+          admin.
+        </p>
 
-      {error ? <Callout tone="danger">{error}</Callout> : null}
+        {error ? <Callout tone="danger">{error}</Callout> : null}
 
-      <div className="flex gap-2">
-        <Button variant="primary" disabled={busy} onClick={() => void create()}>
-          {busy ? 'creating…' : 'Create space'}
-        </Button>
-        <Button
-          variant="subtle"
-          disabled={busy}
-          onClick={() => {
-            setOpen(false)
-            setError(null)
-          }}
-        >
-          Cancel
-        </Button>
-      </div>
+        <div className="flex gap-2">
+          <Button variant="primary" type="submit" disabled={busy}>
+            {busy ? 'creating…' : 'Create space'}
+          </Button>
+          {createdAddress ? (
+            <Button
+              variant="default"
+              disabled={busy}
+              onClick={() => navigate(`/s/${encodeURIComponent(createdAddress)}`)}
+            >
+              Open the space
+            </Button>
+          ) : null}
+          <Button
+            variant="subtle"
+            disabled={busy}
+            onClick={() => {
+              setOpen(false)
+              setError(null)
+              setCreatedAddress(null)
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
     </Card>
   )
 }

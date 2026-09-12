@@ -32,6 +32,14 @@ async function publishModeration(
  * `9007`: create a group. No tags beyond the `h` id — the relay decides who
  * may do this and creates the group as `private` + `closed` by default.
  * docs/04-permissions-nip29.md
+ *
+ * The relay makes the `9007` sender an admin by itself and emits `39000`,
+ * `39001` and `39002` together in one batch (Group::new and
+ * generate_all_state_events in the vendored relay, .local/groups_relay/src/
+ * group.rs and groups.rs). No explicit `9000` put-user is needed, and waiting
+ * for `39000` as `waitForGroupMetadata` does is a valid proxy for "the admin
+ * state is queryable too". The seed script never put-users the creator
+ * either.
  */
 export function createGroup(signer: Signer, base: Base): Promise<PublishResult> {
   return publishModeration(signer, base, KINDS.GROUP_CREATE, [])
@@ -44,23 +52,43 @@ export function createGroup(signer: Signer, base: Base): Promise<PublishResult> 
  * state at all, as if the create had never landed. Waiting for `39000` to
  * become readable first avoids the race. Only relevant right after creating a
  * group — an established one has long since settled.
+ *
+ * Each call gets only the smaller of `perCallMs` and the time left, so one slow
+ * relay cannot swallow the whole budget in a single attempt (the `getOne`
+ * default would allow up to ~6s on its own).
  */
-async function waitForGroupMetadata(
+export async function waitForGroupMetadata(
   relayUrl: string,
   groupId: string,
   timeoutMs = 4000,
+  perCallMs = 1000,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    const event = await client.getOne([relayUrl], {
-      kinds: [KINDS.GROUP_METADATA],
-      '#d': [groupId],
-    })
+  for (;;) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) return false
+    const budget = Math.min(remaining, perCallMs)
+    const event = await client.getOne(
+      [relayUrl],
+      { kinds: [KINDS.GROUP_METADATA], '#d': [groupId] },
+      { timeoutMs: budget, maxWait: budget },
+    )
     if (event) return true
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    const rest = deadline - Date.now()
+    if (rest <= 0) return false
+    await new Promise((resolve) => setTimeout(resolve, Math.min(300, rest)))
   }
-  return false
 }
+
+/**
+ * Outcome of `createGroupAndWait`. `ok: true` means the relay accepted the
+ * `9007` and the group exists; `settled` says whether its `39000` had already
+ * become queryable within the wait budget. A group that was accepted but did
+ * not settle must not be reported as a failure — the create did land.
+ */
+export type CreateGroupOutcome =
+  | { ok: true; settled: boolean }
+  | { ok: false; reason: string }
 
 /**
  * `9007`: create a group, then wait for the relay to actually make it
@@ -70,14 +98,11 @@ async function waitForGroupMetadata(
 export async function createGroupAndWait(
   signer: Signer,
   base: Base,
-): Promise<PublishResult> {
+): Promise<CreateGroupOutcome> {
   const created = await createGroup(signer, base)
-  if (!created.ok) return created
+  if (!created.ok) return { ok: false, reason: created.reason }
   const settled = await waitForGroupMetadata(base.relayUrl, base.groupId)
-  if (!settled) {
-    return { ok: false, reason: 'the relay accepted the group but never made it readable' }
-  }
-  return created
+  return { ok: true, settled }
 }
 
 /**

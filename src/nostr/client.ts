@@ -502,8 +502,17 @@ class NostrClient {
    * instead of pool.get: only that variant takes an onauth hook and repeats the
    * request after an auth-required rejection. Without it, a relay with enforced
    * NIP-42 returns empty results silently.
+   *
+   * 'options' bounds a single call. The defaults suit a one-off read; a caller
+   * that polls within its own budget (e.g. waitForGroupMetadata) must pass a
+   * shorter timeoutMs/maxWait, or one slow relay collapses the intended several
+   * retries into a single attempt that overruns the budget.
    */
-  async getOne(urls: string[], filter: Filter): Promise<Event | null> {
+  async getOne(
+    urls: string[],
+    filter: Filter,
+    options: { timeoutMs?: number; maxWait?: number } = {},
+  ): Promise<Event | null> {
     if (urls.length === 0) return null
     const onauth = this.signAuth() ?? undefined
 
@@ -519,14 +528,14 @@ class NostrClient {
         for (const url of urls) void this.refreshAuth(url)
         resolve(event)
       }
-      const timeout = window.setTimeout(() => finish(null), 6000)
+      const timeout = window.setTimeout(() => finish(null), options.timeoutMs ?? 6000)
 
       try {
         closer = this.pool.subscribeEose(urls, filter, {
           onauth,
           onevent: (event) => finish(event),
           onclose: () => finish(null),
-          maxWait: 5000,
+          maxWait: options.maxWait ?? 5000,
         })
       } catch {
         finish(null)
