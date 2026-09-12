@@ -121,6 +121,18 @@ Two further substantive consequences:
 - **`useSyncExternalStore` needs a memoised `subscribe` function.** A new
   function identity per render resubscribes; if the store starts something while
   doing so, the loop never ends.
+- **"The signer changed" is not "the relay reconnected".** `setSigner()` patches
+  `auth: 'none'` and withdraws the connection *synchronously*, before the
+  reconnect it queued has run. A subscription store that treats the signer
+  change itself as its trigger therefore rebuilds against the connection on its
+  way out; the requests race the `pool.close()` behind it and some never reach
+  the relay at all — no `CLOSED`, no `onclose`, just a silently lost
+  subscription and a permanently leaked `ongoingOperations` count on the
+  discarded relay (CON-36). React to the relay's `epoch`, which only rises once
+  the new connection is up, and have the store refuse to subscribe while the
+  snapshot is not `ready` (`SpaceStore.start()`) — that ready check is what
+  makes even the synchronous `auth` patch safe to react to for clearing.
+  `NostrClient` deliberately carries no signer-generation counter.
 - **Key every internal map by nostr-tools' own normalised url, not by the
   app's string.** `normalizeURL()` (from `nostr-tools/utils`, also used
   internally by `SimplePool`) appends a trailing slash:

@@ -100,7 +100,7 @@ function latestSocket(): FakeSocket {
   return socket
 }
 
-describe('NostrClient reconnect races (CON-35)', () => {
+describe('NostrClient and SpaceStore reconnect races', () => {
   it('logging out while an AUTH round trip is still in flight does not flip auth to failed', async () => {
     // nostr-tools' own AUTH auto-trigger (AbstractRelay._onmessage, on
     // receiving an "AUTH" challenge) does `this.auth(this.onauth).catch(err
@@ -415,5 +415,98 @@ describe('NostrClient reconnect races (CON-35)', () => {
     expect(client.getSnapshot(plain)).toBe(client.getSnapshot(`${plain}/`))
     expect(client.getSnapshot(plain).auth).not.toBe('none')
     release()
+  })
+
+  it('does not resubscribe onto the connection a signer change is replacing (CON-36)', async () => {
+    // setSigner() withdraws the connection synchronously (ready: false) and
+    // patches auth to 'none' before it has actually closed and reopened it.
+    // SpaceStore.checkConnection() reacts to that patch — an identity change
+    // has to clear what the old one collected — and the only thing between
+    // that reaction and a round of requests on the dying socket is start()'s
+    // own ready check. Without it those requests race the pool.close() behind
+    // them; some throw out of nostr-tools' sub.fire() and never reach the
+    // relay at all, leaving a subscription nothing can close and a share of
+    // the relay's ongoingOperations count nothing gives back.
+    //
+    // Signing in from anonymous is not the interesting direction: auth is
+    // 'none' before and after that patch, so the store does not react at all.
+    // Logging out is, and this drives it through the real setSigner().
+    vi.useFakeTimers()
+    const rejections: unknown[] = []
+    const onUnhandledRejection = (reason: unknown) => rejections.push(reason)
+    nodeProcess.on('unhandledRejection', onUnhandledRejection)
+
+    try {
+      const { client } = await freshClient()
+      const { getSpaceStore } = await import('./space-store')
+      const url = 'ws://fake/'
+
+      client.setSigner(fakeSigner())
+      client.want(url)
+      await vi.advanceTimersByTimeAsync(10)
+      const socket = latestSocket()
+      socket.open()
+      socket.message(['AUTH', 'challenge-for-the-logout-test'])
+      await vi.advanceTimersByTimeAsync(300)
+      // Answer the AUTH event the client published, so the connection really
+      // is authenticated when the store opens its subscriptions on it.
+      const authEvent = JSON.parse(socket.sent.find((raw) => raw.startsWith('["AUTH"')) ?? '[]')[1] as {
+        id: string
+      }
+      socket.message(['OK', authEvent.id, true, ''])
+      await vi.advanceTimersByTimeAsync(50)
+      expect(client.getSnapshot(url).auth).toBe('ok')
+      expect(client.getSnapshot(url).ready).toBe(true)
+
+      const store = getSpaceStore(url, 'engineering')
+      const stopWatching = client.subscribeState(() => store.checkConnection())
+      const subscribeSpy = vi.spyOn(client, 'subscribe')
+
+      const releaseStore = store.subscribe(() => {})
+      // one round: group state, revisions, comments, placements
+      expect(subscribeSpy).toHaveBeenCalledTimes(4)
+      // Let that round's REQ frames go out first: nostr-tools sends them
+      // asynchronously, and they are not what this test measures.
+      await vi.advanceTimersByTimeAsync(10)
+      expect(rejections, 'the setup round must not fail on its own').toEqual([])
+      subscribeSpy.mockClear()
+      rejections.length = 0
+
+      client.setSigner(null)
+
+      expect(
+        subscribeSpy,
+        'must not open requests on the connection that is being replaced',
+      ).not.toHaveBeenCalled()
+
+      // Let the reconnect actually complete; the store has to come back on its
+      // own once the new connection is up.
+      for (let round = 0; round < 4; round++) {
+        await vi.advanceTimersByTimeAsync(10)
+        for (const candidate of sockets) {
+          if (candidate.readyState === FakeSocket.CONNECTING) candidate.open()
+        }
+      }
+      await vi.advanceTimersByTimeAsync(300)
+
+      expect(client.getSnapshot(url).connection).toBe('online')
+      expect(client.getSnapshot(url).ready).toBe(true)
+      expect(subscribeSpy, 'must resubscribe once the new connection is up').toHaveBeenCalledTimes(
+        4,
+      )
+      // Closing the subscriptions on top of the deliberate pool.close() can
+      // still put a CLOSE frame on a dead socket; a REQ frame cannot, and that
+      // is the one that loses a subscription.
+      expect(
+        rejections.filter((reason) => String((reason as Error).message).includes('"REQ"')),
+        'no REQ may race the pool.close() being replaced',
+      ).toEqual([])
+
+      releaseStore()
+      stopWatching()
+    } finally {
+      nodeProcess.off('unhandledRejection', onUnhandledRejection)
+      vi.useRealTimers()
+    }
   })
 })

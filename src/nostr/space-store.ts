@@ -53,7 +53,6 @@ class SpaceStore {
   private comments = new Map<string, Comment>()
   private metadataEvent: Event | null = null
   private stop: (() => void)[] = []
-  private generation = -1
   private epoch = -1
   /** the AUTH state the current subscriptions were opened under */
   private auth = ''
@@ -145,6 +144,12 @@ class SpaceStore {
    * request that went out too early stays empty for as long as it lives. The
    * connection waits for AUTH before it raises the epoch, and this catches the
    * rest: an AUTH that lands late, or one repeated after a write.
+   *
+   * Deliberately no third signal for "the signer changed". A counter bumped
+   * inside `setSigner()` fired before the reconnect it queued had run, so it
+   * could only ever start a round against the connection that was being
+   * replaced (CON-36). The synchronous `auth` patch is safe to react to only
+   * because `start()` refuses to subscribe until the connection is ready.
    */
   checkConnection(): void {
     if (this.listeners.size === 0) return
@@ -155,9 +160,7 @@ class SpaceStore {
     // as "no change" rather than as a reason to stop looking, though — a
     // signature that never comes back would otherwise leave this store waiting
     // for good, and the idle check below is exactly what rescues it.
-    const changed =
-      auth !== 'pending' &&
-      (this.generation !== client.getGeneration() || this.epoch !== epoch || this.auth !== auth)
+    const changed = auth !== 'pending' && (this.epoch !== epoch || this.auth !== auth)
 
     // Usable connection, nothing subscribed on it. That is where a store gets
     // stranded: `start` has to bail while a connection is being rebuilt, and
@@ -195,7 +198,6 @@ class SpaceStore {
     // again on the next change; the epoch rises once the connection is up and
     // authenticated.
     if (!connection.ready) return
-    this.generation = client.getGeneration()
     this.epoch = connection.epoch
     this.auth = connection.auth
     this.eoseSeen = 0
