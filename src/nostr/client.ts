@@ -1,4 +1,5 @@
 import { SimplePool, verifyEvent } from 'nostr-tools'
+import { normalizeURL } from 'nostr-tools/utils'
 import type { Event, EventTemplate, Filter, VerifiedEvent } from 'nostr-tools'
 import type { SubCloser } from 'nostr-tools/abstract-pool'
 import type { Signer } from './signer'
@@ -73,12 +74,58 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * after AUTH. Exactly the two pitfalls from docs/03-auth-nip07-nip42.md.
  */
 class NostrClient {
-  private pool = new SimplePool({ enableReconnect: false })
+  /**
+   * idleTimeout: 0 disables nostr-tools' own idle-close (default 20s,
+   * AbstractRelay.scheduleIdleClose): once relay.ongoingOperations hits 0 it
+   * arms a timer that closes the relay if still 0 after idleTimeout ms.
+   *
+   * nostr-tools' Subscription.close() decrements ongoingOperations
+   * unconditionally, even for a subscription the relay already closed (e.g.
+   * with "auth-required" for a private group's content — the normal state
+   * right after logout, since _onmessage's own CLOSED handling already
+   * decremented it once). SpaceStore.start() closes its previous round's
+   * subscriptions whenever it rebuilds, so a subscription the relay rejected
+   * gets decremented a second time — ongoingOperations drifts below the
+   * number of subscriptions genuinely still open (observed as low as -2) and
+   * can hit 0 even while a real one (the group-state subscription, which the
+   * relay never closes, just silently filters) is still live. The connection
+   * then idles out and closes itself client-side ~20s later, our own
+   * reconnect-on-close brings it back, the same subscriptions get rejected
+   * again, and it repeats — a self-inflicted flapping loop, not a relay or
+   * network problem. We already manage this connection's lifecycle ourselves
+   * via want()/wanted, so nostr-tools' own idle-management only fights that.
+   */
+  private pool = (() => {
+    const pool = new SimplePool({ enableReconnect: false })
+    // SimplePool's constructor type doesn't expose it, but AbstractSimplePool
+    // has idleTimeout as a plain public field.
+    pool.idleTimeout = 0
+    return pool
+  })()
   private signer: Signer | null = null
   private snapshots = new Map<string, RelaySnapshot>()
   private listeners = new Set<() => void>()
   private retryTimers = new Map<string, number>()
-  private wanted = new Set<string>()
+  /**
+   * Pending "nobody wants this any more, close it" timers. Deferred rather
+   * than immediate because React mounts twice in StrictMode: the remount
+   * re-wants the same url a tick later, and tearing the socket down in
+   * between would be a reconnect for nothing — the same reasoning as
+   * SpaceStore.subscribe.
+   */
+  private idleTimers = new Map<string, number>()
+  /**
+   * How many consumers currently want this relay open — a count, not a flag.
+   * More than one component can hold the same relay at once (`Shell` holds it
+   * for the app's whole lifetime, `ProfileSettings` holds it again while
+   * /settings/profile is open). With a Set the second consumer's cleanup
+   * dropped the entry outright and the first one's connection stopped being
+   * maintained: open() bails at its `wanted` check, scheduleRetry never
+   * fires, and nothing recovers short of a reload. That is CON-35: the Sign
+   * out button lives on /settings/profile and navigates away, so logging out
+   * unmounts the second consumer — logging in never does.
+   */
+  private wanted = new Map<string, number>()
   /** increased on every signer change; subscriptions must be rebuilt then */
   private generation = 0
   /**
@@ -96,6 +143,32 @@ class NostrClient {
   private wrapped = new WeakSet<object>()
   /** Newest open attempt per relay; older ones must stay silent. */
   private openSeq = new Map<string, number>()
+  /**
+   * The open attempt currently in flight per relay, if any. `closeIdle` has
+   * to wait for it: closing a relay while `ensureRelay` is still connecting
+   * nulls the handlers `connect()` is waiting on (AGENTS.md, "Traps in the
+   * Nostr layer"), and nostr-tools' own catch then does an unguarded
+   * `relays.delete(url)` — on whatever is registered for this url by then.
+   */
+  private openings = new Map<string, Promise<void>>()
+  /**
+   * Bumped whenever a relay's onclose fires, for whatever reason.
+   * refreshAuth captures this before its own connect/auth round trip and
+   * checks it again after — a stale call (its relay closed under it, on
+   * purpose or not, while it was still awaiting relay.auth) rejects with
+   * something like "relay connection closed by us", which is not a real AUTH
+   * failure. Without this check that rejection still lands in the catch below
+   * and patches auth: 'failed', overwriting whatever the newer connection
+   * cycle's own refreshAuth call decides — briefly or not so briefly flipping
+   * the relay indicator red for no reason. Logging out alone could already do
+   * this, no second setSigner call needed: the last read/publish before
+   * logout often still has a refreshAuth in flight.
+   *
+   * This only started mattering once refreshAuth stopped missing its own
+   * relay in listConnectionStatus (see key() below): until then the function
+   * returned early every time and never reached relay.auth at all.
+   */
+  private connGeneration = new Map<string, number>()
 
   constructor() {
     this.pool.automaticallyAuth = (url) => this.signAuth(url)
@@ -123,6 +196,27 @@ class NostrClient {
 
   // --- state ---------------------------------------------------------------
 
+  /**
+   * The key every map in here is addressed by — the same normalisation
+   * nostr-tools applies internally (`AbstractSimplePool.relays`,
+   * `listConnectionStatus`, `automaticallyAuth`'s argument). It adds a
+   * trailing slash: `ws://localhost:8080` becomes `ws://localhost:8080/`.
+   *
+   * Without this the client kept two sets of books. `refreshAuth` looked the
+   * connection up with the app's unnormalised string, `listConnectionStatus()`
+   * knew it only under the normalised one, so the lookup missed and the whole
+   * function returned early every single time — AUTH never reached 'ok'.
+   * Meanwhile `signAuth` was called by the pool with the normalised url and
+   * wrote 'pending' into a *second* snapshot nothing ever rendered.
+   */
+  private key(url: string): string {
+    try {
+      return normalizeURL(url)
+    } catch {
+      return url
+    }
+  }
+
   subscribeState(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
@@ -130,7 +224,8 @@ class NostrClient {
 
   /** Has to return the same reference while the data is unchanged —
    *  useSyncExternalStore compares by identity. */
-  getSnapshot(url: string): RelaySnapshot {
+  getSnapshot(rawUrl: string): RelaySnapshot {
+    const url = this.key(rawUrl)
     let snapshot = this.snapshots.get(url)
     if (!snapshot) {
       snapshot = { url, connection: 'connecting', attempts: 0, auth: 'none', epoch: 0, ready: false }
@@ -139,7 +234,8 @@ class NostrClient {
     return snapshot
   }
 
-  private patch(url: string, change: Partial<RelaySnapshot>): void {
+  private patch(rawUrl: string, change: Partial<RelaySnapshot>): void {
+    const url = this.key(rawUrl)
     const next = { ...this.getSnapshot(url), ...change, url }
     this.snapshots.set(url, next)
     for (const listener of this.listeners) listener()
@@ -148,18 +244,94 @@ class NostrClient {
   // --- connection ----------------------------------------------------------
 
   /** Keep the connection open and rebuild it with backoff when it drops. */
-  want(url: string): () => void {
-    this.wanted.add(url)
-    void this.open(url)
+  want(rawUrl: string): () => void {
+    const url = this.key(rawUrl)
+    // A hold arriving while the close is still pending cancels it: this
+    // connection is wanted again.
+    window.clearTimeout(this.idleTimers.get(url))
+    this.idleTimers.delete(url)
+    this.wanted.set(url, (this.wanted.get(url) ?? 0) + 1)
+    this.open(url)
+    let released = false
     return () => {
+      // React can run the same cleanup twice (StrictMode); a second release
+      // must not take somebody else's hold away.
+      if (released) return
+      released = true
+      const left = (this.wanted.get(url) ?? 1) - 1
+      if (left > 0) {
+        this.wanted.set(url, left)
+        return
+      }
       this.wanted.delete(url)
       window.clearTimeout(this.retryTimers.get(url))
       this.retryTimers.delete(url)
+      // Nobody wants this connection any more. nostr-tools' own idle-close is
+      // what used to reclaim one, and that is off (see `pool`) — so it has to
+      // happen here, or the socket and its handlers live as long as the tab.
+      window.clearTimeout(this.idleTimers.get(url))
+      this.idleTimers.set(
+        url,
+        window.setTimeout(() => {
+          this.idleTimers.delete(url)
+          if (this.isWanted(url)) return
+          this.closeIdle(url)
+        }, 500),
+      )
     }
   }
 
-  private async open(url: string): Promise<void> {
-    if (!this.wanted.has(url)) return
+  private isWanted(url: string): boolean {
+    return (this.wanted.get(url) ?? 0) > 0
+  }
+
+  /**
+   * Shut down a connection nobody wants any more — the only thing that closes
+   * an unwanted relay now that nostr-tools' idle-close is disabled. Bumping
+   * the open sequence first withdraws any attempt still in flight, so a late
+   * `ensureRelay` cannot register a fresh connection behind our back.
+   */
+  private closeIdle(url: string): void {
+    this.openSeq.set(url, (this.openSeq.get(url) ?? 0) + 1)
+    this.activeRelay.delete(url)
+
+    const inFlight = this.openings.get(url)
+    if (!inFlight) {
+      this.pool.close([url])
+      return
+    }
+    // Not while `ensureRelay` is still connecting: `AbstractRelay.close()`
+    // nulls the handlers that connect() is waiting on, so the attempt fails
+    // and nostr-tools' own catch does an unguarded `relays.delete(url)` — on
+    // whatever is registered for this url by then, which can be a newer,
+    // healthy relay. Nobody wants this connection, so waiting for the attempt
+    // to settle costs nothing. Serializing every open() instead (the review's
+    // suggestion) is what CON-30 removed on purpose: it would make a
+    // logout→login wait out the previous attempt's full timeout before even
+    // trying to connect.
+    void inFlight.finally(() => {
+      if (!this.isWanted(url)) this.pool.close([url])
+    })
+  }
+
+  /**
+   * Starts one open attempt and keeps its promise, so `closeIdle` can tell
+   * whether an `ensureRelay` for this url is still in flight.
+   */
+  private open(url: string): void {
+    const attempt = this.openOnce(url)
+      .catch(() => {
+        // openOnce reports failures through the snapshot and nobody awaits
+        // this promise; the catch only keeps it from being unhandled.
+      })
+      .finally(() => {
+        if (this.openings.get(url) === attempt) this.openings.delete(url)
+      })
+    this.openings.set(url, attempt)
+  }
+
+  private async openOnce(url: string): Promise<void> {
+    if (!this.isWanted(url)) return
     window.clearTimeout(this.retryTimers.get(url))
     this.retryTimers.delete(url)
 
@@ -169,7 +341,7 @@ class NostrClient {
     // been replaced — including announcing it as ready.
     const seq = (this.openSeq.get(url) ?? 0) + 1
     this.openSeq.set(url, seq)
-    const current = (): boolean => this.openSeq.get(url) === seq && this.wanted.has(url)
+    const current = (): boolean => this.openSeq.get(url) === seq && this.isWanted(url)
 
     this.patch(url, { connection: 'connecting', ready: false })
     try {
@@ -196,6 +368,10 @@ class NostrClient {
         const poolOnClose = relay.onclose
         relay.onclose = () => {
           poolOnClose?.()
+          // Whatever the reason, this close invalidates an AUTH round trip
+          // still in flight on this connection: its rejection is not a real
+          // failure (see connGeneration).
+          this.connGeneration.set(url, (this.connGeneration.get(url) ?? 0) + 1)
           // Superseded: we replaced this connection ourselves, so its close is
           // expected and says nothing about reachability.
           if (this.activeRelay.get(url) !== relay) return
@@ -234,14 +410,14 @@ class NostrClient {
   }
 
   private scheduleRetry(url: string): void {
-    if (!this.wanted.has(url)) return
+    if (!this.isWanted(url)) return
     const attempts = this.getSnapshot(url).attempts + 1
     this.patch(url, { attempts })
     const wait = Math.min(1000 * 2 ** (attempts - 1), 15000)
     window.clearTimeout(this.retryTimers.get(url))
     this.retryTimers.set(
       url,
-      window.setTimeout(() => void this.open(url), wait),
+      window.setTimeout(() => this.open(url), wait),
     )
   }
 
@@ -251,12 +427,14 @@ class NostrClient {
    * meaningful. Without a received challenge it throws — which means this relay
    * does not (yet) require AUTH.
    */
-  private async refreshAuth(url: string): Promise<void> {
+  private async refreshAuth(rawUrl: string): Promise<void> {
+    const url = this.key(rawUrl)
     const sign = this.signAuth(url)
     if (!sign) {
       this.patch(url, { auth: 'none', authMessage: undefined })
       return
     }
+    const connGeneration = this.connGeneration.get(url) ?? 0
     const relay = this.pool.listConnectionStatus().get(url)
       ? await this.pool.ensureRelay(url)
       : null
@@ -264,8 +442,10 @@ class NostrClient {
     await delay(200)
     try {
       const message = await withTimeout(relay.auth(sign), 5000, 'the relay did not answer the AUTH')
+      if ((this.connGeneration.get(url) ?? 0) !== connGeneration) return
       this.patch(url, { auth: 'ok', authMessage: message || undefined })
     } catch (error) {
+      if ((this.connGeneration.get(url) ?? 0) !== connGeneration) return
       const reason = describeError(error)
       if (reason.includes('no challenge')) {
         this.patch(url, { auth: 'none', authMessage: undefined })
@@ -288,7 +468,7 @@ class NostrClient {
   setSigner(signer: Signer | null): void {
     this.signer = signer
     this.generation += 1
-    for (const url of this.wanted) {
+    for (const url of [...this.wanted.keys()]) {
       // Give up this connection before closing it, so its close event is read
       // as the replacement it is rather than as the relay going away.
       this.activeRelay.delete(url)
@@ -298,7 +478,7 @@ class NostrClient {
       // connection would open its requests on the socket now winding down —
       // the one still authenticated as the identity being left behind.
       this.patch(url, { auth: 'none', authMessage: undefined, attempts: 0, ready: false })
-      void this.open(url)
+      this.open(url)
     }
   }
 

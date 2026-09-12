@@ -13,6 +13,15 @@ const CONNECTION_DOT = {
   offline: 'bg-danger',
 } as const
 
+/**
+ * The relay's host, for the label. Snapshots are keyed by the URL nostr-tools
+ * normalises to, which ends in a slash — that belongs in the tooltip, not in
+ * the name.
+ */
+function hostOf(url: string): string {
+  return url.replace(/^wss?:\/\//, '').replace(/\/$/, '')
+}
+
 const AUTH_LABEL: Record<AuthState, string> = {
   none: 'not requested',
   pending: 'in progress…',
@@ -58,7 +67,7 @@ export function RelayIndicator({
   info: RelayInfo | null
 }) {
   const broken = snapshot.connection === 'offline' || snapshot.auth === 'failed'
-  const name = info?.name ?? snapshot.url.replace(/^wss?:\/\//, '')
+  const name = info?.name ?? hostOf(snapshot.url)
 
   return (
     <span
@@ -108,7 +117,7 @@ export function RelayStatusBadge({
           aria-hidden="true"
         />
         <span className="truncate text-fg-muted" title={snapshot.url}>
-          {info?.name ?? snapshot.url.replace(/^wss?:\/\//, '')}
+          {info?.name ?? hostOf(snapshot.url)}
         </span>
       </div>
 
