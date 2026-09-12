@@ -173,7 +173,11 @@ Two substantive consequences:
   `want()`/`wanted`, so nostr-tools' idle-management only fights that —
   fixed by `pool.idleTimeout = 0` right after construction
   (`SimplePool`'s constructor type does not expose it, but it is a plain
-  public field on `AbstractSimplePool`).
+  public field on `AbstractSimplePool`). That also removes the only thing
+  that ever closed an *unwanted* relay, so `want()`'s release has to: at
+  refcount zero it closes the url. Deferred by 500ms and cancelled by a new
+  hold, because React mounts twice in StrictMode (`SpaceStore.subscribe`
+  defers its close the same way).
 - **`NostrClient.want(url)` has more than one caller for the same relay at
   once, and a `Set` cannot tell them apart.** `AppShell`'s `Shell` holds
   the main relay for the whole session; `ProfileSettings`
@@ -191,7 +195,8 @@ Two substantive consequences:
   `wanted` a `Map<string, number>` reference count — `want()` increments,
   the returned release decrements and only actually removes the entry (and
   stops retrying) at zero, and a second release is a no-op (React can run the
-  same cleanup twice under StrictMode). No client.ts-only test could have found
+  same cleanup twice under StrictMode), and it closes the connection at zero
+  (see the idle-close entry above). No client.ts-only test could have found
   this, since none had more than one `want()` holder; guarded by
   `src/nostr/relay-status.test.tsx`, which mounts two `useRelay()`
   consumers under one stable parent and unmounts only the child.

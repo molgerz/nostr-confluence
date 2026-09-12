@@ -301,6 +301,71 @@ describe('NostrClient reconnect races (CON-35)', () => {
     releaseShell()
   })
 
+  it('releasing the same hold twice does not drop the other consumer (CON-35 review)', async () => {
+    // React can run the same cleanup twice under StrictMode. The release is
+    // a no-op the second time; decrementing again would drop Shell's hold and
+    // the connection would stop being maintained.
+    const { client } = await freshClient()
+    const url = 'ws://fake/'
+
+    const releaseShell = client.want(url)
+    await flush()
+    latestSocket().open()
+    await flush()
+    expect(client.getSnapshot(url).connection).toBe('online')
+
+    const releaseProfile = client.want(url)
+    await flush()
+
+    releaseProfile()
+    releaseProfile()
+
+    // Shell's hold is still counted, so a drop has to come back on its own.
+    const before = sockets.length
+    latestSocket().close()
+    await flush()
+    expect(client.getSnapshot(url).connection).toBe('offline')
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+    for (let round = 0; round < 4; round++) {
+      await flush()
+      for (const socket of sockets) {
+        if (socket.readyState === FakeSocket.CONNECTING) socket.open()
+      }
+    }
+    await flush(20)
+    expect(sockets.length).toBeGreaterThan(before)
+    expect(client.getSnapshot(url).connection).toBe('online')
+
+    releaseShell()
+  })
+
+  it('closes the connection once the last consumer releases it', async () => {
+    // nostr-tools' own idle-close is disabled (see the idle-close test above),
+    // so this is the only thing that ever shuts an unwanted relay down.
+    const { client } = await freshClient()
+    const url = 'ws://fake/'
+
+    const release = client.want(url)
+    await flush()
+    const socket = latestSocket()
+    socket.open()
+    await flush()
+    expect(client.getSnapshot(url).connection).toBe('online')
+
+    release()
+    // Deferred by a moment so a StrictMode remount can still cancel it.
+    await flush()
+    expect(socket.readyState).toBe(FakeSocket.OPEN)
+
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    expect(socket.readyState).toBe(FakeSocket.CLOSED)
+
+    // And it stays closed — nothing reconnects behind our back.
+    await flush(30)
+    expect(sockets.length).toBe(1)
+    expect(client.getSnapshot(url).connection).toBe('online')
+  })
+
   it('AUTH state lands on the url the UI reads, not on nostr-tools normalised twin', async () => {
     // The app addresses the relay as `ws://localhost:8080`; nostr-tools keys
     // everything internally by normalizeURL(), which appends a slash. The

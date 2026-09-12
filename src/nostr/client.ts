@@ -107,6 +107,14 @@ class NostrClient {
   private listeners = new Set<() => void>()
   private retryTimers = new Map<string, number>()
   /**
+   * Pending "nobody wants this any more, close it" timers. Deferred rather
+   * than immediate because React mounts twice in StrictMode: the remount
+   * re-wants the same url a tick later, and tearing the socket down in
+   * between would be a reconnect for nothing — the same reasoning as
+   * SpaceStore.subscribe.
+   */
+  private idleTimers = new Map<string, number>()
+  /**
    * How many consumers currently want this relay open — a count, not a flag.
    * More than one component can hold the same relay at once (`Shell` holds it
    * for the app's whole lifetime, `ProfileSettings` holds it again while
@@ -230,6 +238,10 @@ class NostrClient {
   /** Keep the connection open and rebuild it with backoff when it drops. */
   want(rawUrl: string): () => void {
     const url = this.key(rawUrl)
+    // A hold arriving while the close is still pending cancels it: this
+    // connection is wanted again.
+    window.clearTimeout(this.idleTimers.get(url))
+    this.idleTimers.delete(url)
     this.wanted.set(url, (this.wanted.get(url) ?? 0) + 1)
     void this.open(url)
     let released = false
@@ -246,11 +258,35 @@ class NostrClient {
       this.wanted.delete(url)
       window.clearTimeout(this.retryTimers.get(url))
       this.retryTimers.delete(url)
+      // Nobody wants this connection any more. nostr-tools' own idle-close is
+      // what used to reclaim one, and that is off (see `pool`) — so it has to
+      // happen here, or the socket and its handlers live as long as the tab.
+      window.clearTimeout(this.idleTimers.get(url))
+      this.idleTimers.set(
+        url,
+        window.setTimeout(() => {
+          this.idleTimers.delete(url)
+          if (this.isWanted(url)) return
+          this.closeIdle(url)
+        }, 500),
+      )
     }
   }
 
   private isWanted(url: string): boolean {
     return (this.wanted.get(url) ?? 0) > 0
+  }
+
+  /**
+   * Shut down a connection nobody wants any more — the only thing that closes
+   * an unwanted relay now that nostr-tools' idle-close is disabled. Bumping
+   * the open sequence first withdraws any attempt still in flight, so a late
+   * `ensureRelay` cannot register a fresh connection behind our back.
+   */
+  private closeIdle(url: string): void {
+    this.openSeq.set(url, (this.openSeq.get(url) ?? 0) + 1)
+    this.activeRelay.delete(url)
+    this.pool.close([url])
   }
 
   private async open(url: string): Promise<void> {
