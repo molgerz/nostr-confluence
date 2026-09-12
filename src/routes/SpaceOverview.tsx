@@ -9,7 +9,7 @@ import { spaceAccess } from '../domain/space-access'
 import { KINDS } from '../nostr/kinds'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { ButtonLink, Callout, Card, InitialsDisc, SectionLabel } from '../ui/controls'
-import { PageIcon, PlusIcon } from '../ui/icons'
+import { PageIcon, PlusIcon, SettingsIcon } from '../ui/icons'
 import type { ReactNode } from 'react'
 
 /**
@@ -92,10 +92,21 @@ export function SpaceOverview() {
       width="wide"
       crumbs={[{ label: name }]}
       actions={
-        <ButtonLink variant="primary" to={`${base}/new`}>
-          <PlusIcon className="size-4" />
-          New page
-        </ButtonLink>
+        <>
+          {isAdmin ? (
+            <ButtonLink
+              variant="subtle"
+              to={`/settings/spaces/${encodeURIComponent(`${group.host}'${group.id}`)}`}
+            >
+              <SettingsIcon className="size-4" />
+              Admin
+            </ButtonLink>
+          ) : null}
+          <ButtonLink variant="primary" to={`${base}/new`}>
+            <PlusIcon className="size-4" />
+            New page
+          </ButtonLink>
+        </>
       }
     >
       {/* The space's own header: the disc from the sidebar again, at the size a
@@ -213,6 +224,7 @@ export function SpaceOverview() {
           members={space.members}
           admins={space.admins}
           loading={space.loading}
+          showControls={false}
         />
 
         <section>

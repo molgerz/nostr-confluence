@@ -21,6 +21,8 @@ import {
   PlusIcon,
   SearchIcon,
   SettingsIcon,
+  SpaceIcon,
+  UserIcon,
 } from '../icons'
 
 type Props = {
@@ -28,6 +30,13 @@ type Props = {
   space: SpaceSnapshot
   snapshot: RelaySnapshot
   info: RelayInfo | null
+  /**
+   * /settings/* — including /settings/spaces/:group, which reuses the
+   * `group` param name so `SpaceSettings` can share `useSpaceRoute` with the
+   * space's own routes. The bar shows the settings nav here, never the page
+   * tree: settings are not "inside" whichever space happens to be selected.
+   */
+  inSettings: boolean
 }
 
 /**
@@ -145,7 +154,7 @@ function NavRow({
   )
 }
 
-export function Sidebar({ group, space, snapshot, info }: Props) {
+export function Sidebar({ group, space, snapshot, info, inSettings }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = space.tree
   const { session } = useSession()
@@ -255,9 +264,11 @@ export function Sidebar({ group, space, snapshot, info }: Props) {
   return (
     <nav className="flex w-66 shrink-0 flex-col bg-surface-1">
       {/* The space, as one row: disc, name, host. The disc takes its colour
-          from the name, so two spaces are told apart before either is read. */}
-      <div className="px-2 pb-1">
-        {group ? (
+          from the name, so two spaces are told apart before either is read.
+          Nothing here when no space is open — "Akasha" already sits at the
+          very top of the window in the top bar, once is enough. */}
+      {group ? (
+        <div className="px-2 pb-1">
           <Link
             to={base ?? '/'}
             className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-surface-hover"
@@ -275,18 +286,22 @@ export function Sidebar({ group, space, snapshot, info }: Props) {
               </span>
             </span>
           </Link>
-        ) : (
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-fg-subtle hover:bg-surface-hover"
-          >
-            <InitialsDisc name="? ?" className="size-7 text-[11px]" />
-            no space selected
-          </Link>
-        )}
-      </div>
+        </div>
+      ) : null}
 
-      {base ? (
+      {inSettings ? (
+        <>
+          <div className="space-y-0.5 px-2 pt-1">
+            <NavRow to="/settings/spaces" icon={<SpaceIcon />}>
+              Spaces
+            </NavRow>
+            <NavRow to="/settings/profile" icon={<UserIcon />}>
+              Profile
+            </NavRow>
+          </div>
+          <div className="flex-1" />
+        </>
+      ) : base ? (
         <>
           <div className="space-y-0.5 px-2">
             <NavRow to={base} end icon={<HomeIcon />}>
@@ -349,7 +364,7 @@ export function Sidebar({ group, space, snapshot, info }: Props) {
       )}
 
       <div className="px-2 pb-1">
-        <NavRow to="/settings/profile" icon={<SettingsIcon />}>
+        <NavRow to="/settings/spaces" icon={<SettingsIcon />}>
           Settings
         </NavRow>
       </div>

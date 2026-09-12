@@ -30,7 +30,11 @@ function readCollapsed(): boolean {
 function Shell() {
   const params = useParams<{ group?: string }>()
   const location = useLocation()
-  const group = params.group ? parseGroupAddress(params.group) : null
+  // /settings/spaces/:group reuses the `group` param name (so SpaceSettings
+  // can share useSpaceRoute with the space's own routes) but is not "inside"
+  // that space — the sidebar there is the settings nav, not the page tree.
+  const inSettings = location.pathname.startsWith('/settings')
+  const group = !inSettings && params.group ? parseGroupAddress(params.group) : null
   const relayUrl = group?.relayUrl ?? DEFAULT_RELAY_URL
   const { snapshot, info } = useRelay(relayUrl)
   const space = useSpace(relayUrl, group?.id ?? '')
@@ -81,7 +85,7 @@ function Shell() {
             docs/06-ui-information-architecture.md */}
         {collapsed ? null : (
           <div className="hidden md:flex">
-            <Sidebar group={group} space={space} snapshot={snapshot} info={info} />
+            <Sidebar group={group} space={space} snapshot={snapshot} info={info} inSettings={inSettings} />
           </div>
         )}
 
@@ -94,7 +98,7 @@ function Shell() {
               className="fixed inset-0 z-20 bg-black/40 md:hidden"
             />
             <div className="fixed inset-y-0 left-0 z-30 flex md:hidden">
-              <Sidebar group={group} space={space} snapshot={snapshot} info={info} />
+              <Sidebar group={group} space={space} snapshot={snapshot} info={info} inSettings={inSettings} />
             </div>
           </>
         ) : null}

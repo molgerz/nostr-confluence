@@ -238,6 +238,47 @@ describe('clearAllSpaces', () => {
     unsubscribe()
   })
 
+  // The review asked for this one by name: the store has to rebuild its
+  // subscriptions when AUTH settles, exactly once, and not on the transient
+  // 'pending' on the way there or on every later patch. Without it a private
+  // space reads as empty for the admin who just signed in, forever.
+  it('restarts once when AUTH settles, not on the way there', () => {
+    const store = getSpaceStore(RELAY, GROUP)
+    const unsubscribe = store.subscribe(() => {})
+    expect(relay.subs.length).toBeGreaterThan(0)
+
+    // Signing out first: the round that is open went out as the old identity.
+    relay.auth = 'none'
+    const beforeDrop = relay.subs.length
+    store.checkConnection()
+    const oneRound = relay.subs.length - beforeDrop
+    expect(oneRound, 'the drop starts one new round').toBeGreaterThan(0)
+
+    // 'pending' is the transient on the way back. A round opened here would be
+    // as unauthenticated as the one before it.
+    relay.auth = 'pending'
+    const beforePending = relay.subs.length
+    store.checkConnection()
+    expect(relay.subs.length, 'pending is not a reason to restart').toBe(beforePending)
+
+    // AUTH settles: one new round, this time authenticated.
+    relay.auth = 'ok'
+    const beforeOk = relay.subs.length
+    store.checkConnection()
+    const authenticated = relay.subs.slice(beforeOk)
+    expect(relay.subs.length - beforeOk, 'AUTH settling opens one round, not two').toBe(oneRound)
+
+    // And the round it opened is the one the space now reads from.
+    deliver(revision('e9', 'handbook'), authenticated)
+    expect(store.getSnapshot().pages.map((page) => page.slug)).toEqual(['handbook'])
+
+    // Further patches with the same AUTH state change nothing.
+    store.checkConnection()
+    store.checkConnection()
+    expect(relay.subs.length).toBe(beforeOk + oneRound)
+    unsubscribe()
+  })
+
   it('does not pile up a second round on a store that is already subscribed', () => {
     const store = getSpaceStore(RELAY, GROUP)
     const unsubscribe = store.subscribe(() => {})
