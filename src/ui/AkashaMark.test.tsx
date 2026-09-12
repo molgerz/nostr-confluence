@@ -5,10 +5,11 @@ import { createRoot } from 'react-dom/client'
 import { AkashaMark } from './AkashaMark'
 
 /**
- * Two properties of the mark are invisible in the markup and would break
- * quietly: it must not be announced a second time next to the wordmark, and
- * two marks on one page must not share a gradient id -- the second would then
- * paint through a reference that no longer resolves to the gradient it wrote.
+ * The mark is a violet tile with a white wave on it, and two properties of
+ * that are invisible in the markup and would break quietly: it must not be
+ * announced a second time next to the wordmark, and two marks on one page must
+ * not share a gradient id -- the second would then paint through a reference
+ * that no longer resolves to the gradient it wrote.
  */
 function render(node: ReactNode): HTMLElement {
   const host = document.createElement('div')
@@ -30,6 +31,13 @@ describe('AkashaMark', () => {
     expect(host.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
   })
 
+  it('is a tile with the wave knocked out in white', () => {
+    const host = render(<AkashaMark />)
+    expect(host.querySelector('rect')?.getAttribute('rx')).toBe('22')
+    expect(host.querySelector('g')?.getAttribute('fill')).toBe('#fff')
+    expect(host.querySelectorAll('path')).toHaveLength(2)
+  })
+
   it('paints each instance from its own gradient', () => {
     const host = render(
       <>
@@ -44,7 +52,7 @@ describe('AkashaMark', () => {
       // Whatever useId() returns has to survive a url(#...) reference unescaped.
       expect(id).toMatch(/^[A-Za-z0-9_-]+$/)
     }
-    const fills = [...host.querySelectorAll('g')].map((g) => g.getAttribute('fill'))
+    const fills = [...host.querySelectorAll('rect')].map((r) => r.getAttribute('fill'))
     expect(fills).toEqual([`url(#${ids[0]})`, `url(#${ids[1]})`])
   })
 })
