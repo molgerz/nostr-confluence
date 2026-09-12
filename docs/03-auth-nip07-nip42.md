@@ -48,8 +48,13 @@ same account, and exactly that is checked before every write.
 - **Multiple accounts**: if the extension switches accounts mid-session, the
   pubkey must be fetched again before every publish and compared with the
   session. On a mismatch, restart the session rather than sign as someone else.
-- **Read-only without signing in**: public spaces should be readable without an
-  extension. So only writes require signing in; reading works anonymously.
+- **No anonymous reading**: signing in is not a step that unlocks writing on top
+  of reading — it is the entry itself. Akasha is for closed teams, so a space is
+  readable only by npubs an admin has added, and the membership check needs an
+  authenticated pubkey. Signed out, there is nothing to show at all: the relay
+  withholds even the group's name ([04](04-permissions-nip29.md)). An earlier
+  draft of this document had reading work anonymously in public spaces; there
+  are no public spaces.
 
 ## Later: NIP-46
 

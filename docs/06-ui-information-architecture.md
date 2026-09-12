@@ -263,7 +263,7 @@ history.
 | Reading | Rendered Markdown, table of contents on the right, byline, action bar |
 | Editing | Editor and rendered page look the same — there is no preview to toggle. Title, text, Publish/Cancel in the breadcrumb bar → [13](13-editing.md) |
 | Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
-| Signed out | Write actions replaced by "sign in with Nostr to edit"; reading works. The button signs in **where it stands** — you never leave the page |
+| Signed out | Nothing to read. Access needs a signed-in npub *and* membership, so a signed-out visitor sees the notice from "When the relay shows nothing" below, with the sign-in button in it. The button signs in **where it stands** — you never leave the page |
 | Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also says which extensions are common and that the app stores no key. Only after an attempt, never unprompted |
 | Publish failed | Error message in the editor with the **literal relay reason**, classified by cause (AUTH needed, permissions, other). The text stays in the editor, nothing is lost |
 
@@ -275,6 +275,48 @@ strip, the editor simply stays open and shows the relay's reason. A draft that
 lives only in the browser would be a second storage location with its own
 questions (where? for how long? what on account switch?) — that would need the
 local cache that has not been built yet.
+
+## When the relay shows nothing
+
+A private space does not turn a stranger away — it answers with **nothing**, the
+relay-signed group metadata included ([04](04-permissions-nip29.md)). Three
+quite different situations therefore arrive as one empty result, and each view
+used to invent its own explanation for it: the overview built a space out of the
+group id and reported it empty, a page URL said "not found" and offered to
+create the page, search said "Nothing found in 0 pages", and the left bar said
+"no pages yet".
+
+`spaceAccess` (`src/domain/space-access.ts`) tells them apart. Missing metadata
+is the signal, not an empty page list — metadata arrives unasked for any group
+you may see, while pages and members would be empty in a genuinely empty space
+too.
+
+| State | Shown |
+|---|---|
+| loading | nothing yet. An answer before the subscriptions settle would flash "no access" at a member on every reload |
+| hidden, signed out | "This space is private", with the sign-in button inside the notice |
+| hidden, signed in | "This space is not showing you anything", plus the viewer's own npub to hand to an admin |
+| member | the space itself |
+
+`reader` — a space the relay hands out to somebody who is not a member — is a
+state the code can represent but the product does not want: **Akasha is for
+closed teams, and reading always requires being signed in and invited.** A space
+that turns up readable to a non-member is a misconfigured one, and the
+overview's warning callout names the two flags that cause it, `public` and
+`open`. `reader` itself raises no warning: it also appears while the member
+list has not settled, where one would blame an admin for nothing.
+
+The wording lives once, in `SpaceHiddenNotice`, and reads the same on the
+overview, on a page and in search: the reader's situation is identical in all
+three, and three wordings would read as three different problems. The left bar
+gets three words of its own instead — it is 264px wide and already carries the
+tree.
+
+**What it never says is which.** "You are not a member" and "this space does not
+exist" are the same silence from the relay, and nothing on this side can
+separate them — the relay withholds it on purpose, because answering would
+already confirm the space is there. The notice names both possibilities rather
+than guessing and being confidently wrong at somebody who mistyped a group id.
 
 ## Editor
 

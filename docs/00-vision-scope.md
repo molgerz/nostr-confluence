@@ -13,10 +13,27 @@ identity = npub, storage = Nostr relay, permissions = NIP-29 group.
 | 1 | Sign in with Nostr, NIP-07 only for now | `window.nostr` + NIP-42 relay AUTH → [03](03-auth-nip07-nip42.md) |
 | 2 | A left-hand navigation bar like Confluence | Space sidebar with a page tree → [06](06-ui-information-architecture.md) |
 | 3 | Create new "pages" as Markdown | Page event + revision → [02](02-data-model-events.md) |
-| 4 | Anyone may edit, in principle | Open NIP-29 group, the relay decides → [04](04-permissions-nip29.md) |
+| 4 | Anyone may edit, in principle | Any *member* may edit any page — no per-page owners, no approvals. The circle itself is closed, see below → [04](04-permissions-nip29.md) |
 | 5 | Version history tied to an npub | Hash-linked revision events, Git-like → [05](05-versioning-history.md) |
 | 6 | Working on pages together | Optimistic saving + three-way merge, CRDT later → [05](05-versioning-history.md) |
 | 7 | Switchable between light and dark | Token-based theming, switch in the top bar → [12](12-theming.md) |
+
+## Closed teams only
+
+**Akasha is for closed teams.** Reading requires two things at once: a signed-in
+npub *and* membership granted by an admin. There is no anonymous reading, no
+public space, no read-only visitor — a space whose relay flags say otherwise is
+a misconfiguration, and the overview says so rather than presenting it as a
+setting.
+
+That is what requirement 4 means in practice: "anyone may edit" is about the
+absence of hierarchy *inside* the team, not about who gets in. Everyone in the
+circle is equal; the circle has a door.
+
+The flags carrying it are `private` + `closed` + `restricted`, all three
+([04](04-permissions-nip29.md)), and the relay enforces them — measured, not
+assumed. What it does not give is confidentiality against the relay operator,
+who can read everything ([09](09-security-privacy.md)).
 
 ## Maturity
 

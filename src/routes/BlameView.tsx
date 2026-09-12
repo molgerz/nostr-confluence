@@ -1,4 +1,7 @@
 import { useSpaceRoute } from './space-route'
+import { spaceAccess } from '../domain/space-access'
+import { SpaceHiddenPage } from '../ui/SpaceHiddenNotice'
+import { useSession } from '../session/session'
 import { blame } from '../domain/blame'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
@@ -13,6 +16,7 @@ import { BookIcon, HistoryIcon, PageIcon } from '../ui/icons'
  */
 export function BlameView() {
   const { group, space, base, slug } = useSpaceRoute()
+  const { session } = useSession()
 
   if (!group || !base || !slug) {
     return (
@@ -20,6 +24,10 @@ export function BlameView() {
         <p className="text-sm text-danger">Invalid address.</p>
       </PageFrame>
     )
+  }
+
+  if (spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden') {
+    return <SpaceHiddenPage group={group} base={base} crumb="Line origin" />
   }
 
   const spaceName = space.metadata?.name ?? group.id

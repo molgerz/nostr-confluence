@@ -9,6 +9,8 @@ import type { SpaceSnapshot } from '../../nostr/space-store'
 import { descendantSlugs, orderKeyOf } from '../../domain/pages'
 import type { Page, PageNode } from '../../domain/pages'
 import { keyBetween } from '../../domain/order'
+import { spaceAccess } from '../../domain/space-access'
+import { useSession } from '../../session/session'
 import { useMovePage } from '../move-page'
 import { InitialsDisc, SectionLabel } from '../controls'
 import {
@@ -146,6 +148,8 @@ function NavRow({
 export function Sidebar({ group, space, snapshot, info }: Props) {
   const base = group ? `/s/${encodeURIComponent(`${group.host}'${group.id}`)}` : null
   const nodes = space.tree
+  const { session } = useSession()
+  const treeAccess = spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space)
   const { slug } = useParams<{ slug?: string }>()
   const [collapsedBranches, setCollapsedBranches] = useState(readCollapsedBranches)
   const [dragging, setDragging] = useState<string | null>(null)
@@ -314,8 +318,15 @@ export function Sidebar({ group, space, snapshot, info }: Props) {
 
           <div className="min-h-0 flex-1 overflow-y-auto scroll-slim px-2 pb-2">
             {nodes.length === 0 ? (
+              // Three different reasons for one empty tree. "no pages yet"
+              // for a space you simply cannot see would be the bar quietly
+              // asserting that it is empty in there.
               <div className="px-2 py-1 text-xs text-fg-subtle">
-                {space.loading ? 'loading pages…' : 'no pages yet'}
+                {space.loading
+                  ? 'loading pages…'
+                  : treeAccess.state === 'hidden'
+                    ? 'nothing visible'
+                    : 'no pages yet'}
               </div>
             ) : (
               <TreeBranch

@@ -7,9 +7,13 @@ import { mergeThreeWay } from '../domain/merge'
 import { shortNpub, toNpub } from '../nostr/profile'
 import { PageFrame } from '../ui/layout/PageFrame'
 import { PageIcon } from '../ui/icons'
+import { SpaceHiddenPage } from '../ui/SpaceHiddenNotice'
+import { spaceAccess } from '../domain/space-access'
+import { useSession } from '../session/session'
 
 export function EditorView() {
   const { group, space, base, slug } = useSpaceRoute()
+  const { session } = useSession()
   const [params] = useSearchParams()
   const navigate = useNavigate()
 
@@ -22,6 +26,11 @@ export function EditorView() {
   }
 
   const spaceName = space.metadata?.name ?? group.id
+
+  if (spaceAccess(session.status === 'signed-in' ? session.pubkey : null, space).state === 'hidden') {
+    return <SpaceHiddenPage group={group} base={base} crumb={slug} />
+  }
+
   const page = space.pages.find((entry) => entry.slug === slug)
   if (!page) {
     return (
