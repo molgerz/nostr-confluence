@@ -127,6 +127,11 @@ export function Comments({ relayUrl, groupId, slug, comments, isAdmin = false }:
     setError(null)
     setBusy(true)
     try {
+      const same = await ensureSamePubkey()
+      if (!same.ok) {
+        setError(same.reason)
+        return
+      }
       const result = await deleteGroupEvent(session.signer, {
         relayUrl,
         groupId,

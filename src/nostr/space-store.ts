@@ -55,6 +55,8 @@ class SpaceStore {
   private stop: (() => void)[] = []
   private generation = -1
   private epoch = -1
+  /** the AUTH state the current subscriptions were opened under */
+  private auth = ''
   private eoseSeen = 0
   private groupEventAt = new Map<number, number>()
 
@@ -92,6 +94,41 @@ class SpaceStore {
     if (hadComment) this.emit({ comments: [...this.comments.values()] })
   }
 
+  /**
+   * Drop everything this space holds. Called on every identity change, not
+   * only on sign-out: a private group's pages must not keep showing (or stay
+   * searchable) under the identity that follows, just because they are still
+   * sitting in these Maps.
+   *
+   * Resubscribing is part of it. A signer change already restarts the store via
+   * `checkConnection`, but that runs before this and would leave the cleared
+   * store with no subscription at all.
+   */
+  reset(): void {
+    this.dropCollected()
+    if (this.listeners.size > 0) this.start()
+  }
+
+  /**
+   * Forget what the current subscriptions delivered.
+   *
+   * Nothing else ever takes an event back out: `applyRevision` and its
+   * siblings only add, and an empty answer is indistinguishable from a
+   * request that returned everything it was allowed to. So whatever is in
+   * these Maps stays until something drops it on purpose — which is why every
+   * new round of subscriptions has to start from nothing.
+   */
+  private dropCollected(): void {
+    this.revisions.clear()
+    this.placements.clear()
+    this.comments.clear()
+    this.metadataEvent = null
+    this.groupEventAt.clear()
+    if (this.snapshot === EMPTY) return
+    this.snapshot = EMPTY
+    for (const listener of this.listeners) listener()
+  }
+
   private rebuildPages(): void {
     const pages = buildPages([...this.revisions.values()], this.placements)
     this.emit({ pages, tree: buildTree(pages) })
@@ -101,22 +138,66 @@ class SpaceStore {
    * Subscriptions die with their connection and with every signer change (AUTH
    * is per connection). Detect both here and set them up again — otherwise the
    * app silently shows stale data after a relay restart.
+   *
+   * The AUTH state counts too. A relay may answer a request from an
+   * unauthenticated reader with silence rather than `auth-required`, and a
+   * subscription cannot tell that apart from a genuinely empty space — so a
+   * request that went out too early stays empty for as long as it lives. The
+   * connection waits for AUTH before it raises the epoch, and this catches the
+   * rest: an AUTH that lands late, or one repeated after a write.
    */
   checkConnection(): void {
     if (this.listeners.size === 0) return
-    const epoch = client.getSnapshot(this.relayUrl).epoch
-    if (this.generation !== client.getGeneration() || this.epoch !== epoch) this.start()
+    const { epoch, auth, ready } = client.getSnapshot(this.relayUrl)
+
+    // 'pending' is a transient on the way to 'ok': restarting on it would only
+    // fire a round of requests as unauthenticated as the one before. It counts
+    // as "no change" rather than as a reason to stop looking, though — a
+    // signature that never comes back would otherwise leave this store waiting
+    // for good, and the idle check below is exactly what rescues it.
+    const changed =
+      auth !== 'pending' &&
+      (this.generation !== client.getGeneration() || this.epoch !== epoch || this.auth !== auth)
+
+    // Usable connection, nothing subscribed on it. That is where a store gets
+    // stranded: `start` has to bail while a connection is being rebuilt, and
+    // if the moment it becomes ready passes while this store is not listening,
+    // there is no second announcement to wait for — a settled connection sends
+    // nothing further, and the space would sit on "loading" until a reload.
+    // So the state is checked here, not only the change.
+    const idle = ready && this.stop.length === 0 && this.groupId.length > 0
+
+    if (changed || idle) this.start()
   }
 
   private start(): void {
     this.close()
+    // Everything collected so far came from the subscriptions just closed —
+    // over a connection, and under an identity, that may both be gone. Signing
+    // out is exactly that case: the requests still in flight while the old
+    // authenticated socket winds down deliver a last load of pages, and no
+    // later empty answer would ever remove them again. A new round re-delivers
+    // whatever the viewer may still see, so keeping the old events cannot fill
+    // a gap — it can only keep showing what the relay now refuses to send.
+    this.dropCollected()
     // Without a group id there is nothing to subscribe to (e.g. on /login).
     if (this.groupId.length === 0) {
       if (this.snapshot.loading) this.emit({ loading: false })
       return
     }
+    const connection = client.getSnapshot(this.relayUrl)
+    // Never subscribe onto a connection that is being rebuilt. Until it is
+    // ready the pool may still hand out the previous socket, which stays
+    // authenticated as the identity we are leaving until it has finished
+    // closing — requests on it come back full, and they would come back into
+    // the round we just started, where nothing clears them again. Leaving here
+    // without stamping keeps `loading` true and makes `checkConnection` try
+    // again on the next change; the epoch rises once the connection is up and
+    // authenticated.
+    if (!connection.ready) return
     this.generation = client.getGeneration()
-    this.epoch = client.getSnapshot(this.relayUrl).epoch
+    this.epoch = connection.epoch
+    this.auth = connection.auth
     this.eoseSeen = 0
     if (!this.snapshot.loading) this.emit({ loading: true })
 
@@ -237,6 +318,14 @@ export function forgetEvent(relayUrl: string, groupId: string, eventId: string):
   getSpaceStore(relayUrl, groupId).forget(eventId)
 }
 
+/**
+ * Clears every space this tab has loaded. Belongs to every identity change —
+ * see `switchIdentity` in src/session/session.tsx, which owns the ordering.
+ */
+export function clearAllSpaces(): void {
+  for (const store of stores.values()) store.reset()
+}
+
 export function useSpace(relayUrl: string, groupId: string): SpaceSnapshot {
   const store = getSpaceStore(relayUrl, groupId)
   // Has to be memoised: with a new function identity useSyncExternalStore
@@ -245,7 +334,12 @@ export function useSpace(relayUrl: string, groupId: string): SpaceSnapshot {
   const getSnapshot = useCallback(() => store.getSnapshot(), [store])
   const snapshot = useSyncExternalStore(subscribe, getSnapshot)
   // After sign-in/sign-out and after every reconnect the subscriptions have to
-  // be rebuilt.
-  useEffect(() => client.subscribeState(() => store.checkConnection()), [store])
+  // be rebuilt. Checking once on mount as well, because the connection may have
+  // become usable while this store had no listeners — waiting for the next
+  // change would then be waiting for something that has already happened.
+  useEffect(() => {
+    store.checkConnection()
+    return client.subscribeState(() => store.checkConnection())
+  }, [store])
   return snapshot
 }

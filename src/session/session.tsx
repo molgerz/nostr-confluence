@@ -7,6 +7,7 @@ import { createNip07Signer, getNip07Provider, waitForNip07 } from '../nostr/sign
 import type { Signer } from '../nostr/signer'
 import { parseProfile, toNpub } from '../nostr/profile'
 import { cacheProfile } from '../nostr/profile-store'
+import { clearAllSpaces } from '../nostr/space-store'
 import type { Profile } from '../nostr/profile'
 
 const STORAGE_KEY = 'nc-pubkey'
@@ -60,6 +61,55 @@ function storePubkey(pubkey: string | null): void {
   }
 }
 
+/**
+ * The single way to change identity: sign in, sign out, and the account switch
+ * in the extension all go through here. Whatever a space still holds belongs to
+ * the npub that fetched it — a private group's pages must not stay on screen or
+ * in the search under the identity that follows.
+ *
+ * The order is not interchangeable. `setSigner` closes the connection first, so
+ * the resubscribe inside `clearAllSpaces` can only ever run against a socket
+ * that is no longer authenticated as the previous npub. Clearing first would
+ * subscribe while the old AUTH still stands and let the events we just dropped
+ * come straight back.
+ */
+function switchIdentity(signer: Signer | null): void {
+  client.setSigner(signer)
+  clearAllSpaces()
+}
+
+/** What another tab's change to the stored pubkey means for this one. */
+export type TabSync =
+  | { action: 'ignore' }
+  | { action: 'sign-out' }
+  | { action: 'adopt'; pubkey: string }
+
+/**
+ * Signing out is meant to end the session on this machine, not in the one tab
+ * it was clicked in — a second tab that keeps a space on screen (and, through
+ * `ensureSamePubkey`, keeps writing to it) defeats the point of the button.
+ *
+ * Pure so the table can be read in one go, because a wrong branch here fails
+ * quietly: the tab simply stays signed in and nobody finds out.
+ */
+export function tabSync(
+  /** the changed key, `null` when the whole storage was cleared at once */
+  key: string | null,
+  /** what the storage says now */
+  stored: string | null,
+  /** the pubkey this tab is signed in with, `null` when it is not */
+  current: string | null,
+  hasProvider: boolean,
+): TabSync {
+  if (key !== null && key !== STORAGE_KEY) return { action: 'ignore' }
+  if (stored === null) return current === null ? { action: 'ignore' } : { action: 'sign-out' }
+  if (stored === current) return { action: 'ignore' }
+  // Somebody else's session now owns this machine. Without an extension this
+  // tab cannot act as them, and staying with the previous identity is the one
+  // thing it must not do.
+  return hasProvider ? { action: 'adopt', pubkey: stored } : { action: 'sign-out' }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ status: 'anonymous' })
   const [extension, setExtension] = useState<ExtensionState>('checking')
@@ -88,7 +138,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const stored = readStoredPubkey()
       if (provider && stored) {
         const signer = createNip07Signer(provider)
-        client.setSigner(signer)
+        switchIdentity(signer)
         setSession({
           status: 'signed-in',
           pubkey: stored,
@@ -103,6 +153,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [loadProfile])
+
+  // Follow the other tabs. The storage event fires only in the tabs that did
+  // not make the change, which is exactly the reach this needs. Best effort,
+  // not a guarantee: it needs localStorage to work (a private window may
+  // refuse it) and a tab whose scripts are actually running, so nothing may be
+  // built on top of it as if it were a lock.
+  const currentPubkey = session.status === 'signed-in' ? session.pubkey : null
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      const sync = tabSync(event.key, readStoredPubkey(), currentPubkey, getNip07Provider() !== null)
+      if (sync.action === 'ignore') return
+      if (sync.action === 'sign-out') {
+        switchIdentity(null)
+        setSession({ status: 'anonymous' })
+        setError(null)
+        return
+      }
+      // No getPublicKey here: it would open an extension dialog in a tab
+      // nobody is looking at. The pubkey comes from the storage, the same way
+      // resuming a session on page load reads it.
+      const provider = getNip07Provider()
+      if (!provider) return
+      const signer = createNip07Signer(provider)
+      switchIdentity(signer)
+      setSession({
+        status: 'signed-in',
+        pubkey: sync.pubkey,
+        npub: toNpub(sync.pubkey),
+        signer,
+        profile: null,
+      })
+      void loadProfile(sync.pubkey)
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [currentPubkey, loadProfile])
 
   const login = useCallback(async () => {
     setError(null)
@@ -120,7 +206,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const pubkey = await signer.getPublicKey()
       if (!/^[0-9a-f]{64}$/.test(pubkey)) throw new Error('the extension returned no valid pubkey')
       storePubkey(pubkey)
-      client.setSigner(signer)
+      switchIdentity(signer)
       setSession({ status: 'signed-in', pubkey, npub: toNpub(pubkey), signer, profile: null })
       void loadProfile(pubkey)
     } catch (err) {
@@ -131,7 +217,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     storePubkey(null)
-    client.setSigner(null)
+    switchIdentity(null)
     setSession({ status: 'anonymous' })
     setError(null)
   }, [])
@@ -143,9 +229,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const current = await session.signer.getPublicKey()
       if (current !== session.pubkey) {
-        // No silent continuation: switch the session to the new identity.
+        // No silent continuation: switch the session to the new identity. The
+        // signer object is the same one — it is the extension behind it that
+        // now answers as somebody else, which is a full identity change.
         storePubkey(current)
-        client.setSigner(session.signer)
+        switchIdentity(session.signer)
         setSession({
           status: 'signed-in',
           pubkey: current,
@@ -154,7 +242,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           profile: null,
         })
         void loadProfile(current)
-        return { ok: false, reason: 'A different account is now active in the extension.' }
+        const reason = 'A different account is now active in the extension.'
+        // Also on the session banner, not only back to the caller. Switching
+        // identity empties the spaces, so the view that asked — an open editor,
+        // say — may be gone by the time it could show anything: its page is no
+        // longer in the store. The one explanation for a write that did not
+        // happen must not be unmounted along with it.
+        setError(reason)
+        return { ok: false, reason }
       }
       return { ok: true }
     } catch (err) {
