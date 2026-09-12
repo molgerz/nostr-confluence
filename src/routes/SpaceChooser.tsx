@@ -3,7 +3,6 @@ import { useMySpaces } from '../nostr/my-spaces'
 import { useSession } from '../session/session'
 import { CreateSpaceForm } from '../ui/CreateSpaceForm'
 import { SignInButton } from '../ui/SignInButton'
-import { PhaseNote } from '../ui/Phase'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { InitialsDisc, SectionLabel } from '../ui/controls'
 import { ChevronRightIcon, PlusIcon, SpaceIcon } from '../ui/icons'
@@ -33,7 +32,9 @@ function SpaceCard({ name, address }: { name: string; address: string }) {
 
 export function SpaceChooser() {
   const { session } = useSession()
-  const { spaces, loading } = useMySpaces(session.status === 'signed-in' ? session.pubkey : null)
+  const { spaces, loading, error } = useMySpaces(
+    session.status === 'signed-in' ? session.pubkey : null,
+  )
 
   return (
     <PageFrame width="wide" crumbs={[{ label: 'Spaces' }]}>
@@ -53,7 +54,11 @@ export function SpaceChooser() {
         <SectionLabel>Your spaces</SectionLabel>
       </div>
       {session.status === 'signed-in' ? (
-        spaces.length > 0 ? (
+        error ? (
+          <p className="text-sm text-fg-muted">
+            Could not reach the relay to look up your spaces. Is it running?
+          </p>
+        ) : spaces.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {spaces.map((space) => (
               <SpaceCard key={space.address} name={space.name} address={space.address} />
@@ -70,14 +75,6 @@ export function SpaceChooser() {
           member of.
         </p>
       )}
-
-      <div className="mt-8">
-        <PhaseNote phase="Phase 2">
-          Quick version for local testing, built alongside CON-1 — CON-31 owns the real
-          implementation of this list (multiple relays, no metadata re-fetch on every
-          mount, proper empty/error states).
-        </PhaseNote>
-      </div>
 
       <div className="mt-8 mb-3 flex items-center gap-2">
         <PlusIcon className="size-4 text-fg-subtle" />

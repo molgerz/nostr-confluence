@@ -3,100 +3,216 @@ import type { Event, Filter } from 'nostr-tools'
 import { client } from './client'
 import { KINDS } from './kinds'
 import { DEFAULT_RELAY_URL } from './relay-status'
+import { formatGroupAddress } from './group-address'
 import { parseGroupMetadata } from '../domain/group-state'
 
 export type MySpace = { groupId: string; relayUrl: string; address: string; name: string }
 
+export type MySpacesState = {
+  spaces: MySpace[]
+  loading: boolean
+  /**
+   * The relay could not be read at all — distinct from a genuine empty
+   * membership, which means every read reached EOSE.
+   */
+  error: boolean
+}
+
+/** One bounded read of the members list: EOSE, timeout, or abort. */
+type ReadResult = {
+  events: Event[]
+  /** EOSE arrived, so the relay answered — even if it had nothing to say. */
+  reached: boolean
+}
+
+const READ_TIMEOUT_MS = 5000
+const RETRY_GAP_MS = 500
+
+function groupIdsOf(events: Event[]): Set<string> {
+  const ids = new Set<string>()
+  for (const event of events) {
+    const id = event.tags.find((tag) => tag[0] === 'd')?.[1]
+    if (id) ids.add(id)
+  }
+  return ids
+}
+
+function sameIds(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const id of a) if (!b.has(id)) return false
+  return true
+}
+
 /**
- * Quick, minimal version built alongside CON-1 to verify space creation
- * manually — CON-31 owns the real implementation (multiple relays, no
- * re-fetching metadata per space on every mount, proper empty/error states).
+ * A single EOSE round-trip for {kinds:[39002], '#p':[pubkey]}. Resolves null
+ * when the signal aborts before the relay answered.
  */
-function fetchOnce(relayUrl: string, filter: Filter, timeoutMs = 5000): Promise<Event[]> {
+function fetchOnce(
+  relayUrl: string,
+  filter: Filter,
+  signal: AbortSignal,
+  timeoutMs = READ_TIMEOUT_MS,
+): Promise<ReadResult | null> {
   return new Promise((resolve) => {
     const events: Event[] = []
     let settled = false
     let unsubscribe: () => void = () => {}
-    const finish = () => {
+    const finish = (result: ReadResult | null) => {
       if (settled) return
       settled = true
       window.clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
       unsubscribe()
-      resolve(events)
+      resolve(result)
     }
-    const timer = window.setTimeout(finish, timeoutMs)
-    unsubscribe = client.subscribeAcross([relayUrl], filter, (event) => events.push(event), finish)
+    const onAbort = () => finish(null)
+    const timer = window.setTimeout(() => finish({ events, reached: false }), timeoutMs)
+    if (signal.aborted) {
+      finish(null)
+      return
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+    try {
+      unsubscribe = client.subscribeAcross(
+        [relayUrl],
+        filter,
+        (event) => events.push(event),
+        () => finish({ events, reached: true }),
+      )
+    } catch {
+      finish({ events, reached: false })
+    }
+  })
+}
+
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const onAbort = () => {
+      window.clearTimeout(timer)
+      resolve()
+    }
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
   })
 }
 
 /**
  * The relay's own indexing lags what it has just accepted — the same
- * eventual-consistency quirk `waitForGroupMetadata` in moderation.ts works
- * around for a single group's `39000`. Here it can affect **any** recently
- * written `39002`, so a single EOSE round-trip can under-report which spaces
- * a member is actually in. Retrying a few times, keeping the largest result
- * seen, works in practice — a space already found never "disappears" again.
+ * eventual-consistency quirk waitForGroupMetadata in moderation.ts works
+ * around for a single group's 39000. Here it can affect any recently written
+ * 39002, so a single EOSE round-trip can under-report which spaces a member is
+ * actually in.
+ *
+ * Retries stop as soon as two consecutive reads agree with each other, and
+ * keep the largest result seen (a space already found never disappears again).
+ * A read that never reached EOSE is not retried: that is an unreachable relay,
+ * and more identical timeouts only delay the error.
  */
-async function fetchMany(relayUrl: string, filter: Filter, attempts = 4): Promise<Event[]> {
+async function fetchMany(
+  relayUrl: string,
+  filter: Filter,
+  signal: AbortSignal,
+  attempts = 4,
+): Promise<ReadResult> {
   let best: Event[] = []
+  let bestIds = new Set<string>()
+  let previousIds: Set<string> | null = null
+  let reached = false
+
   for (let attempt = 0; attempt < attempts; attempt++) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 500))
-    const events = await fetchOnce(relayUrl, filter)
-    if (events.length > best.length) best = events
+    if (signal.aborted) break
+    if (attempt > 0) {
+      await sleep(RETRY_GAP_MS, signal)
+      if (signal.aborted) break
+    }
+    const read = await fetchOnce(relayUrl, filter, signal)
+    if (!read) break
+    if (read.reached) reached = true
+    const ids = groupIdsOf(read.events)
+    if (ids.size > bestIds.size) {
+      best = read.events
+      bestIds = ids
+    }
+    if (previousIds && sameIds(previousIds, ids)) break
+    previousIds = ids
+    if (!read.reached) break
   }
-  return best
+
+  return { events: best, reached }
 }
 
-export function useMySpaces(pubkey: string | null): { spaces: MySpace[]; loading: boolean } {
-  const [spaces, setSpaces] = useState<MySpace[]>([])
-  const [loading, setLoading] = useState(false)
+/**
+ * The spaces the signed-in npub is a member of, discovered from the relay's
+ * 39002 membership events and named via each group's 39000 metadata.
+ *
+ * Reads only the app's one relay; a read path across several relays is
+ * deferred with the mirror-relay decision (CON-25, CON-24). Metadata is
+ * re-fetched on every mount instead of cached — that is the IndexedDB cache,
+ * CON-8.
+ */
+export function useMySpaces(pubkey: string | null): MySpacesState {
+  const [state, setState] = useState<MySpacesState>({
+    spaces: [],
+    loading: false,
+    error: false,
+  })
 
   useEffect(() => {
     if (!pubkey) {
-      setSpaces([])
+      setState({ spaces: [], loading: false, error: false })
       return
     }
-    let cancelled = false
-    setLoading(true)
+    const controller = new AbortController()
+    const { signal } = controller
+    setState({ spaces: [], loading: true, error: false })
 
     void (async () => {
-      // 39002 (members) is the only kind tagging every member with `p`, so it
-      // is what answers "which groups is this pubkey in" across a relay.
-      const memberEvents = await fetchMany(DEFAULT_RELAY_URL, {
-        kinds: [KINDS.GROUP_MEMBERS],
-        '#p': [pubkey],
-      })
-      const groupIds = [
-        ...new Set(
-          memberEvents
-            .map((event) => event.tags.find((tag) => tag[0] === 'd')?.[1])
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ]
+      try {
+        // 39002 (members) is the only kind tagging every member with p, so it
+        // is what answers "which groups is this pubkey in" across a relay.
+        const members = await fetchMany(
+          DEFAULT_RELAY_URL,
+          { kinds: [KINDS.GROUP_MEMBERS], '#p': [pubkey] },
+          signal,
+        )
+        if (signal.aborted) return
 
-      const metadataEvents = await Promise.all(
-        groupIds.map((id) =>
-          client.getOne([DEFAULT_RELAY_URL], { kinds: [KINDS.GROUP_METADATA], '#d': [id] }),
-        ),
-      )
-      if (cancelled) return
+        const groupIds = [...groupIdsOf(members.events)]
+        const metadataEvents = await Promise.all(
+          groupIds.map((id) =>
+            client.getOne([DEFAULT_RELAY_URL], {
+              kinds: [KINDS.GROUP_METADATA],
+              '#d': [id],
+            }),
+          ),
+        )
+        if (signal.aborted) return
 
-      const host = DEFAULT_RELAY_URL.replace(/^wss?:\/\//, '')
-      setSpaces(
-        groupIds.map((id, index) => ({
+        const host = DEFAULT_RELAY_URL.replace(/^wss?:\/\//, '')
+        const spaces = groupIds.map((id, index) => ({
           groupId: id,
           relayUrl: DEFAULT_RELAY_URL,
-          address: `${host}'${id}`,
-          name: metadataEvents[index] ? parseGroupMetadata(metadataEvents[index]!, id).name : id,
-        })),
-      )
-      setLoading(false)
+          address: formatGroupAddress({ host, id, relayUrl: DEFAULT_RELAY_URL }),
+          name: metadataEvents[index]
+            ? parseGroupMetadata(metadataEvents[index]!, id).name
+            : id,
+        }))
+        setState({
+          spaces,
+          loading: false,
+          error: !members.reached && spaces.length === 0,
+        })
+      } catch {
+        if (signal.aborted) return
+        setState({ spaces: [], loading: false, error: true })
+      }
     })()
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [pubkey])
 
-  return { spaces, loading }
+  return state
 }
