@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useSpaceRoute } from './space-route'
 import { useSession } from '../session/session'
 import { editMetadata } from '../nostr/moderation'
@@ -8,6 +9,19 @@ import { SignInButton } from '../ui/SignInButton'
 import { MemberAdmin } from '../ui/MemberAdmin'
 import { PageFrame, PageTitle } from '../ui/layout/PageFrame'
 import { Button, Callout, INPUT, TEXTAREA } from '../ui/controls'
+
+/**
+ * The route element for /settings/spaces/:group. Keyed by the group address
+ * so a navigation from one space's settings to another's is a fresh mount:
+ * without the key React reuses the component, `initialized` stays true and
+ * the fields keep the previous space's name while `group` already points at
+ * the new one — a save would then overwrite the new space's metadata with the
+ * old one's. Found in the 2026-09-11 review.
+ */
+export function SpaceSettingsRoute() {
+  const params = useParams<{ group?: string }>()
+  return <SpaceSettings key={params.group} />
+}
 
 /**
  * Everything that needs an admin: name and description (sent as a fresh

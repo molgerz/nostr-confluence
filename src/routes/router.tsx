@@ -5,7 +5,7 @@ import { PageView } from './PageView'
 import { EditorView } from './EditorView'
 import { NewPageView } from './NewPageView'
 import { SearchView } from './SearchView'
-import { SpaceSettings } from './SpaceSettings'
+import { SpaceSettingsRoute } from './SpaceSettings'
 import { SpacesSettingsList } from './SpacesSettingsList'
 import { HistoryView } from './HistoryView'
 import { BlameView } from './BlameView'
@@ -24,7 +24,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <Navigate to="/settings/spaces" replace /> },
       { path: '/settings/profile', element: <ProfileSettings /> },
       { path: '/settings/spaces', element: <SpacesSettingsList /> },
-      { path: '/settings/spaces/:group', element: <SpaceSettings /> },
+      { path: '/settings/spaces/:group', element: <SpaceSettingsRoute /> },
       { path: '/s/:group', element: <SpaceOverview /> },
       { path: '/s/:group/new', element: <NewPageView /> },
       { path: '/s/:group/search', element: <SearchView /> },

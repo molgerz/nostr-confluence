@@ -96,7 +96,7 @@ backlog, see [docs/10](docs/10-roadmap.md).
 | **22242** relay AUTH | ✅ | NIP-42, produced by `nostr-tools` |
 | **9000** / **9001** add/remove member | ✅ | A request to the relay, which verifies admin status |
 | **9005** delete event | ✅ | Moderation; the relay enforces the deletion |
-| **9002** edit metadata | ⚠️ create-time only | Sent by the app right after `9007` to set name, description and the invite-only flags. `scripts/dev-group-seed.sh` also sends one, for the seeded space. No settings page yet to change it afterwards |
+| **9002** edit metadata | ✅ | Sent by the app right after `9007` to set name, description and the invite-only flags, and again from the space's admin settings page (`/settings/spaces/:group`). `scripts/dev-group-seed.sh` also sends one, for the seeded space |
 | **9007** create group | ✅ | `src/ui/CreateSpaceForm.tsx` → `src/nostr/moderation.ts` |
 
 ### What we read
