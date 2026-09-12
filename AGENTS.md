@@ -177,7 +177,11 @@ Two substantive consequences:
   that ever closed an *unwanted* relay, so `want()`'s release has to: at
   refcount zero it closes the url. Deferred by 500ms and cancelled by a new
   hold, because React mounts twice in StrictMode (`SpaceStore.subscribe`
-  defers its close the same way).
+  defers its close the same way) — and it waits for an in-flight
+  `ensureRelay` to settle first, because closing under one is the trap two
+  entries below. Serializing every `open()` instead would be simpler but is
+  what CON-30 removed on purpose: a logout→login would then have to wait out
+  the previous attempt's whole timeout before even trying to connect.
 - **`NostrClient.want(url)` has more than one caller for the same relay at
   once, and a `Set` cannot tell them apart.** `AppShell`'s `Shell` holds
   the main relay for the whole session; `ProfileSettings`

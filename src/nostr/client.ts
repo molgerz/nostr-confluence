@@ -144,6 +144,14 @@ class NostrClient {
   /** Newest open attempt per relay; older ones must stay silent. */
   private openSeq = new Map<string, number>()
   /**
+   * The open attempt currently in flight per relay, if any. `closeIdle` has
+   * to wait for it: closing a relay while `ensureRelay` is still connecting
+   * nulls the handlers `connect()` is waiting on (AGENTS.md, "Traps in the
+   * Nostr layer"), and nostr-tools' own catch then does an unguarded
+   * `relays.delete(url)` — on whatever is registered for this url by then.
+   */
+  private openings = new Map<string, Promise<void>>()
+  /**
    * Bumped whenever a relay's onclose fires, for whatever reason.
    * refreshAuth captures this before its own connect/auth round trip and
    * checks it again after — a stale call (its relay closed under it, on
@@ -243,7 +251,7 @@ class NostrClient {
     window.clearTimeout(this.idleTimers.get(url))
     this.idleTimers.delete(url)
     this.wanted.set(url, (this.wanted.get(url) ?? 0) + 1)
-    void this.open(url)
+    this.open(url)
     let released = false
     return () => {
       // React can run the same cleanup twice (StrictMode); a second release
@@ -286,10 +294,43 @@ class NostrClient {
   private closeIdle(url: string): void {
     this.openSeq.set(url, (this.openSeq.get(url) ?? 0) + 1)
     this.activeRelay.delete(url)
-    this.pool.close([url])
+
+    const inFlight = this.openings.get(url)
+    if (!inFlight) {
+      this.pool.close([url])
+      return
+    }
+    // Not while `ensureRelay` is still connecting: `AbstractRelay.close()`
+    // nulls the handlers that connect() is waiting on, so the attempt fails
+    // and nostr-tools' own catch does an unguarded `relays.delete(url)` — on
+    // whatever is registered for this url by then, which can be a newer,
+    // healthy relay. Nobody wants this connection, so waiting for the attempt
+    // to settle costs nothing. Serializing every open() instead (the review's
+    // suggestion) is what CON-30 removed on purpose: it would make a
+    // logout→login wait out the previous attempt's full timeout before even
+    // trying to connect.
+    void inFlight.finally(() => {
+      if (!this.isWanted(url)) this.pool.close([url])
+    })
   }
 
-  private async open(url: string): Promise<void> {
+  /**
+   * Starts one open attempt and keeps its promise, so `closeIdle` can tell
+   * whether an `ensureRelay` for this url is still in flight.
+   */
+  private open(url: string): void {
+    const attempt = this.openOnce(url)
+      .catch(() => {
+        // openOnce reports failures through the snapshot and nobody awaits
+        // this promise; the catch only keeps it from being unhandled.
+      })
+      .finally(() => {
+        if (this.openings.get(url) === attempt) this.openings.delete(url)
+      })
+    this.openings.set(url, attempt)
+  }
+
+  private async openOnce(url: string): Promise<void> {
     if (!this.isWanted(url)) return
     window.clearTimeout(this.retryTimers.get(url))
     this.retryTimers.delete(url)
@@ -376,7 +417,7 @@ class NostrClient {
     window.clearTimeout(this.retryTimers.get(url))
     this.retryTimers.set(
       url,
-      window.setTimeout(() => void this.open(url), wait),
+      window.setTimeout(() => this.open(url), wait),
     )
   }
 
@@ -437,7 +478,7 @@ class NostrClient {
       // connection would open its requests on the socket now winding down —
       // the one still authenticated as the identity being left behind.
       this.patch(url, { auth: 'none', authMessage: undefined, attempts: 0, ready: false })
-      void this.open(url)
+      this.open(url)
     }
   }
 

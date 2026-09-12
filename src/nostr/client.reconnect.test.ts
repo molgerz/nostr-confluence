@@ -366,6 +366,32 @@ describe('NostrClient reconnect races (CON-35)', () => {
     expect(client.getSnapshot(url).connection).toBe('online')
   })
 
+  it('does not tear down a connection that is still connecting (CON-35 review)', async () => {
+    // `pool.close()` during an in-flight `ensureRelay` nulls the handlers that
+    // connect() is waiting on, and nostr-tools' own catch then does an
+    // unguarded `relays.delete(url)` — the trap from AGENTS.md. The idle close
+    // has to wait for the attempt to settle instead of racing it.
+    const { client } = await freshClient()
+    const url = 'ws://fake/'
+
+    const release = client.want(url)
+    await flush()
+    const socket = latestSocket()
+    expect(socket.readyState).toBe(FakeSocket.CONNECTING)
+
+    release()
+    // the idle close fires here, while the socket is still connecting
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    expect(socket.readyState).toBe(FakeSocket.CONNECTING)
+
+    // once the attempt settles, the connection is closed after all — and
+    // nothing reconnects behind our back
+    socket.open()
+    await flush(20)
+    expect(socket.readyState).toBe(FakeSocket.CLOSED)
+    expect(sockets.length).toBe(1)
+  })
+
   it('AUTH state lands on the url the UI reads, not on nostr-tools normalised twin', async () => {
     // The app addresses the relay as `ws://localhost:8080`; nostr-tools keys
     // everything internally by normalizeURL(), which appends a slash. The
