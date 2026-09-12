@@ -239,7 +239,19 @@ Two further substantive consequences:
 - Documentation, code comments and commit messages in English.
 - Tickets, PR descriptions and other write-ups about this project are always in English.
 - Kind numbers and tag names only in `src/nostr/kinds.ts`.
-- Before every commit: `npm run typecheck && npm run build && npm test`.
+- Before every commit:
+  `npm run typecheck && npm run lint && npm test && npm run build`.
+  `lint` is deliberately its own step rather than folded into `typecheck`,
+  so a hook or dependency finding is never reported as a type error.
+  `eslint.config.js` carries only what `tsc` cannot see: `react-hooks/*`
+  (`rules-of-hooks`, `exhaustive-deps` — the stale-closure and
+  resubscribe-race class behind CON-35/CON-36/CON-37) plus
+  `js.configs.recommended`. The React-Compiler-era rules that ship with
+  `eslint-plugin-react-hooks` 7 are off on purpose: this app is built on
+  `useSyncExternalStore` and external stores, which those rules flag as a
+  matter of design. Add one individually, with its findings fixed, if it is
+  ever wanted. Ignored trees: `dist`, `coverage`, and the third-party
+  checkouts under `.local/` and `.gstack/`.
 - Placeholders in the UI name their phase from `docs/10-roadmap.md`.
 - Every branch and PR title starts with its Kaneo ticket id, so either is
   traceable back to the ticket at a glance: branch `con-1-create-space-from-app`
