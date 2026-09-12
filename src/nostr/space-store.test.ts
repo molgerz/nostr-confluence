@@ -9,7 +9,6 @@ type Sub = { url: string; filter: Filter; onEvent: (event: Event) => void; onEos
 // has to be hoisted with it.
 const relay = vi.hoisted(() => ({
   subs: [] as Sub[],
-  generation: 1,
   epoch: 1,
   auth: 'ok',
   ready: true,
@@ -17,7 +16,6 @@ const relay = vi.hoisted(() => ({
 
 vi.mock('./client', () => ({
   client: {
-    getGeneration: () => relay.generation,
     getSnapshot: () => ({ epoch: relay.epoch, auth: relay.auth, ready: relay.ready }),
     subscribe: (url: string, filter: Filter, onEvent: Sub['onEvent'], onEose: Sub['onEose']) => {
       relay.subs.push({ url, filter, onEvent, onEose })
@@ -61,7 +59,6 @@ describe('clearAllSpaces', () => {
     // has finished only leaves work running in a torn-down environment.
     vi.useFakeTimers()
     relay.subs = []
-    relay.generation = 1
     relay.epoch = 1
     relay.auth = 'ok'
     relay.ready = true
@@ -119,7 +116,6 @@ describe('clearAllSpaces', () => {
 
     // The connection comes back under a new identity; the store notices and
     // rebuilds its subscriptions.
-    relay.generation = 2
     relay.epoch = 2
     store.checkConnection()
 
@@ -135,7 +131,7 @@ describe('clearAllSpaces', () => {
     const unsubscribe = store.subscribe(() => {})
     const stale = relay.subs.slice()
 
-    relay.generation = 2
+    relay.epoch = 2
     store.checkConnection()
     // The old subscription is closed but its callback still exists — a request
     // that was in flight when the socket went down lands here.
@@ -143,7 +139,7 @@ describe('clearAllSpaces', () => {
 
     // It is still collected (the callback cannot know), but the next restart
     // clears it rather than carrying it into the new identity's view.
-    relay.generation = 3
+    relay.epoch = 3
     store.checkConnection()
     expect(store.getSnapshot().pages).toEqual([])
     unsubscribe()
@@ -159,8 +155,10 @@ describe('clearAllSpaces', () => {
     const unsubscribe = store.subscribe(() => {})
     relay.subs = []
 
+    // What setSigner() patches synchronously: the connection is withdrawn
+    // before the reconnect it queued has run.
     relay.ready = false
-    relay.generation = 2
+    relay.auth = 'none'
     store.checkConnection()
 
     expect(relay.subs).toEqual([])
@@ -175,11 +173,12 @@ describe('clearAllSpaces', () => {
     relay.subs = []
 
     relay.ready = false
-    relay.generation = 2
+    relay.auth = 'none'
     store.checkConnection()
     expect(relay.subs).toEqual([])
 
     relay.ready = true
+    relay.auth = 'ok'
     relay.epoch = 2
     store.checkConnection()
 
@@ -201,7 +200,7 @@ describe('clearAllSpaces', () => {
     // Torn down: the subscriptions are closed and nothing is opened, because
     // the connection is being rebuilt.
     relay.ready = false
-    relay.generation = 2
+    relay.epoch = 2
     store.checkConnection()
     relay.subs = []
     store.checkConnection()
@@ -212,7 +211,7 @@ describe('clearAllSpaces', () => {
     // by restoring the values start() stamped. Only the state itself still
     // says anything, and without reading it the space waits for an
     // announcement that a settled connection never sends.
-    relay.generation = 1
+    relay.epoch = 1
     relay.ready = true
     store.checkConnection()
 

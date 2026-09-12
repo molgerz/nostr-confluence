@@ -126,8 +126,6 @@ class NostrClient {
    * unmounts the second consumer — logging in never does.
    */
   private wanted = new Map<string, number>()
-  /** increased on every signer change; subscriptions must be rebuilt then */
-  private generation = 0
   /**
    * The connection currently in use per relay. A close on anything else is one
    * we caused — a signer change, a retry — and must not be reported as the
@@ -460,14 +458,14 @@ class NostrClient {
   /**
    * After a signer change the connection is rebuilt: AUTH is per connection,
    * and a new challenge only arrives with a new connection.
+   *
+   * There is deliberately no counter here announcing "the signer changed" for
+   * subscribers to watch. Reacting to that immediately means resubscribing
+   * against the connection this method is still replacing; the rebuild is
+   * announced by the relay's `epoch` once it has actually happened (CON-36).
    */
-  getGeneration(): number {
-    return this.generation
-  }
-
   setSigner(signer: Signer | null): void {
     this.signer = signer
-    this.generation += 1
     for (const url of [...this.wanted.keys()]) {
       // Give up this connection before closing it, so its close event is read
       // as the replacement it is rather than as the relay going away.
