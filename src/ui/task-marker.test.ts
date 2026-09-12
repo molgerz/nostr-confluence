@@ -44,7 +44,7 @@ describe('normaliseTaskMarker', () => {
   })
 
   it('fixes both at once, and any other unicode space too', () => {
-    expect(type(`- [ ] milk`).doc).toBe('- [ ] milk')
+    expect(type(`- [\u2009]\u202fmilk`).doc).toBe('- [ ] milk')
   })
 
   it('leaves a ticked box alone', () => {

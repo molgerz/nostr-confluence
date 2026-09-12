@@ -18,7 +18,8 @@ jobs:
 
       - run: npm ci
 
-      # Same three commands AGENTS.md asks for before every commit.
+      # Same four commands AGENTS.md asks for before every commit.
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm test
       - run: npm run build
