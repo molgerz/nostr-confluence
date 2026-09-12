@@ -53,12 +53,12 @@ export function spaceAccess(
   //
   // They can refute it though. Anything the relay served is proof that it is
   // not withholding this space, and missing metadata then says something about
-  // the request rather than about the viewer: ws://localhost:8081 answers the
-  // group-state request from a not-yet-authenticated reader with silence while
-  // rejecting the page request with `auth-required`, so pages arrive and
-  // metadata does not (src/nostr/client.ts). Whatever the cause, "you cannot
-  // see in" next to a sidebar full of pages is the one answer that is
-  // certainly wrong.
+  // the request rather than about the viewer: the local `groups_relay` dev
+  // instance (AGENTS.md) answers the group-state request from a
+  // not-yet-authenticated reader with silence while rejecting the page request
+  // with `auth-required`, so pages arrive and metadata does not
+  // (src/nostr/client.ts). Whatever the cause, "you cannot see in" next to a
+  // sidebar full of pages is the one answer that is certainly wrong.
   if (space.metadata === null && space.pages.length === 0 && space.members.length === 0) {
     return { state: 'hidden', signedIn: viewer !== null }
   }

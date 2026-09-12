@@ -36,9 +36,9 @@ describe('spaceAccess', () => {
 
   // The relay served the pages, so it is plainly not withholding this space.
   // Missing metadata then says something about the request, not about the
-  // viewer — ws://localhost:8081 answers the group-state request of a
-  // not-yet-authenticated reader with silence while rejecting the page
-  // request with `auth-required`, so exactly this pair turns up.
+  // viewer — the local `groups_relay` dev instance answers the group-state
+  // request of a not-yet-authenticated reader with silence while rejecting
+  // the page request with `auth-required`, so exactly this pair turns up.
   it('does not call a space hidden while it is serving pages', () => {
     const access = spaceAccess(ALICE, {
       loading: false,

@@ -301,8 +301,10 @@ too.
 `reader` — a space the relay hands out to somebody who is not a member — is a
 state the code can represent but the product does not want: **Akasha is for
 closed teams, and reading always requires being signed in and invited.** A space
-that turns up readable to a non-member is a misconfigured one, and the overview
-should say so rather than present it as a property.
+that turns up readable to a non-member is a misconfigured one, and the
+overview's warning callout names the two flags that cause it, `public` and
+`open`. `reader` itself raises no warning: it also appears while the member
+list has not settled, where one would blame an admin for nothing.
 
 The wording lives once, in `SpaceHiddenNotice`, and reads the same on the
 overview, on a page and in search: the reader's situation is identical in all
