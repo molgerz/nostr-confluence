@@ -59,7 +59,16 @@ Measured on 2026-09-07. Without these rules commands come back empty or hang:
 | `nak group put-user` | `--fpa --sec` | Works |
 | `nak group info`, `members`, `edit-metadata` | — | **Unusable against this relay.** They call `fetchGroupMetadata` through nak's internal pool, which knows no AUTH; `info` hangs forever. Check state with `nak req -k 39000 -k 39001 -k 39002` instead |
 
-Two substantive consequences:
+**Creating a group and editing its metadata right after it needs a wait in
+between.** Measured on 2026-09-11: a `9002` sent immediately after a `9007` is
+accepted (`OK true`), but the group then has no queryable `39000`/`39001`/`39002`
+at all — as if the create had never landed. The relay's own indexing of the
+freshly created group lags its `OK` for the `9007`. Waiting for `39000` to
+become readable before sending the `9002` avoids it reliably (a few hundred ms
+in practice). `createGroupAndWait` in `src/nostr/moderation.ts` does this; do
+not send `9002` right after a raw `createGroup` call.
+
+Two further substantive consequences:
 
 - **Opening a group needs a raw `9002`.** The relay creates groups as `private`
   + `closed`. `nak group edit-metadata` omits the `public` and `open` tags when

@@ -28,6 +28,110 @@ async function publishModeration(
   return client.publish(relayUrl, event)
 }
 
+/**
+ * `9007`: create a group. No tags beyond the `h` id — the relay decides who
+ * may do this and creates the group as `private` + `closed` by default.
+ * docs/04-permissions-nip29.md
+ *
+ * The relay makes the `9007` sender an admin by itself and emits `39000`,
+ * `39001` and `39002` together in one batch (Group::new and
+ * generate_all_state_events in the vendored relay, .local/groups_relay/src/
+ * group.rs and groups.rs). No explicit `9000` put-user is needed, and waiting
+ * for `39000` as `waitForGroupMetadata` does is a valid proxy for "the admin
+ * state is queryable too". The seed script never put-users the creator
+ * either.
+ */
+export function createGroup(signer: Signer, base: Base): Promise<PublishResult> {
+  return publishModeration(signer, base, KINDS.GROUP_CREATE, [])
+}
+
+/**
+ * The relay's own indexing of a just-created group's `39000` lags its `OK` for
+ * the `9007` — measured on 2026-09-11: an `edit-metadata` sent right after
+ * `create-group` is accepted (`OK true`) but the group then has no queryable
+ * state at all, as if the create had never landed. Waiting for `39000` to
+ * become readable first avoids the race. Only relevant right after creating a
+ * group — an established one has long since settled.
+ *
+ * Each call gets only the smaller of `perCallMs` and the time left, so one slow
+ * relay cannot swallow the whole budget in a single attempt (the `getOne`
+ * default would allow up to ~6s on its own).
+ */
+export async function waitForGroupMetadata(
+  relayUrl: string,
+  groupId: string,
+  timeoutMs = 4000,
+  perCallMs = 1000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) return false
+    const budget = Math.min(remaining, perCallMs)
+    const event = await client.getOne(
+      [relayUrl],
+      { kinds: [KINDS.GROUP_METADATA], '#d': [groupId] },
+      { timeoutMs: budget, maxWait: budget },
+    )
+    if (event) return true
+    const rest = deadline - Date.now()
+    if (rest <= 0) return false
+    await new Promise((resolve) => setTimeout(resolve, Math.min(300, rest)))
+  }
+}
+
+/**
+ * Outcome of `createGroupAndWait`. `ok: true` means the relay accepted the
+ * `9007` and the group exists; `settled` says whether its `39000` had already
+ * become queryable within the wait budget. A group that was accepted but did
+ * not settle must not be reported as a failure — the create did land.
+ */
+export type CreateGroupOutcome =
+  | { ok: true; settled: boolean }
+  | { ok: false; reason: string }
+
+/**
+ * `9007`: create a group, then wait for the relay to actually make it
+ * queryable. Combines both steps because sending `9002` before the group has
+ * settled loses its state entirely — see `waitForGroupMetadata`.
+ */
+export async function createGroupAndWait(
+  signer: Signer,
+  base: Base,
+): Promise<CreateGroupOutcome> {
+  const created = await createGroup(signer, base)
+  if (!created.ok) return { ok: false, reason: created.reason }
+  const settled = await waitForGroupMetadata(base.relayUrl, base.groupId)
+  return { ok: true, settled }
+}
+
+/**
+ * `9002`: replace the group's metadata. `apply_tags` on the relay is
+ * additive, so every flag that should hold has to be sent explicitly —
+ * leaving one out silently opens that dimension. docs/04-permissions-nip29.md
+ */
+export function editMetadata(
+  signer: Signer,
+  base: Base & { name: string; about?: string; supportedKinds?: number[] },
+): Promise<PublishResult> {
+  const tags: string[][] = [
+    ['name', base.name],
+    ...(base.about ? [['about', base.about]] : []),
+    // Requirement 4: the space is invite-only. docs/04-permissions-nip29.md
+    ['private', ''],
+    ['closed', ''],
+    ['restricted', ''],
+    // One array element per kind, not a joined string: `parseGroupMetadata`
+    // (src/domain/group-state.ts) reads every element after the tag name, and
+    // a semicolon-joined single value would parseInt down to just the first
+    // number.
+    ...(base.supportedKinds && base.supportedKinds.length > 0
+      ? [[TAGS.SUPPORTED_KINDS, ...base.supportedKinds.map(String)]]
+      : []),
+  ]
+  return publishModeration(signer, base, KINDS.GROUP_EDIT_METADATA, tags)
+}
+
 export function addMember(
   signer: Signer,
   base: Base & { pubkey: string; roles?: string[] },
