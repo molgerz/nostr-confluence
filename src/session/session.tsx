@@ -5,6 +5,9 @@ import { client } from '../nostr/client'
 import { DEFAULT_RELAY_URL, PROFILE_RELAYS } from '../nostr/relay-status'
 import { createNip07Signer, getNip07Provider, waitForNip07 } from '../nostr/signer'
 import type { Signer } from '../nostr/signer'
+import { connectBunker, connectNostrConnect, restoreNip46Session } from '../nostr/nip46'
+import type { NostrConnectOffer } from '../nostr/nip46'
+import { clearNip46Session, readNip46Session, storeNip46Session } from './nip46-store'
 import { parseProfile, toNpub } from '../nostr/profile'
 import { cacheProfile } from '../nostr/profile-store'
 import { clearAllSpaces } from '../nostr/space-store'
@@ -17,13 +20,26 @@ export type ExtensionState = 'checking' | 'available' | 'missing'
 export type Session =
   | { status: 'anonymous' }
   | { status: 'signing-in' }
-  | { status: 'signed-in'; pubkey: string; npub: string; signer: Signer; profile: Profile | null }
+  | {
+      status: 'signed-in'
+      pubkey: string
+      npub: string
+      signer: Signer
+      profile: Profile | null
+      /** Relays of a NIP-46 signer, empty for a NIP-07 extension. */
+      relays: string[]
+    }
 
 type SessionContextValue = {
   session: Session
   extension: ExtensionState
   error: string | null
-  login: () => Promise<void>
+  /** Sign in with a browser extension (`window.nostr`, NIP-07). */
+  loginWithNip07: () => Promise<void>
+  /** Connect a remote signer from a `bunker://` URI or NIP-05 address. */
+  loginWithBunker: (input: string) => Promise<void>
+  /** Wait for a signer to answer a client-initiated `nostrconnect://` offer. */
+  loginWithNostrConnect: (offer: NostrConnectOffer, signal: AbortSignal) => Promise<void>
   logout: () => void
   /** dismiss the sign-in error shown by SessionNotice */
   clearError: () => void
@@ -99,15 +115,20 @@ export function tabSync(
   stored: string | null,
   /** the pubkey this tab is signed in with, `null` when it is not */
   current: string | null,
-  hasProvider: boolean,
+  /**
+   * Whether this tab can sign as `stored` at all — a NIP-07 extension is
+   * present, or the stored NIP-46 client can reach its bunker. Without either,
+   * adopting a new identity would mean writing as somebody we cannot sign for.
+   */
+  canSignAsStored: boolean,
 ): TabSync {
   if (key !== null && key !== STORAGE_KEY) return { action: 'ignore' }
   if (stored === null) return current === null ? { action: 'ignore' } : { action: 'sign-out' }
   if (stored === current) return { action: 'ignore' }
-  // Somebody else's session now owns this machine. Without an extension this
-  // tab cannot act as them, and staying with the previous identity is the one
-  // thing it must not do.
-  return hasProvider ? { action: 'adopt', pubkey: stored } : { action: 'sign-out' }
+  // Somebody else's session now owns this machine. Without a way to sign for
+  // them this tab cannot act as them, and staying with the previous identity
+  // is the one thing it must not do.
+  return canSignAsStored ? { action: 'adopt', pubkey: stored } : { action: 'sign-out' }
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -127,32 +148,57 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  /** The one place a signer becomes the session — every entry point uses it. */
+  const activate = useCallback(
+    (signer: Signer, pubkey: string, relays: string[]) => {
+      switchIdentity(signer)
+      setSession({ status: 'signed-in', pubkey, npub: toNpub(pubkey), signer, profile: null, relays })
+      void loadProfile(pubkey)
+    },
+    [loadProfile],
+  )
+
   // Detect the extension and resume an earlier session. getPublicKey is
   // deliberately NOT called here: it opens an extension dialog and therefore
-  // belongs on a click, not on page load.
+  // belongs on a click, not on page load. A stored NIP-46 session is rebuilt
+  // the same way — from the client key on disk, without a remote call.
   useEffect(() => {
     let cancelled = false
-    void waitForNip07().then((provider) => {
+    void waitForNip07().then(async (provider) => {
       if (cancelled) return
       setExtension(provider ? 'available' : 'missing')
       const stored = readStoredPubkey()
-      if (provider && stored) {
-        const signer = createNip07Signer(provider)
-        switchIdentity(signer)
-        setSession({
-          status: 'signed-in',
-          pubkey: stored,
-          npub: toNpub(stored),
-          signer,
-          profile: null,
-        })
-        void loadProfile(stored)
+      if (!stored) {
+        // A bunker pointer without the identity it belongs to is unusable.
+        if (readNip46Session()) clearNip46Session()
+        return
       }
+      const remote = readNip46Session()
+      if (remote && remote.pubkey === stored) {
+        try {
+          const signer = await restoreNip46Session(remote)
+          if (cancelled) {
+            void signer.close?.()
+            return
+          }
+          activate(signer, stored, remote.relays)
+          return
+        } catch {
+          // The channel could not be rebuilt (corrupt client key, no pool).
+          // Fall through: an extension can still take over, otherwise the
+          // session stays anonymous and the user connects again.
+          clearNip46Session()
+        }
+      } else if (remote) {
+        // `nc-pubkey` and `nc-nip46` disagree; neither can be trusted.
+        clearNip46Session()
+      }
+      if (provider) activate(createNip07Signer(provider), stored, [])
     })
     return () => {
       cancelled = true
     }
-  }, [loadProfile])
+  }, [activate])
 
   // Follow the other tabs. The storage event fires only in the tabs that did
   // not make the change, which is exactly the reach this needs. Best effort,
@@ -160,9 +206,35 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // refuse it) and a tab whose scripts are actually running, so nothing may be
   // built on top of it as if it were a lock.
   const currentPubkey = session.status === 'signed-in' ? session.pubkey : null
+
+  /** Adopt the identity another tab signed in with, without a remote call. */
+  const adopt = useCallback(
+    async (pubkey: string) => {
+      const remote = readNip46Session()
+      if (remote && remote.pubkey === pubkey) {
+        try {
+          const signer = await restoreNip46Session(remote)
+          activate(signer, pubkey, remote.relays)
+          return
+        } catch {
+          clearNip46Session()
+        }
+      }
+      const provider = getNip07Provider()
+      if (!provider) return
+      activate(createNip07Signer(provider), pubkey, [])
+    },
+    [activate],
+  )
+
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      const sync = tabSync(event.key, readStoredPubkey(), currentPubkey, getNip07Provider() !== null)
+      const stored = readStoredPubkey()
+      const remote = readNip46Session()
+      // `nc-nip46` alone is not a session change (it carries no npub), so the
+      // pure table only watches `nc-pubkey`; that write is what this test sees.
+      const canSign = getNip07Provider() !== null || (remote !== null && remote.pubkey === stored)
+      const sync = tabSync(event.key, stored, currentPubkey, canSign)
       if (sync.action === 'ignore') return
       if (sync.action === 'sign-out') {
         switchIdentity(null)
@@ -170,27 +242,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setError(null)
         return
       }
-      // No getPublicKey here: it would open an extension dialog in a tab
-      // nobody is looking at. The pubkey comes from the storage, the same way
-      // resuming a session on page load reads it.
-      const provider = getNip07Provider()
-      if (!provider) return
-      const signer = createNip07Signer(provider)
-      switchIdentity(signer)
-      setSession({
-        status: 'signed-in',
-        pubkey: sync.pubkey,
-        npub: toNpub(sync.pubkey),
-        signer,
-        profile: null,
-      })
-      void loadProfile(sync.pubkey)
+      void adopt(sync.pubkey)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
-  }, [currentPubkey, loadProfile])
+  }, [currentPubkey, adopt])
 
-  const login = useCallback(async () => {
+  const loginWithNip07 = useCallback(async () => {
     setError(null)
     setSession({ status: 'signing-in' })
     try {
@@ -205,22 +263,65 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const signer = createNip07Signer(provider)
       const pubkey = await signer.getPublicKey()
       if (!/^[0-9a-f]{64}$/.test(pubkey)) throw new Error('the extension returned no valid pubkey')
+      // A NIP-07 sign-in replaces any remote session: `nc-nip46` must never
+      // outlive the identity it was made for.
+      clearNip46Session()
       storePubkey(pubkey)
-      switchIdentity(signer)
-      setSession({ status: 'signed-in', pubkey, npub: toNpub(pubkey), signer, profile: null })
-      void loadProfile(pubkey)
+      activate(signer, pubkey, [])
     } catch (err) {
       setSession({ status: 'anonymous' })
       setError(err instanceof Error ? err.message : 'sign-in was cancelled')
     }
-  }, [loadProfile])
+  }, [activate])
+
+  const loginWithBunker = useCallback(
+    async (input: string) => {
+      setError(null)
+      setSession({ status: 'signing-in' })
+      try {
+        const connection = await connectBunker(input)
+        storeNip46Session(connection.session)
+        storePubkey(connection.pubkey)
+        activate(connection.signer, connection.pubkey, connection.session.relays)
+      } catch (err) {
+        setSession({ status: 'anonymous' })
+        setError(err instanceof Error ? err.message : 'the remote signer could not be reached')
+      }
+    },
+    [activate],
+  )
+
+  const loginWithNostrConnect = useCallback(
+    async (offer: NostrConnectOffer, signal: AbortSignal) => {
+      setError(null)
+      setSession({ status: 'signing-in' })
+      try {
+        const connection = await connectNostrConnect(offer, signal)
+        storeNip46Session(connection.session)
+        storePubkey(connection.pubkey)
+        activate(connection.signer, connection.pubkey, connection.session.relays)
+      } catch (err) {
+        setSession({ status: 'anonymous' })
+        // A cancel is not a failure; the user chose to stop waiting.
+        if (signal.aborted) return
+        setError(err instanceof Error ? err.message : 'the remote signer did not connect')
+      }
+    },
+    [activate],
+  )
 
   const logout = useCallback(() => {
+    const signer = session.status === 'signed-in' ? session.signer : null
     storePubkey(null)
+    // The local client key is the one secret this app holds; sign-out drops it.
+    clearNip46Session()
     switchIdentity(null)
     setSession({ status: 'anonymous' })
     setError(null)
-  }, [])
+    // Best effort good-bye to the bunker. It must never delay sign-out, and a
+    // bunker that does not implement `logout` is not an error either.
+    if (signer?.close) void signer.close().catch(() => undefined)
+  }, [session])
 
   const ensureSamePubkey = useCallback(async (): Promise<
     { ok: true } | { ok: false; reason: string }
@@ -240,6 +341,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           npub: toNpub(current),
           signer: session.signer,
           profile: null,
+          relays: session.relays,
         })
         void loadProfile(current)
         const reason = 'A different account is now active in the extension.'
@@ -276,13 +378,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       session,
       extension,
       error,
-      login,
+      loginWithNip07,
+      loginWithBunker,
+      loginWithNostrConnect,
       logout,
       clearError,
       ensureSamePubkey,
       applyProfile,
     }),
-    [session, extension, error, login, logout, clearError, ensureSamePubkey, applyProfile],
+    [
+      session,
+      extension,
+      error,
+      loginWithNip07,
+      loginWithBunker,
+      loginWithNostrConnect,
+      logout,
+      clearError,
+      ensureSamePubkey,
+      applyProfile,
+    ],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

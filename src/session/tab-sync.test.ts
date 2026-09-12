@@ -37,10 +37,22 @@ describe('tabSync', () => {
     expect(tabSync(KEY, BOB, null, true)).toEqual({ action: 'adopt', pubkey: BOB })
   })
 
-  // Without an extension the tab cannot sign as the new identity. Keeping the
-  // previous one is the one outcome that must not happen: that npub no longer
-  // owns this machine.
-  it('signs out instead of keeping the old identity when no extension is there', () => {
+  // Without a way to sign for the new identity the tab cannot adopt it.
+  // Keeping the previous one is the one outcome that must not happen: that
+  // npub no longer owns this machine. A NIP-46 client counts as a way to sign,
+  // exactly like an extension, which is why the call site passes
+  // `getNip07Provider() !== null || stored NIP-46 session present`.
+  it('signs out instead of keeping the old identity when it cannot sign', () => {
     expect(tabSync(KEY, BOB, ALICE, false)).toEqual({ action: 'sign-out' })
+  })
+
+  it('adopts a stored NIP-46 session another tab signed in with', () => {
+    expect(tabSync(KEY, BOB, ALICE, true)).toEqual({ action: 'adopt', pubkey: BOB })
+  })
+
+  // `nc-nip46` carries no identity, only how to reach a signer. On its own a
+  // change to it must never end the session.
+  it('ignores a change to the NIP-46 pointer by itself', () => {
+    expect(tabSync('nc-nip46', null, ALICE, true)).toEqual({ action: 'ignore' })
   })
 })

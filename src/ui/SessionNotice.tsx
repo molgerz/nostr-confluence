@@ -20,9 +20,10 @@ export function SessionNotice() {
           <p className="text-sm font-medium text-warning">{error}</p>
           {extension === 'missing' ? (
             <p className="text-xs text-fg-muted">
-              Signing in needs a NIP-07 extension — Alby and nos2x are the common ones. Install
-              one and reload this page. This app never stores a private key and offers no field
-              for one.
+              Signing in needs a NIP-07 extension — Alby and nos2x are the common ones — or a
+              NIP-46 remote signer such as Amber or nsec.app. Install an extension and reload
+              this page, or open the sign-in button and connect your signer. This app never
+              stores your identity key and offers no field for one.
             </p>
           ) : null}
         </div>

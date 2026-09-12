@@ -268,6 +268,12 @@ export function ProfileSettings() {
             <dd className="font-mono text-fg-muted">
               {writeRelays.length > 0 ? writeRelays.join(', ') : 'none configured'}
             </dd>
+            {session.relays.length > 0 ? (
+              <>
+                <dt className="text-fg-subtle">Signer relays</dt>
+                <dd className="font-mono text-fg-muted">{session.relays.join(', ')}</dd>
+              </>
+            ) : null}
           </dl>
         </Card>
       </section>
@@ -279,8 +285,12 @@ export function ProfileSettings() {
       <section className="mt-10 border-t border-line pt-6">
         <SectionLabel className="mb-2">Sign out</SectionLabel>
         <p className="max-w-[62ch] text-sm text-fg-muted">
-          Only forgets which npub is signed in here. Nothing is deleted: the key stays in your
-          extension, and everything you have published stays on the relay.
+          {session.signer.kind === 'nip46'
+            ? 'Forgets which npub is signed in here and deletes the local key this browser ' +
+              'used to talk to your remote signer. Your identity key stays on the signer, and ' +
+              'everything you have published stays on the relay.'
+            : 'Only forgets which npub is signed in here. Nothing is deleted: the key stays in ' +
+              'your extension, and everything you have published stays on the relay.'}
         </p>
         <div className="mt-3">
           <Button

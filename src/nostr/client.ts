@@ -3,6 +3,8 @@ import { normalizeURL } from 'nostr-tools/utils'
 import type { Event, EventTemplate, Filter, VerifiedEvent } from 'nostr-tools'
 import type { SubCloser } from 'nostr-tools/abstract-pool'
 import type { Signer } from './signer'
+import { withTimeout } from './with-timeout'
+import { NIP46_SIGN_TIMEOUT_MS } from './nip46'
 
 export type ConnectionState = 'connecting' | 'online' | 'offline'
 
@@ -55,18 +57,15 @@ function describeError(error: unknown): string {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
- * The connection now waits for AUTH before it is handed out, so a relay that
- * accepts the AUTH event and then says nothing must not stall it for good.
+ * How long the relay may take to answer an AUTH round trip. A browser
+ * extension signs in a blink; a NIP-46 remote signer adds a network hop and,
+ * usually, a confirmation on a phone, so its budget has to be longer than the
+ * adapter's own per-signature bound — otherwise the outer race reports a
+ * failure while the phone prompt is still open. NIP-46's own worst case is
+ * surfaced by the adapter (see src/nostr/nip46.ts).
  */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timer: number
-  return Promise.race([
-    promise.finally(() => window.clearTimeout(timer)),
-    new Promise<never>((_, reject) => {
-      timer = window.setTimeout(() => reject(new Error(message)), ms)
-    }),
-  ])
-}
+const AUTH_TIMEOUT_MS = 5000
+const AUTH_TIMEOUT_REMOTE_MS = NIP46_SIGN_TIMEOUT_MS + 5000
 
 /**
  * The only place that talks to relays. Encapsulates NIP-42: the challenge is
@@ -439,7 +438,8 @@ class NostrClient {
     if (!relay) return
     await delay(200)
     try {
-      const message = await withTimeout(relay.auth(sign), 5000, 'the relay did not answer the AUTH')
+      const authTimeout = this.signer?.kind === 'nip46' ? AUTH_TIMEOUT_REMOTE_MS : AUTH_TIMEOUT_MS
+      const message = await withTimeout(relay.auth(sign), authTimeout, 'the relay did not answer the AUTH')
       if ((this.connGeneration.get(url) ?? 0) !== connGeneration) return
       this.patch(url, { auth: 'ok', authMessage: message || undefined })
     } catch (error) {
