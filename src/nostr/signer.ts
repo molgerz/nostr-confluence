@@ -1,9 +1,10 @@
 import type { Event, EventTemplate } from 'nostr-tools'
 
 /**
- * Signer abstraction. NIP-07 is the only implementation in phase 1; NIP-46
- * (bunker) will arrive later as a second implementation behind the same
- * interface, so that it is not a rewrite. docs/03-auth-nip07-nip42.md
+ * Signer abstraction: a browser extension (NIP-07) and a remote signer
+ * (NIP-46, src/nostr/nip46.ts) implement the same three members, so the rest
+ * of the app never learns which one is behind them.
+ * docs/03-auth-nip07-nip42.md
  */
 export type SignerKind = 'nip07' | 'nip46' | 'dev'
 
@@ -11,8 +12,14 @@ export interface Signer {
   readonly kind: SignerKind
   getPublicKey(): Promise<string>
   /** Returns a finished event with id and sig. The private key never leaves
-   *  the extension. Verification happens in the data layer. */
+   *  the extension or the remote signer. Verification happens in the data
+   *  layer. */
   signEvent(template: EventTemplate): Promise<Event>
+  /**
+   * Ends the underlying channel. A NIP-46 signer owns a relay subscription;
+   * sign-out best-effort closes it. NIP-07 has nothing to close.
+   */
+  close?(): Promise<void>
 }
 
 export type Nip07Provider = {

@@ -40,7 +40,7 @@
 | Forgetting to verify signatures | Verification is enforced in the data layer, not optional per call |
 | Impersonation via display names | The npub is always shown alongside; the member badge only appears for entries in `39002` |
 | Spam in open spaces | Relay rate limits + moderated deletion (`9005`) + a "members only" UI filter |
-| Key theft through the app | No handling of nsec at all. NIP-07/NIP-46 only |
+| Key theft through the app | No handling of the identity key (nsec) at all. NIP-07/NIP-46 only. NIP-46 does persist a throwaway *client* key (`nc-nip46`) so a reload can rebuild the channel; it can request signatures from the bunker but is never the identity key, and sign-out deletes it |
 
 ## Privacy note for users
 

@@ -266,8 +266,8 @@ history.
 | Reading | Rendered Markdown, table of contents on the right, byline, action bar |
 | Editing | Editor and rendered page look the same — there is no preview to toggle. Title, text, Publish/Cancel in the breadcrumb bar → [13](13-editing.md) |
 | Conflict | Banner "this page has N open versions" plus a "merge versions" button; the merge itself happens in the editor, not in a dialog |
-| Signed out | Nothing to read. Access needs a signed-in npub *and* membership, so a signed-out visitor sees the notice from "When the relay shows nothing" below, with the sign-in button in it. The button signs in **where it stands** — you never leave the page |
-| Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also says which extensions are common and that the app stores no key. Only after an attempt, never unprompted |
+| Signed out | Nothing to read. Access needs a signed-in npub *and* membership, so a signed-out visitor sees the notice from "When the relay shows nothing" below, with the sign-in button in it. The button opens the connection dialog **where it stands** — you never leave the page — offering a NIP-07 extension and a NIP-46 remote signer side by side |
+| Sign-in failed | A strip under the top bar with the reason. If no `window.nostr` exists it also names the common extensions and the remote-signer alternative, and repeats that the app stores no identity key. Only after an attempt, never unprompted |
 | Publish failed | Error message in the editor with the **literal relay reason**, classified by cause (AUTH needed, permissions, other). The text stays in the editor, nothing is lost |
 
 The last state is mandatory, not a nicety: with distributed storage, "saved"

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/molgerz/akasha/actions/workflows/ci.yml/badge.svg)](https://github.com/molgerz/akasha/actions/workflows/ci.yml)
 
-A Confluence-like wiki that runs entirely on Nostr: sign in with NIP-07, spaces
+A Confluence-like wiki that runs entirely on Nostr: sign in with NIP-07 or a NIP-46 remote signer, spaces
 are NIP-29 groups, pages are Markdown events, and the version history is a chain
 of signed, hash-linked revisions — every change cryptographically bound to an
 npub.
@@ -12,12 +12,12 @@ npub.
 > Everything runs locally without TLS, and the event format may still change.
 > Reasons in detail: [NOSTR.md](NOSTR.md#right-now-a-prototype-not-for-production).
 
-**Status: phases 0 through 5 are done.** Sign-in with NIP-07, a space with
-members and a page tree, creating and editing pages, three-way merge on
-concurrent saves, version history with diff, line attribution and restore — all
-against a real NIP-29 relay. On top of that: search, comments, moderation,
-display names, a mobile layout, a CodeMirror editor and attachments via Blossom.
-Still open: real-time editing and NIP-46 sign-in. The design docs live in
+**Status: phases 0 through 5 are done.** Sign-in with NIP-07 or a NIP-46
+remote signer, a space with members and a page tree, creating and editing pages,
+three-way merge on concurrent saves, version history with diff, line
+attribution and restore — all against a real NIP-29 relay. On top of that:
+search, comments, moderation, display names, a mobile layout, a CodeMirror
+editor and attachments via Blossom. Still open: real-time editing. The design docs live in
 [`docs/`](docs/), the phase plan in [`docs/10-roadmap.md`](docs/10-roadmap.md).
 
 ## Running it locally

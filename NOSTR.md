@@ -74,7 +74,7 @@ backlog, see [docs/10](docs/10-roadmap.md).
 | [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) AUTH | ✅ | Authenticating to the relay, automatically on every new connection, retried after `auth-required` | `src/nostr/client.ts` |
 | [Blossom](https://github.com/hzrd149/blossom) BUD-01/02 | ✅ | Attachments: the blob lives on the server under its sha256, the event only holds the URL | `src/nostr/blossom.ts` |
 | [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) deletion request | ❌ | Deleting happens only through NIP-29 (`9005`), which a relay actually enforces | — |
-| [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md) bunker | ❌ | Planned as a second signer implementation behind the same interface | — |
+| [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md) bunker | ✅ | A second signer behind the same interface: `bunker://` / NIP-05 and `nostrconnect://`, session survives a reload, bounded signing. The `24133` RPC stays inside nostr-tools | `src/nostr/nip46.ts` |
 | [NIP-50](https://github.com/nostr-protocol/nips/blob/master/50.md) search | ❌ | Deliberately not: not every relay supports it, and a relay-dependent search would break offline. Search runs locally | `src/domain/search.ts` |
 | [NIP-54](https://github.com/nostr-protocol/nips/blob/master/54.md) wiki | ⚠️ | Its slug normalisation for the `d` tag, rule for rule. The wiki kinds themselves are deliberately unused — see below | `src/nostr/kinds.ts` |
 | [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md) git | ❌ | Evaluated and rejected: reading a page would require replaying patches. The Git semantics live in our own revision kind instead | [docs/05](docs/05-versioning-history.md) |
@@ -309,7 +309,8 @@ Named honestly, because they matter when building on top of this:
 |---|---|
 | All kinds and tags in one place | `src/nostr/kinds.ts` |
 | Relay connection, NIP-42, publish with retry | `src/nostr/client.ts` |
-| Signer interface (NIP-07, NIP-46 later) | `src/nostr/signer.ts` |
+| Signer interface and NIP-07 | `src/nostr/signer.ts` |
+| NIP-46 remote signer, timeouts, persistence | `src/nostr/nip46.ts`, `src/session/nip46-store.ts` |
 | Reading revisions, head resolution, page tree | `src/domain/revision.ts`, `src/domain/pages.ts` |
 | Where a page hangs, and the sibling order | `src/domain/placement.ts`, `src/domain/order.ts`, `src/nostr/publish-placement.ts` |
 | Three-way merge | `src/domain/merge.ts` |

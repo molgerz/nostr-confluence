@@ -34,7 +34,7 @@ counter after stopping the relay.
 ## Phase 1 — Sign-in (requirement 1) ✅ (2026-09-07)
 - NIP-07 detection, `getPublicKey`, profile (`kind 0`), session
 - NIP-42 AUTH including an automatic retry after reconnect
-- A signer interface (for NIP-46 later)
+- A signer interface (NIP-46 stayed possible; it arrived in phase 6)
 - **Done when:** signing in with Alby works and a publish after a reconnect does
   not fail silently
 
@@ -188,8 +188,9 @@ Done:
 | `color-scheme` per mode, so the browser draws controls and scrollbars to match | `src/index.css` |
 | Syntax highlighting for code blocks (Shiki, dual themes, grammars lazy) | `src/ui/code-highlight.ts` |
 | `/login` dropped: sign in where the click is, failures in a strip under the top bar | `src/ui/SignInButton.tsx`, `src/ui/SessionNotice.tsx` |
+| NIP-46 sign-in: `bunker://` / NIP-05 and `nostrconnect://`, a connection dialog, the session survives a reload, bounded signing with a readable timeout | `src/nostr/nip46.ts`, `src/session/nip46-store.ts`, `src/ui/ConnectSignerDialog.tsx` |
 
-Open: real-time CRDT (simultaneous typing), NIP-46 sign-in.
+Open: real-time CRDT (simultaneous typing).
 
 **Live Markdown formatting (2026-09-09):** the editor draws the text the way
 it will be read while it is being typed — `# ` sizes the line as a heading, `- `

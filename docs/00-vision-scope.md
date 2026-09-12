@@ -59,8 +59,8 @@ overwritten.
   [09](09-security-privacy.md).
 - **Non-goal:** parity with the full Confluence feature set (macros, Jira
   integration, blueprints, per-page permissions).
-- **Non-goal:** signing in by pasting an nsec. Never. NIP-07 in phase 1, NIP-46
-  (bunker) later.
+- **Non-goal:** signing in by pasting an nsec. Never. NIP-07 (extension) and
+  NIP-46 (bunker / remote signer) only.
 - **Non-goal:** our own backend server with a database. The client talks to
   relays directly.
 

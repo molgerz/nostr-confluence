@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools/pure'
+import type { EventTemplate } from 'nostr-tools'
+import type { Signer } from './signer'
 
 /**
  * The connection lifecycle driven through the *real* nostr-tools client and a
@@ -506,6 +508,53 @@ describe('NostrClient and SpaceStore reconnect races', () => {
       stopWatching()
     } finally {
       nodeProcess.off('unhandledRejection', onUnhandledRejection)
+      vi.useRealTimers()
+    }
+  })
+
+  it('gives a NIP-46 signer a longer AUTH budget than an extension (CON-16)', async () => {
+    // A remote signer adds a phone prompt. With the extension's 5 s budget the
+    // AUTH race would declare a failure while the prompt is still open and flip
+    // the relay badge red on a sign-in that actually worked. The adapter bounds
+    // a single signature itself; the AUTH race has to sit beyond that bound.
+    vi.useFakeTimers()
+    try {
+      const { client } = await freshClient()
+      const url = 'ws://fake/'
+      const secretKey = generateSecretKey()
+      const pubkey = getPublicKey(secretKey)
+      const remote: Signer = {
+        kind: 'nip46',
+        getPublicKey: async () => pubkey,
+        signEvent: (template: EventTemplate) =>
+          new Promise((resolve) => {
+            // 6 s: past the old 5 s bound, well inside the remote one
+            setTimeout(() => resolve(finalizeEvent(template, secretKey)), 6000)
+          }),
+      }
+
+      client.setSigner(remote)
+      const release = client.want(url)
+      await vi.advanceTimersByTimeAsync(10)
+      const socket = latestSocket()
+      socket.open()
+      socket.message(['AUTH', 'challenge-for-the-remote-signer'])
+      await vi.advanceTimersByTimeAsync(300)
+      expect(client.getSnapshot(url).auth).toBe('pending')
+
+      // Past the 5 s an extension would get: still waiting, not failed.
+      await vi.advanceTimersByTimeAsync(5500)
+      expect(client.getSnapshot(url).auth).not.toBe('failed')
+
+      await vi.advanceTimersByTimeAsync(1000)
+      const authEvent = JSON.parse(socket.sent.find((raw) => raw.startsWith('["AUTH"')) ?? '[]')[1] as {
+        id: string
+      }
+      socket.message(['OK', authEvent.id, true, ''])
+      await vi.advanceTimersByTimeAsync(50)
+      expect(client.getSnapshot(url).auth).toBe('ok')
+      release()
+    } finally {
       vi.useRealTimers()
     }
   })
